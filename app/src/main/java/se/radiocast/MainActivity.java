@@ -10,6 +10,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.widget.Button;
+import android.widget.HorizontalScrollView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -22,6 +25,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -46,9 +50,17 @@ public class MainActivity extends Activity {
     };
     private static final String ENTER_IP = "Ange IP-adress…";
 
+    // Shortcuts in the search window: label, catalogue tag ("land:XX" = popular in a country).
+    private static final String[][] GENRES = {
+            {"Elektroniskt", "electronic"}, {"Techno", "techno"}, {"House", "house"},
+            {"Drum & bass", "drum and bass"}, {"Dubstep", "dubstep"}, {"Trance", "trance"},
+            {"Ambient", "ambient"}, {"Hiphop", "hip hop"}, {"Sverige", "land:SE"}, {"Frankrike", "land:FR"},
+    };
+
     private final List<CastDevice> devices = new ArrayList<>();
     private final List<Station> stations = new ArrayList<>();
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
+    private final ExecutorService net = Executors.newSingleThreadExecutor();
 
     private SharedPreferences prefs;
     private ArrayAdapter<String> stationAdapter;
@@ -99,6 +111,7 @@ public class MainActivity extends Activity {
 
         castButton.setOnClickListener(v -> showCastPicker(null));
         findViewById(R.id.add_station).setOnClickListener(v -> askForStation());
+        findViewById(R.id.search_station).setOnClickListener(v -> showSearch());
         findViewById(R.id.play).setOnClickListener(v -> play());
         findViewById(R.id.stop).setOnClickListener(v -> {
             if (cast.getState() == CastController.State.CONNECTED) cast.stop();
@@ -152,6 +165,7 @@ public class MainActivity extends Activity {
         // Leaving the app does not stop the radio on the speaker.
         if (cast.getState() != CastController.State.DISCONNECTED) cast.disconnect(false);
         worker.shutdown();
+        net.shutdownNow();
     }
 
     // -------------------------------------------------------------- cast button
@@ -360,6 +374,137 @@ public class MainActivity extends Activity {
                 })
                 .setNegativeButton("Avbryt", null)
                 .show();
+    }
+
+    // ------------------------------------------------------------------- search
+
+    private interface Lookup { List<RadioSearch.Result> run() throws IOException; }
+
+    private void showSearch() {
+        int pad = dp(16);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(pad, dp(8), pad, 0);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        EditText query = new EditText(this);
+        query.setHint("Namn eller genre, t.ex. P3 eller techno");
+        query.setSingleLine(true);
+        query.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        Button go = new Button(this);
+        go.setText("Sök");
+        row.addView(query, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        row.addView(go);
+        box.addView(row);
+
+        HorizontalScrollView chipScroll = new HorizontalScrollView(this);
+        chipScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout chips = new LinearLayout(this);
+        chips.setOrientation(LinearLayout.HORIZONTAL);
+        chipScroll.addView(chips);
+        box.addView(chipScroll);
+
+        TextView info = new TextView(this);
+        info.setTextColor(getColor(R.color.muted));
+        info.setPadding(0, dp(4), 0, dp(4));
+        box.addView(info);
+
+        List<RadioSearch.Result> results = new ArrayList<>();
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
+        ListView list = new ListView(this);
+        list.setAdapter(adapter);
+        list.setOnItemClickListener((p, v, pos, id) -> {
+            if (pos < results.size()) confirmAdd(results.get(pos));
+        });
+        box.addView(list, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(320)));
+
+        for (String[] g : GENRES) {
+            Button chip = new Button(this, null, android.R.attr.borderlessButtonStyle);
+            chip.setText(g[0]);
+            chip.setAllCaps(false);
+            chip.setTextColor(getColor(R.color.accent));
+            String tag = g[1];
+            chip.setOnClickListener(v -> {
+                query.setText("");
+                if (tag.startsWith("land:")) {
+                    String cc = tag.substring(5);
+                    lookup(() -> RadioSearch.byCountry(cc), "Populäraste i " + g[0], info, adapter, results);
+                } else {
+                    lookup(() -> RadioSearch.byTag(tag), g[0], info, adapter, results);
+                }
+            });
+            chips.addView(chip);
+        }
+
+        go.setOnClickListener(v -> {
+            String q = query.getText().toString().trim();
+            if (q.isEmpty()) { info.setText("Skriv något att söka efter, eller välj en genre."); return; }
+            lookup(() -> RadioSearch.search(q), "\u201d" + q + "\u201d", info, adapter, results);
+        });
+        query.setOnEditorActionListener((v, actionId, event) -> { go.performClick(); return true; });
+
+        new AlertDialog.Builder(this)
+                .setTitle("Hitta radiokanal")
+                .setView(box)
+                .setNegativeButton("Stäng", null)
+                .show();
+
+        lookup(() -> RadioSearch.byTag("electronic"), "Elektroniskt", info, adapter, results);
+    }
+
+    private void lookup(Lookup what, String label, TextView info, ArrayAdapter<String> adapter,
+                        List<RadioSearch.Result> results) {
+        info.setText("Söker " + label + "…");
+        net.execute(() -> {
+            try {
+                List<RadioSearch.Result> found = what.run();
+                runOnUiThread(() -> {
+                    results.clear();
+                    results.addAll(found);
+                    adapter.clear();
+                    for (RadioSearch.Result r : found) adapter.add(r.label());
+                    adapter.notifyDataSetChanged();
+                    info.setText(found.isEmpty() ? "Inga kanaler hittades för " + label + "."
+                            : label + ": " + found.size() + " kanaler. Tryck på en för att lägga till.");
+                });
+            } catch (IOException e) {
+                runOnUiThread(() -> info.setText(e.getMessage()));
+            }
+        });
+    }
+
+    private void confirmAdd(RadioSearch.Result r) {
+        new AlertDialog.Builder(this)
+                .setTitle(r.name)
+                .setMessage(r.label().substring(r.label().indexOf('\n') + 1))
+                .setPositiveButton("Lägg till och spela", (d, w) -> addStation(r.name, r.url, true))
+                .setNeutralButton("Lägg till", (d, w) -> addStation(r.name, r.url, false))
+                .setNegativeButton("Avbryt", null)
+                .show();
+    }
+
+    private void addStation(String name, String url, boolean playNow) {
+        int index = -1;
+        for (int i = 0; i < stations.size(); i++) {
+            if (stations.get(i).url.equals(url)) { index = i; break; }
+        }
+        if (index < 0) {
+            stations.add(new Station(name, url));
+            saveStations();
+            index = stations.size() - 1;
+            say(name + " är tillagd i din lista.");
+        } else {
+            say(name + " finns redan i din lista.");
+        }
+        prefs.edit().putInt("station", index).apply();
+        loadStations();
+        stationList.smoothScrollToPosition(index);
+        if (playNow) play();
+    }
+
+    private int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
     }
 
     private void confirmDelete(int pos) {

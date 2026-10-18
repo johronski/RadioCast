@@ -63,11 +63,20 @@
             android:text="KANALER" />
 
         <Button
+            android:id="@+id/search_station"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sök kanal"
+            android:textAllCaps="false"
+            android:textColor="@color/accent" />
+
+        <Button
             android:id="@+id/add_station"
             style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="+ Lägg till"
+            android:text="+ Egen länk"
             android:textAllCaps="false"
             android:textColor="@color/accent" />
     </LinearLayout>
