@@ -23,6 +23,8 @@ public class CastController {
         default void onSpeakerState(boolean playerRunning, String playerState) { }
         /** The connected speaker's volume, 0–1. */
         default void onSpeakerVolume(double level) { }
+        /** The stream the speaker's player has loaded (also one started before the app was opened). */
+        default void onSpeakerMedia(String url, String title) { }
     }
 
     private final Executor worker;
@@ -193,6 +195,9 @@ public class CastController {
             @Override public void onMessage(String text) { }
             @Override public void onVolume(double level) {
                 worker.execute(() -> { if (client == holder[0]) listener.onSpeakerVolume(level); });
+            }
+            @Override public void onMedia(String url, String title) {
+                worker.execute(() -> { if (client == holder[0]) listener.onSpeakerMedia(url, title); });
             }
             @Override public void onPlayerRunning(boolean running) {
                 worker.execute(() -> {

@@ -185,6 +185,9 @@ public class MainActivity extends Activity {
             @Override public void onSpeakerState(boolean playerRunning, String playerState) {
                 runOnUiThread(() -> updateNowPlaying());
             }
+            @Override public void onSpeakerMedia(String url, String title) {
+                runOnUiThread(() -> { syncNowPlaying(); updateNowPlaying(); });
+            }
             @Override public void onSpeakerVolume(double level) {
                 runOnUiThread(() -> showVolume());
             }
@@ -207,11 +210,7 @@ public class MainActivity extends Activity {
             tip.setVisibility(View.GONE);
         });
         loadStations();
-        // What played last is shown in the now-playing card (not started) when the app opens.
-        if (radio.nowPlaying == null) {
-            String last = prefs.getString("last_played", null);
-            for (Station s : stations) if (s.url.equals(last)) radio.nowPlaying = s;
-        }
+        syncNowPlaying();
 
         // Header and search
         castChip.setOnClickListener(v -> {
@@ -260,6 +259,7 @@ public class MainActivity extends Activity {
     protected void onStart() {
         super.onStart();
         discovery.start();
+        syncNowPlaying();
         PlaybackService.setListener((playing, title, message) -> runOnUiThread(() -> {
             localPlaying = playing;
             if (message != null && message.startsWith("Strömmen")) playError = message;
@@ -289,6 +289,31 @@ public class MainActivity extends Activity {
     // ================================================================ now playing
 
     private boolean casting() { return radio.casting(); }
+
+    /** The position in the list of the station with this stream address, or -1. */
+    private int indexOfUrl(String url) {
+        if (url == null) return -1;
+        for (int i = 0; i < stations.size(); i++) if (stations.get(i).url.equals(url)) return i;
+        return -1;
+    }
+
+    private boolean inList(Station s) { return s != null && indexOfUrl(s.url) >= 0; }
+
+    /**
+     * Works out what is playing when the screen opens: what the phone plays, what the speaker
+     * reported, or else what played last. A station in the list is matched by its stream address,
+     * so its row is marked even though the list was loaded anew.
+     */
+    private void syncNowPlaying() {
+        Station s = radio.nowPlaying;
+        String url = PlaybackService.currentStream();
+        if (url == null && s != null) url = s.url;
+        if (url == null) url = prefs.getString("last_played", null);
+        int i = indexOfUrl(url);
+        if (i >= 0) radio.nowPlaying = stations.get(i);
+        else if (s == null && url != null && url.equals(PlaybackService.currentStream()))
+            radio.nowPlaying = new Station("Radio", url, "", "", 0);
+    }
 
     private String targetName() { return radio.targetName(); }
 
@@ -349,14 +374,14 @@ public class MainActivity extends Activity {
             miniButton.setContentDescription(active ? "Stoppa uppspelning" : "Spela");
         }
 
-        int index = s != null ? stations.indexOf(s) : -1;
-        stationAdapter.setPlaying(active ? index : -1, status);
+        stationAdapter.setPlaying(active && s != null ? indexOfUrl(s.url) : -1, status);
     }
 
     /** Tapping a channel plays it; tapping the one already playing leaves it playing. */
     private void stationTapped(int index) {
         Station s = stations.get(index);
-        if (s == radio.nowPlaying && musicActive()) {
+        Station np = radio.nowPlaying;
+        if (np != null && np.url.equals(s.url) && musicActive()) {
             showSnack(StationGroups.shortName(s.name) + " spelar redan.", null, null);
             return;
         }
@@ -370,7 +395,7 @@ public class MainActivity extends Activity {
         }
         Station s = radio.nowPlaying;
         if (s == null) { showSnack("Tryck på en kanal i listan för att spela den.", null, null); return; }
-        playStation(s, stations.contains(s));
+        playStation(s, inList(s));
     }
 
     /** Stops the music. On a speaker its player stays ready, so the next start is quick. */
@@ -410,7 +435,7 @@ public class MainActivity extends Activity {
         if (afterConnect != null) return afterConnect;
         if (!PlaybackService.isActive()) return null;
         Station s = radio.nowPlaying;
-        return () -> { if (s != null) playStation(s, stations.contains(s)); };
+        return () -> { if (s != null) playStation(s, inList(s)); };
     }
 
     /** The volume slider: the speaker's volume while casting, the phone player's otherwise. */
@@ -661,7 +686,7 @@ public class MainActivity extends Activity {
             if (!connected) return;
             Station s = radio.nowPlaying;
             boolean wasPlaying = musicActive();
-            cast.disconnect(true, () -> runOnUiThread(() -> { if (wasPlaying && s != null) playStation(s, stations.contains(s)); }));
+            cast.disconnect(true, () -> runOnUiThread(() -> { if (wasPlaying && s != null) playStation(s, inList(s)); }));
         });
         list.addView(phone);
 

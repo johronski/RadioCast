@@ -133,25 +133,21 @@ public class StationListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         void bind(int index) {
             Station s = stations.get(index);
             boolean isPlaying = index == playing;
-            boolean isSelected = isPlaying;
             Logos.bind(context, s.logo, s.name, initials, logo, 14);
             name.setText(StationGroups.shortName(s.name));
-            if (isPlaying) {
-                sub.setText(playingText);
-                sub.setTextColor(context.getColor(R.color.accent_text));
-            } else {
-                sub.setText(s.subtitle());
-                sub.setTextColor(context.getColor(R.color.muted));
-            }
+            // Status and controls live in the player at the bottom; here the row is only marked:
+            // the name in the accent colour and the moving bars.
+            name.setTextColor(context.getColor(isPlaying ? R.color.accent_text : R.color.fg));
+            sub.setText(s.subtitle());
+            sub.setTextColor(context.getColor(R.color.muted));
             sub.setVisibility(sub.getText().length() == 0 ? View.GONE : View.VISIBLE);
-            // The playing station is a raised card; the others sit flat on the page.
-            itemView.setBackgroundResource(isSelected ? R.drawable.bg_card : 0);
-            itemView.setElevation(isSelected ? 2 * context.getResources().getDisplayMetrics().density : 0);
+            itemView.setBackgroundResource(0);
+            itemView.setElevation(0);
             playHint.setVisibility(View.GONE);
             equalizer.setVisibility(isPlaying ? View.VISIBLE : View.GONE);
             if (isPlaying) startBars(); else stopBars();
             itemView.setContentDescription(isPlaying
-                    ? s.name + ", " + playingText
+                    ? s.name + ", spelar nu"
                     : "Spela " + s.name + (s.genre.isEmpty() ? "" : ", " + s.genre));
         }
 

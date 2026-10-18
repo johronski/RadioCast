@@ -51,6 +51,15 @@ public final class Radio {
                 CastControlService.refresh(app);
                 for (CastController.Listener l : listeners) l.onSpeakerState(playerRunning, playerState);
             }
+            @Override public void onSpeakerMedia(String url, String title) {
+                Station s = nowPlaying;
+                if (s == null || !s.url.equals(url)) {
+                    // Started before the app was opened: name it from the speaker until the list knows it.
+                    nowPlaying = new Station(title != null && !title.isEmpty() ? title : "Radio", url, "", "", 0);
+                    CastControlService.refresh(app);
+                }
+                for (CastController.Listener l : listeners) l.onSpeakerMedia(url, title);
+            }
             @Override public void onSpeakerVolume(double level) {
                 speakerVolume = level;
                 CastControlService.refresh(app);

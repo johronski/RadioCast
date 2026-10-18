@@ -64,6 +64,9 @@ public class PlaybackService extends Service {
     }
 
     public static boolean isActive() { return active; }
+    /** The stream playing (or starting) in the phone, or null. */
+    public static String currentStream() { return active ? streamUrl : null; }
+    private static volatile String streamUrl;
 
     public static void play(Context c, String url, String title, float volume) {
         active = true;
@@ -185,6 +188,7 @@ public class PlaybackService extends Service {
         Timing.current.mark("Telefonens spelare startad");
         currentTitle = title;
         currentUrl = url;
+        streamUrl = url;
         updateSession(PlaybackState.STATE_BUFFERING);
         playing = false;
         notifyState(false, "Ansluter till " + title + "…");

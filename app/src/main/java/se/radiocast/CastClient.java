@@ -35,6 +35,8 @@ public class CastClient {
         default void onPlayerRunning(boolean running) { }
         /** The speaker's volume, 0–1, whenever it reports it (also when changed elsewhere). */
         default void onVolume(double level) { }
+        /** What the speaker's player has loaded: the stream address and its title. */
+        default void onMedia(String url, String title) { }
     }
 
     /** What a speaker is doing, from {@link #probe}. */
@@ -357,6 +359,11 @@ public class CastClient {
                 if (id.find()) mediaSessionId = Long.parseLong(id.group(1));
                 String state = field(m.payload, "playerState");
                 if (state == null && m.payload.replace(" ", "").contains("\"status\":[]")) state = "IDLE";
+                String url = field(m.payload, "contentId");
+                if (url != null) {
+                    String title = field(m.payload, "title");
+                    listener.onMedia(unescape(url), title != null ? unescape(title) : null);
+                }
                 if (state != null && !state.equals(playerState)) {
                     playerState = state;
                     listener.onPlayerState(state);
@@ -488,6 +495,23 @@ public class CastClient {
             }
         }
         return sb.append('"').toString();
+    }
+
+    /** Undoes JSON escapes in a string value (\\/ and \\" and \\uXXXX). */
+    static String unescape(String s) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c != '\\' || i + 1 >= s.length()) { sb.append(c); continue; }
+            char n = s.charAt(++i);
+            if (n == 'u' && i + 4 < s.length()) {
+                try { sb.append((char) Integer.parseInt(s.substring(i + 1, i + 5), 16)); i += 4; }
+                catch (NumberFormatException e) { sb.append(n); }
+            } else if (n == 'n') sb.append('\n');
+            else if (n == 't') sb.append('\t');
+            else sb.append(n);
+        }
+        return sb.toString();
     }
 
     /** First string value for key in the given JSON text (shallow, good enough for Cast replies). */
