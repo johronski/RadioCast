@@ -6,21 +6,18 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SeekBar;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -29,13 +26,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
-
-    static final class Device {
-        String name;
-        final String host;
-        final int port;
-        Device(String name, String host, int port) { this.name = name; this.host = host; this.port = port; }
-    }
 
     static final class Station {
         final String name;
@@ -50,19 +40,22 @@ public class MainActivity extends Activity {
             {"FIP", "https://icecast.radiofrance.fr/fip-midfi.mp3"},
             {"France Inter", "https://icecast.radiofrance.fr/franceinter-midfi.mp3"},
     };
+    private static final String ENTER_IP = "Ange IP-adress…";
 
-    private final List<Device> devices = new ArrayList<>();
+    private final List<CastDevice> devices = new ArrayList<>();
     private final List<Station> stations = new ArrayList<>();
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
 
     private SharedPreferences prefs;
-    private ArrayAdapter<String> deviceAdapter;
     private ArrayAdapter<String> stationAdapter;
-    private Spinner deviceSpinner;
+    private ArrayAdapter<String> pickerAdapter;
     private ListView stationList;
     private TextView status;
+    private TextView castTarget;
+    private ImageButton castButton;
     private CastDiscovery discovery;
-    private volatile CastClient client;
+    private CastController cast;
+    private boolean autoConnectTried;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,30 +63,40 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         prefs = getSharedPreferences("radiocast", MODE_PRIVATE);
 
-        deviceSpinner = findViewById(R.id.devices);
         stationList = findViewById(R.id.stations);
         status = findViewById(R.id.status);
+        castTarget = findViewById(R.id.cast_target);
+        castButton = findViewById(R.id.cast_button);
 
-        deviceAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
-        deviceAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        deviceSpinner.setAdapter(deviceAdapter);
+        cast = new CastController(worker, new CastController.Listener() {
+            @Override public void onStateChanged(CastController.State state, CastDevice device) {
+                runOnUiThread(() -> showCastState(state, device));
+            }
+            @Override public void onStatus(String message) { say(message); }
+        });
+
+        pickerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
+        refreshPicker();
 
         stationAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_single_choice, new ArrayList<>());
         stationList.setAdapter(stationAdapter);
         stationList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-        stationList.setOnItemClickListener((p, v, pos, id) -> prefs.edit().putInt("station", pos).apply());
+        stationList.setOnItemClickListener((p, v, pos, id) -> {
+            prefs.edit().putInt("station", pos).apply();
+            // Tapping a station while casting switches to it right away.
+            if (cast.getState() == CastController.State.CONNECTED) play();
+        });
         stationList.setOnItemLongClickListener((p, v, pos, id) -> { confirmDelete(pos); return true; });
-
         loadStations();
+
         for (String ip : prefs.getStringSet("ips", new HashSet<>())) {
             addDevice("Högtalare " + ip, ip, 8009);
         }
 
-        findViewById(R.id.scan).setOnClickListener(v -> startDiscovery());
-        findViewById(R.id.enter_ip).setOnClickListener(v -> askForIp());
+        castButton.setOnClickListener(v -> showCastPicker(null));
         findViewById(R.id.add_station).setOnClickListener(v -> askForStation());
         findViewById(R.id.play).setOnClickListener(v -> play());
-        findViewById(R.id.stop).setOnClickListener(v -> stopPlayback());
+        findViewById(R.id.stop).setOnClickListener(v -> cast.stop());
 
         SeekBar volume = findViewById(R.id.volume);
         volume.setProgress(prefs.getInt("volume", 50));
@@ -101,25 +104,24 @@ public class MainActivity extends Activity {
             @Override public void onProgressChanged(SeekBar s, int value, boolean fromUser) { }
             @Override public void onStartTrackingTouch(SeekBar s) { }
             @Override public void onStopTrackingTouch(SeekBar s) {
-                int value = s.getProgress();
-                prefs.edit().putInt("volume", value).apply();
-                setVolume(value / 100.0);
+                prefs.edit().putInt("volume", s.getProgress()).apply();
+                cast.setVolume(s.getProgress() / 100.0);
             }
         });
 
         discovery = new CastDiscovery(this, new CastDiscovery.Listener() {
-            @Override public void onFound(String name, String host, int port) {
-                addDevice(name, host, port);
-                say("Hittade " + name + ".");
-            }
+            @Override public void onFound(String name, String host, int port) { addDevice(name, host, port); }
             @Override public void onError(String message) { say(message); }
         });
+
+        showCastState(CastController.State.DISCONNECTED, null);
+        say("Tryck på cast-knappen uppe till höger för att välja högtalare.");
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        startDiscovery();
+        discovery.start();
     }
 
     @Override
@@ -131,55 +133,90 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        CastClient c = client;
-        client = null;
-        // Closing the connection does not stop the music on the speaker.
-        worker.execute(() -> { if (c != null) c.close(); });
+        // Leaving the app does not stop the radio on the speaker.
+        if (cast.getState() != CastController.State.DISCONNECTED) cast.disconnect(false);
         worker.shutdown();
     }
 
-    // ------------------------------------------------------------------ devices
+    // -------------------------------------------------------------- cast button
 
-    private void startDiscovery() {
-        say(devices.isEmpty() ? "Söker efter högtalare…" : "Söker efter fler högtalare…");
+    private void showCastState(CastController.State state, CastDevice device) {
+        switch (state) {
+            case CONNECTED:
+                castButton.setImageResource(R.drawable.ic_cast_connected);
+                castButton.setAlpha(1f);
+                castButton.setContentDescription("Castar till " + device.name + ". Tryck för att byta eller sluta.");
+                castTarget.setText("Castar till " + device.name);
+                break;
+            case CONNECTING:
+                castButton.setImageResource(R.drawable.ic_cast);
+                castButton.setAlpha(0.45f);
+                castButton.setContentDescription("Ansluter");
+                castTarget.setText(device != null ? "Ansluter till " + device.name + "…" : "Ansluter…");
+                break;
+            default:
+                castButton.setImageResource(R.drawable.ic_cast);
+                castButton.setAlpha(1f);
+                castButton.setContentDescription("Välj högtalare att casta till");
+                castTarget.setText("Ingen högtalare vald");
+                break;
+        }
+    }
+
+    /** The cast dialog. The list updates while the search finds speakers. */
+    private void showCastPicker(Runnable afterConnect) {
         discovery.start();
-        deviceSpinner.postDelayed(() -> {
-            if (devices.isEmpty() && !isFinishing()) {
-                say("Ingen högtalare hittad. Kontrollera wifi, eller tryck Ange IP-adress.");
+        refreshPicker();
+        AlertDialog.Builder b = new AlertDialog.Builder(this);
+        CastDevice current = cast.getDevice();
+        if (cast.getState() == CastController.State.CONNECTED && current != null) {
+            b.setTitle("Castar till " + current.name);
+            b.setPositiveButton("Sluta casta", (d, w) -> cast.disconnect(true));
+        } else {
+            b.setTitle(devices.isEmpty() ? "Söker efter högtalare…" : "Casta till");
+        }
+        b.setAdapter(pickerAdapter, (d, which) -> {
+            if (which >= devices.size()) {
+                askForIp(afterConnect);
+            } else {
+                CastDevice dev = devices.get(which);
+                prefs.edit().putString("device", dev.key()).apply();
+                cast.connect(dev, afterConnect == null ? null : () -> runOnUiThread(afterConnect));
             }
-        }, 8000);
+        });
+        b.setNegativeButton("Stäng", null);
+        b.show();
     }
 
     private void addDevice(String name, String host, int port) {
-        for (Device d : devices) {
-            if (d.host.equals(host)) {
-                if (!name.startsWith("Högtalare ")) d.name = name;
-                refreshDevices();
-                return;
-            }
+        CastDevice found = null;
+        String key = host + ":" + port;
+        for (CastDevice d : devices) {
+            if (d.key().equals(key)) { found = d; break; }
         }
-        devices.add(new Device(name, host, port));
-        refreshDevices();
-        String last = prefs.getString("device", null);
-        if (host.equals(last) || devices.size() == 1) {
-            deviceSpinner.setSelection(devices.size() - 1);
+        if (found == null) {
+            found = new CastDevice(name, host, port);
+            devices.add(found);
+        } else if (!name.startsWith("Högtalare ")) {
+            found.name = name;
+        }
+        refreshPicker();
+        // Reconnect to the speaker used last time, once, without asking.
+        if (!autoConnectTried && key.equals(prefs.getString("device", null))
+                && cast.getState() == CastController.State.DISCONNECTED) {
+            autoConnectTried = true;
+            cast.connect(found, null);
         }
     }
 
-    private void refreshDevices() {
-        int sel = deviceSpinner.getSelectedItemPosition();
-        deviceAdapter.clear();
-        for (Device d : devices) deviceAdapter.add(d.name);
-        deviceAdapter.notifyDataSetChanged();
-        if (sel >= 0 && sel < devices.size()) deviceSpinner.setSelection(sel);
+    private void refreshPicker() {
+        pickerAdapter.clear();
+        for (CastDevice d : devices) pickerAdapter.add(d.name);
+        pickerAdapter.add(ENTER_IP);
+        pickerAdapter.notifyDataSetChanged();
     }
 
-    private Device selectedDevice() {
-        int i = deviceSpinner.getSelectedItemPosition();
-        return (i >= 0 && i < devices.size()) ? devices.get(i) : null;
-    }
-
-    private void askForIp() {
+    private void askForIp(Runnable afterConnect) {
         EditText input = new EditText(this);
         input.setHint("t.ex. 192.168.1.50");
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
@@ -187,18 +224,35 @@ public class MainActivity extends Activity {
                 .setTitle("Högtalarens IP-adress")
                 .setMessage("Finns i Google Home: tryck på högtalaren, kugghjulet, Enhetsinformation.")
                 .setView(padded(input))
-                .setPositiveButton("Lägg till", (d, w) -> {
+                .setPositiveButton("Anslut", (d, w) -> {
                     String ip = input.getText().toString().trim();
                     if (!ip.matches("[0-9a-fA-F.:]+")) { say("Det ser inte ut som en IP-adress."); return; }
                     Set<String> ips = new HashSet<>(prefs.getStringSet("ips", new HashSet<>()));
                     ips.add(ip);
-                    prefs.edit().putStringSet("ips", ips).putString("device", ip).apply();
+                    prefs.edit().putStringSet("ips", ips).putString("device", ip + ":8009").apply();
+                    autoConnectTried = true;
                     addDevice("Högtalare " + ip, ip, 8009);
-                    for (int i = 0; i < devices.size(); i++) if (devices.get(i).host.equals(ip)) deviceSpinner.setSelection(i);
-                    say("Högtalaren är sparad. Tryck Spela.");
+                    for (CastDevice dev : devices) {
+                        if (dev.key().equals(ip + ":8009")) {
+                            cast.connect(dev, afterConnect == null ? null : () -> runOnUiThread(afterConnect));
+                        }
+                    }
                 })
                 .setNegativeButton("Avbryt", null)
                 .show();
+    }
+
+    // ----------------------------------------------------------------- playback
+
+    private void play() {
+        Station s = selectedStation();
+        if (s == null) { say("Välj en kanal först."); return; }
+        if (cast.getState() == CastController.State.DISCONNECTED) {
+            // Not connected yet: pick a speaker, then start the station.
+            showCastPicker(this::play);
+            return;
+        }
+        cast.play(s.url, s.name);
     }
 
     // ----------------------------------------------------------------- stations
@@ -284,96 +338,6 @@ public class MainActivity extends Activity {
     private Station selectedStation() {
         int i = stationList.getCheckedItemPosition();
         return (i >= 0 && i < stations.size()) ? stations.get(i) : null;
-    }
-
-    // ----------------------------------------------------------------- playback
-
-    private void play() {
-        Device d = selectedDevice();
-        Station s = selectedStation();
-        if (d == null) { say("Välj en högtalare först, eller tryck Ange IP-adress."); return; }
-        if (s == null) { say("Välj en kanal först."); return; }
-        prefs.edit().putString("device", d.host).apply();
-        say("Startar " + s.name + " på " + d.name + "…");
-        worker.execute(() -> {
-            try {
-                withClient(d, c -> c.play(s.url, s.name, contentType(s.url)));
-                say("Spelar " + s.name + " på " + d.name + ".");
-            } catch (IOException e) {
-                say(e.getMessage() != null ? e.getMessage() : "Det gick inte att nå högtalaren.");
-            }
-        });
-    }
-
-    private void stopPlayback() {
-        Device d = selectedDevice();
-        if (d == null) return;
-        worker.execute(() -> {
-            try {
-                withClient(d, CastClient::stop);
-                say("Stoppad.");
-            } catch (IOException e) {
-                say(e.getMessage() != null ? e.getMessage() : "Det gick inte att nå högtalaren.");
-            }
-        });
-    }
-
-    private void setVolume(double level) {
-        Device d = selectedDevice();
-        if (d == null) return;
-        worker.execute(() -> {
-            try {
-                withClient(d, c -> c.setVolume(level));
-                say("Volym " + Math.round(level * 100) + " %.");
-            } catch (IOException e) {
-                say(e.getMessage() != null ? e.getMessage() : "Det gick inte att nå högtalaren.");
-            }
-        });
-    }
-
-    private interface CastAction { void run(CastClient c) throws IOException; }
-
-    /** Runs on the worker thread. Connects if needed and retries once on a dropped connection. */
-    private void withClient(Device d, CastAction action) throws IOException {
-        for (int attempt = 0; attempt < 2; attempt++) {
-            CastClient c = client;
-            boolean reused = true;
-            if (c == null || !c.isConnected() || !c.getHost().equals(d.host)) {
-                reused = false;
-                if (c != null) c.close();
-                c = new CastClient(d.host, d.port, new CastClient.Listener() {
-                    @Override public void onMessage(String text) { }
-                    @Override public void onDisconnected(String reason) { client = null; }
-                });
-                try {
-                    c.connect();
-                } catch (IOException e) {
-                    throw new IOException("Når inte " + d.name + ". Är den på och på samma wifi?");
-                }
-                client = c;
-            }
-            try {
-                action.run(c);
-                return;
-            } catch (IOException e) {
-                if (!c.isConnected()) {
-                    c.close();
-                    client = null;
-                    // A stale connection gets one fresh attempt.
-                    if (reused && attempt == 0) continue;
-                }
-                throw e;
-            }
-        }
-        throw new IOException("Det gick inte att nå högtalaren.");
-    }
-
-    private static String contentType(String url) {
-        String u = url.toLowerCase(java.util.Locale.ROOT);
-        if (u.contains(".m3u8")) return "application/x-mpegURL";
-        if (u.contains(".aac")) return "audio/aac";
-        if (u.contains(".ogg")) return "audio/ogg";
-        return "audio/mpeg";
     }
 
     // -------------------------------------------------------------------- utils

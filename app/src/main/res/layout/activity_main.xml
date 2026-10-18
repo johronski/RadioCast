@@ -10,45 +10,45 @@
     android:paddingEnd="16dp"
     android:paddingBottom="12dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="RadioCast"
-        android:textColor="@color/fg"
-        android:textSize="30sp"
-        android:textStyle="bold" />
-
-    <TextView
-        style="@style/Label"
-        android:text="HÖGTALARE" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <Spinner
-            android:id="@+id/devices"
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1" />
-
-        <Button
-            android:id="@+id/scan"
-            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Sök" />
-    </LinearLayout>
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-    <Button
-        android:id="@+id/enter_ip"
-        style="?android:attr/borderlessButtonStyle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hittas inte? Ange IP-adress"
-        android:textAllCaps="false"
-        android:textColor="@color/accent" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RadioCast"
+                android:textColor="@color/fg"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/cast_target"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ingen högtalare vald"
+                android:textColor="@color/muted"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/cast_button"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Välj högtalare att casta till"
+            android:padding="12dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_cast" />
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"

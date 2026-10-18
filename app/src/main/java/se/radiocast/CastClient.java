@@ -181,6 +181,10 @@ public class CastClient {
                 handle(m);
             }
         } catch (IOException e) {
+            // Wake anything waiting for a reply so it fails right away.
+            mediaError = "Anslutningen till högtalaren bröts.";
+            mediaLatch.countDown();
+            appLatch.countDown();
             if (running) {
                 running = false;
                 listener.onDisconnected("Anslutningen till högtalaren bröts.");
