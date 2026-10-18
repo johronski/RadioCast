@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'se.radiocast'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'se.radiocast'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        // Fast nyckel, så att nya versioner kan installeras ovanpå den gamla.
+        debug {
+            storeFile file('radiocast.keystore')
+            storePassword 'radiocast'
+            keyAlias 'radiocast'
+            keyPassword 'radiocast'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}
