@@ -114,6 +114,25 @@ public class CastController {
         });
     }
 
+    /**
+     * Turns off the player on the speaker (frees it for other apps) but stays connected,
+     * so pressing Play starts it again.
+     */
+    public void stopDevice() {
+        worker.execute(() -> {
+            CastClient c = liveClient();
+            if (c == null) return;
+            CastDevice d = device;
+            try {
+                c.stopReceiver();
+                listener.onStatus("Chromecast-enheten " + (d != null ? d.name + " " : "")
+                        + "är avstängd och ledig för andra appar.");
+            } catch (IOException e) {
+                failed(e);
+            }
+        });
+    }
+
     public void setVolume(double level) {
         worker.execute(() -> {
             CastClient c = liveClient();
