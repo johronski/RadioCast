@@ -33,6 +33,8 @@ public class CastClient {
         default void onPlayerState(String state) { }
         /** Our player on the speaker was started (true) or closed (false). */
         default void onPlayerRunning(boolean running) { }
+        /** The speaker's volume, 0–1, whenever it reports it (also when changed elsewhere). */
+        default void onVolume(double level) { }
     }
 
     /** What a speaker is doing, from {@link #probe}. */
@@ -321,6 +323,10 @@ public class CastClient {
         } else if (NS_RECEIVER.equals(m.namespace) && "RECEIVER_STATUS".equals(type)) {
             lastReceiverStatus = m.payload;
             boolean wasRunning = transportId != null;
+            Matcher vol = Pattern.compile("\"volume\"\\s*:\\s*\\{[^}]*\"level\"\\s*:\\s*([0-9.]+)").matcher(m.payload);
+            if (vol.find()) {
+                try { listener.onVolume(Double.parseDouble(vol.group(1))); } catch (NumberFormatException ignored) { }
+            }
             String app = appObject(m.payload, DEFAULT_MEDIA_RECEIVER);
             if (app != null) {
                 otherAppRunning = false;

@@ -28,6 +28,11 @@
         </activity>
 
         <service
+            android:name=".CastControlService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <service
             android:name=".PlaybackService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />

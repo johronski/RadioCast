@@ -8,6 +8,10 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.graphics.drawable.Icon;
+import android.media.MediaMetadata;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
 import android.os.Build;
 import android.os.IBinder;
 
@@ -50,6 +54,9 @@ public class PlaybackService extends Service {
 
     private ExoPlayer player;
     private float volume = 1f;
+    /** Lock-screen and headset controls for playback on the phone. */
+    private MediaSession session;
+    private String currentUrl;
 
     public static void setListener(Listener l) {
         listener = l;
@@ -82,6 +89,29 @@ public class PlaybackService extends Service {
         NotificationChannel ch = new NotificationChannel(CHANNEL, "Uppspelning", NotificationManager.IMPORTANCE_LOW);
         ch.setDescription("Visas medan radion spelar på telefonen");
         nm.createNotificationChannel(ch);
+
+        session = new MediaSession(this, "RadioCast-phone");
+        session.setCallback(new MediaSession.Callback() {
+            @Override public void onPause() { stopPlayback("Stoppad."); }
+            @Override public void onStop() { stopPlayback("Stoppad."); }
+            @Override public void onPlay() {
+                if (currentUrl != null && currentTitle != null) start(currentUrl, currentTitle);
+            }
+        });
+    }
+
+    private void updateSession(int state) {
+        if (session == null) return;
+        session.setMetadata(new MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, currentTitle != null ? currentTitle : "RadioCast")
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, "Spelar i telefonen")
+                .build());
+        session.setPlaybackState(new PlaybackState.Builder()
+                .setState(state, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1f)
+                .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_STOP
+                        | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE)
+                .build());
+        session.setActive(state != PlaybackState.STATE_STOPPED);
     }
 
     @Override
@@ -122,7 +152,8 @@ public class PlaybackService extends Service {
                     if (isPlaying) {
                         playing = true;
                         long ms = Timing.current.sound("Ljud i telefonen");
-                        goForeground(currentTitle, "Spelar på telefonen");
+                        goForeground(currentTitle, "Spelar i telefonen");
+                        updateSession(PlaybackState.STATE_PLAYING);
                         notifyState(true, "Spelar " + currentTitle + " i telefonen"
                                 + (ms >= 0 ? " · ljud efter " + Timing.seconds(ms) : "") + ".");
                     }
@@ -153,6 +184,8 @@ public class PlaybackService extends Service {
     private void start(String url, String title) {
         Timing.current.mark("Telefonens spelare startad");
         currentTitle = title;
+        currentUrl = url;
+        updateSession(PlaybackState.STATE_BUFFERING);
         playing = false;
         notifyState(false, "Ansluter till " + title + "…");
         ExoPlayer p = player();
@@ -164,6 +197,7 @@ public class PlaybackService extends Service {
 
     private void stopPlayback(String message) {
         releasePlayer();
+        updateSession(PlaybackState.STATE_STOPPED);
         active = false;
         currentTitle = null;
         notifyState(false, message);
@@ -196,7 +230,12 @@ public class PlaybackService extends Service {
                 .setContentIntent(openPi)
                 .setOngoing(true)
                 .setShowWhen(false)
-                .addAction(new Notification.Action.Builder(null, "Stoppa", stopPi).build())
+                .addAction(new Notification.Action.Builder(
+                        Icon.createWithResource(this, R.drawable.ic_stop), "Stoppa", stopPi).build())
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setStyle(new Notification.MediaStyle()
+                        .setMediaSession(session.getSessionToken())
+                        .setShowActionsInCompactView(0))
                 .build();
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
@@ -209,6 +248,11 @@ public class PlaybackService extends Service {
     public void onDestroy() {
         releasePlayer();
         active = false;
+        if (session != null) {
+            session.setActive(false);
+            session.release();
+            session = null;
+        }
         super.onDestroy();
     }
 

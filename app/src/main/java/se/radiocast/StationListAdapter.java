@@ -133,7 +133,7 @@ public class StationListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         void bind(int index) {
             Station s = stations.get(index);
             boolean isPlaying = index == playing;
-            boolean isSelected = isPlaying || (playing < 0 && index == selected);
+            boolean isSelected = isPlaying;
             Logos.bind(context, s.logo, s.name, initials, logo, 14);
             name.setText(StationGroups.shortName(s.name));
             if (isPlaying) {
@@ -144,10 +144,10 @@ public class StationListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                 sub.setTextColor(context.getColor(R.color.muted));
             }
             sub.setVisibility(sub.getText().length() == 0 ? View.GONE : View.VISIBLE);
-            // The chosen or playing station is a raised card; the others sit flat on the page.
+            // The playing station is a raised card; the others sit flat on the page.
             itemView.setBackgroundResource(isSelected ? R.drawable.bg_card : 0);
             itemView.setElevation(isSelected ? 2 * context.getResources().getDisplayMetrics().density : 0);
-            playHint.setVisibility(isPlaying ? View.GONE : View.VISIBLE);
+            playHint.setVisibility(View.GONE);
             equalizer.setVisibility(isPlaying ? View.VISIBLE : View.GONE);
             if (isPlaying) startBars(); else stopBars();
             itemView.setContentDescription(isPlaying

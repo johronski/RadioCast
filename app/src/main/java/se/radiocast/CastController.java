@@ -21,6 +21,8 @@ public class CastController {
          * and its state (PLAYING, BUFFERING, PAUSED or IDLE).
          */
         default void onSpeakerState(boolean playerRunning, String playerState) { }
+        /** The connected speaker's volume, 0–1. */
+        default void onSpeakerVolume(double level) { }
     }
 
     private final Executor worker;
@@ -189,6 +191,9 @@ public class CastController {
         final CastClient[] holder = new CastClient[1];
         CastClient c = new CastClient(d.host, d.port, new CastClient.Listener() {
             @Override public void onMessage(String text) { }
+            @Override public void onVolume(double level) {
+                worker.execute(() -> { if (client == holder[0]) listener.onSpeakerVolume(level); });
+            }
             @Override public void onPlayerRunning(boolean running) {
                 worker.execute(() -> {
                     if (client == holder[0]) listener.onSpeakerState(running, holder[0].getPlayerState());

@@ -32,26 +32,59 @@
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
-            <TextView
+            <ImageButton
+                android:id="@+id/menu"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="4dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Fler val"
+                android:padding="11dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_more"
+                android:tint="@color/soft_fg" />
+
+            <LinearLayout
                 android:id="@+id/cast_chip"
                 android:layout_width="wrap_content"
                 android:layout_height="44dp"
                 android:background="@drawable/bg_cast_idle"
                 android:clickable="true"
-                android:drawableStart="@drawable/ic_cast_line"
-                android:drawablePadding="8dp"
-                android:drawableTint="@color/accent_text"
-                android:ellipsize="end"
                 android:focusable="true"
-                android:fontFamily="sans-serif-medium"
                 android:gravity="center_vertical"
-                android:maxWidth="230dp"
-                android:maxLines="1"
+                android:orientation="horizontal"
                 android:paddingStart="12dp"
-                android:paddingEnd="16dp"
-                android:text="Välj högtalare"
-                android:textColor="@color/accent_text"
-                android:textSize="14sp" />
+                android:paddingEnd="16dp">
+
+                <ProgressBar
+                    android:id="@+id/chip_progress"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:indeterminate="true"
+                    android:indeterminateTint="@color/accent_text"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/chip_icon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_phone"
+                    android:tint="@color/accent_text" />
+
+                <TextView
+                    android:id="@+id/chip_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxWidth="170dp"
+                    android:maxLines="1"
+                    android:text="Telefonen"
+                    android:textColor="@color/accent_text"
+                    android:textSize="14sp" />
+            </LinearLayout>
         </LinearLayout>
 
         <TextView
@@ -114,6 +147,96 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/tip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="2dp"
+            android:background="@drawable/bg_tip"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="8dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tip_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:lineSpacingExtra="2dp"
+                android:textColor="@color/accent_text"
+                android:textSize="13sp" />
+
+            <ImageButton
+                android:id="@+id/tip_close"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Stäng tipset"
+                android:padding="14dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_close"
+                android:tint="@color/accent_text" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/empty"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_radio"
+                android:tint="@color/muted" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="Inga kanaler än"
+                android:textColor="@color/fg"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:text="Sök bland tusentals radiokanaler och lägg till dem du gillar."
+                android:textColor="@color/muted"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/empty_search"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:layout_marginTop="18dp"
+                android:background="@drawable/bg_button_accent"
+                android:clickable="true"
+                android:focusable="true"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:text="Sök kanaler"
+                android:textColor="@color/on_accent"
+                android:textSize="15sp" />
+        </LinearLayout>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/stations"
             android:layout_width="match_parent"
@@ -126,6 +249,7 @@
 
         <LinearLayout
             android:id="@+id/np_card"
+            android:visibility="gone"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
