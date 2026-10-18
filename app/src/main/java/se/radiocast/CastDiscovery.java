@@ -17,8 +17,9 @@ public class CastDiscovery {
         /**
          * @param id     the speaker's unique id (stays the same when its IP address changes), or ""
          * @param status what it is playing right now, e.g. "Spotify", or "" when idle
+         * @param group  a speaker group made in Google Home (several speakers in sync)
          */
-        void onFound(String name, String host, int port, String id, String status);
+        void onFound(String name, String host, int port, String id, String status, boolean group);
         void onError(String message);
     }
 
@@ -91,7 +92,9 @@ public class CastDiscovery {
                     int port = info.getPort();
                     String id = attribute(info, "id");
                     String status = attribute(info, "rs");
-                    if (host != null) main.post(() -> listener.onFound(name, host, port, id, status));
+                    // Groups announce themselves with the model name "Google Cast Group".
+                    boolean group = attribute(info, "md").toLowerCase(java.util.Locale.ROOT).contains("group");
+                    if (host != null) main.post(() -> listener.onFound(name, host, port, id, status, group));
                     done();
                 }
             });

@@ -9,6 +9,8 @@ public final class CastDevice {
     public volatile String id = "";
     /** What it is doing, e.g. "spelar Spotify" or "ledig". "" until known. */
     public volatile String status = "";
+    /** A speaker group made in Google Home: several speakers playing in sync. */
+    public volatile boolean group;
 
     public CastDevice(String name, String host, int port) {
         this.name = name;

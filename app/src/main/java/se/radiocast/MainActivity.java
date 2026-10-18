@@ -67,7 +67,6 @@ public class MainActivity extends Activity {
     // Shortcuts in the search window, picked from the Subtest playlist's styles.
     // "mix:a|b" blends several tags, "land:XX" = most popular in a country, otherwise a tag.
     private static final String[][] GENRES = {
-            {"För dig", "mix:melodic|synthpop|deep house|chillout|dubstep|afro|rap fr"},
             {"Melodisk techno", "melodic"}, {"Synthpop", "synthpop"}, {"Deep house", "deep house"},
             {"Chill", "chillout"}, {"Dubstep", "dubstep"}, {"Drum & bass", "drum and bass"},
             {"Afrobeats", "afro"}, {"Fransk rap", "mix:rap fr|french rap"}, {"Hiphop", "hip hop"},
@@ -209,15 +208,15 @@ public class MainActivity extends Activity {
         });
 
         discovery = new CastDiscovery(this, new CastDiscovery.Listener() {
-            @Override public void onFound(String name, String host, int port, String id, String rs) {
-                addDevice(name, host, port, id, rs);
+            @Override public void onFound(String name, String host, int port, String id, String rs, boolean group) {
+                addDevice(name, host, port, id, rs, group);
             }
             @Override public void onError(String message) { notifyUser(message); }
         });
 
         startReconnect();
         for (String ip : prefs.getStringSet("ips", new HashSet<>())) {
-            addDevice("Högtalare " + ip, ip, 8009, "", "");
+            addDevice("Högtalare " + ip, ip, 8009, "", "", false);
         }
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         updateCastChip();
@@ -493,22 +492,32 @@ public class MainActivity extends Activity {
         CastDevice current = cast.getDevice();
         LayoutInflater inf = LayoutInflater.from(this);
 
-        for (CastDevice dev : new ArrayList<>(devices)) {
+        // Groups first, under their own heading, so they stand out from single speakers.
+        List<CastDevice> groups = new ArrayList<>(), speakers = new ArrayList<>();
+        for (CastDevice dev : devices) (dev.group ? groups : speakers).add(dev);
+        List<CastDevice> ordered = new ArrayList<>(groups);
+        ordered.addAll(speakers);
+        for (CastDevice dev : ordered) {
+            if (!groups.isEmpty() && (dev == ordered.get(0) || (!dev.group && dev == speakers.get(0)))) {
+                list.addView(sheetHeading(dev.group ? "GRUPPER · SYNKAT LJUD I FLERA RUM" : "HÖGTALARE"));
+            }
             boolean isCurrent = connected && current != null && current.key().equals(dev.key());
             View row = inf.inflate(R.layout.item_device, list, false);
             ((TextView) row.findViewById(R.id.name)).setText(dev.name);
+            row.findViewById(R.id.badge).setVisibility(dev.group ? View.VISIBLE : View.GONE);
             TextView status = row.findViewById(R.id.status);
             String st = isCurrent
                     ? "Ansluten" + (nowPlaying != null && musicActive() ? " · spelar " + StationGroups.shortName(nowPlaying.name) : "")
                     : capitalize(dev.status);
-            status.setText(st.isEmpty() ? "Chromecast" : st);
+            status.setText(st.isEmpty() ? (dev.group ? "Spelar i alla högtalare i gruppen" : "Chromecast") : st);
             status.setTextColor(getColor(isCurrent ? R.color.accent_text : R.color.muted));
             ImageView icon = row.findViewById(R.id.icon);
+            icon.setImageResource(dev.group ? R.drawable.ic_group : R.drawable.ic_speaker);
             icon.setBackgroundResource(isCurrent ? R.drawable.bg_icon_circle_accent : R.drawable.bg_icon_circle);
             icon.setImageTintList(android.content.res.ColorStateList.valueOf(getColor(isCurrent ? R.color.accent_text : R.color.fg)));
             row.findViewById(R.id.check).setVisibility(isCurrent ? View.VISIBLE : View.GONE);
             if (isCurrent) row.setBackgroundResource(R.drawable.bg_device_selected);
-            row.setContentDescription(dev.name + ", " + status.getText());
+            row.setContentDescription((dev.group ? "Grupp " : "") + dev.name + ", " + status.getText());
             row.setOnClickListener(v -> {
                 d.dismiss();
                 if (isCurrent) return;
@@ -520,6 +529,7 @@ public class MainActivity extends Activity {
         }
 
         // This phone: listen here instead; what plays on the speaker moves along.
+        if (!groups.isEmpty()) list.addView(sheetHeading("DEN HÄR TELEFONEN"));
         View phone = inf.inflate(R.layout.item_device, list, false);
         ((TextView) phone.findViewById(R.id.name)).setText("Den här telefonen");
         boolean onPhone = !connected && PlaybackService.isActive();
@@ -540,6 +550,17 @@ public class MainActivity extends Activity {
         d.findViewById(R.id.connected_actions).setVisibility(connected ? View.VISIBLE : View.GONE);
         ((TextView) d.findViewById(R.id.actions_caption)).setText("Koppla från: radion spelar vidare på " + targetName()
                 + ". Stoppa Chromecast-enhet: spelaren på " + targetName() + " stängs och enheten blir ledig.");
+    }
+
+    private TextView sheetHeading(String text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextSize(12);
+        t.setLetterSpacing(0.1f);
+        t.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        t.setTextColor(getColor(R.color.muted));
+        t.setPadding(dp(12), dp(12), dp(12), dp(6));
+        return t;
     }
 
     private static String capitalize(String s) {
@@ -564,7 +585,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void addDevice(String name, String host, int port, String id, String rs) {
+    private void addDevice(String name, String host, int port, String id, String rs, boolean group) {
         String key = host + ":" + port;
         CastDevice found = null;
         // Same speaker: same unique id, or (for speakers added by IP address) same address.
@@ -585,6 +606,7 @@ public class MainActivity extends Activity {
             found.port = port;
         }
         if (!id.isEmpty()) found.id = id;
+        if (group) found.group = true;
         if (!rs.isEmpty()) found.status = describeAnnounced(rs);
         refreshSheet();
 
@@ -661,7 +683,7 @@ public class MainActivity extends Activity {
                     prefs.edit().putStringSet("ips", ips).apply();
                     autoConnectTried = true;
                     reconnect = Reconnect.NONE;
-                    addDevice("Högtalare " + ip, ip, 8009, "", "");
+                    addDevice("Högtalare " + ip, ip, 8009, "", "", false);
                     for (CastDevice dev : devices) {
                         if (dev.key().equals(ip + ":8009")) {
                             Runnable after = handOver(afterConnect);
@@ -922,11 +944,11 @@ public class MainActivity extends Activity {
             lp.setMarginEnd(dp(8));
             chips.addView(chip, lp);
             chipViews.add(chip);
-            int colorIndex = i == 0 ? -1 : (i - 1) % CHIP_COLORS.length;
+            int colorIndex = i % CHIP_COLORS.length;
             String tag = g[1];
             chip.setOnClickListener(v -> {
                 query.setText("");
-                for (int k = 0; k < chipViews.size(); k++) styleChip(chipViews.get(k), k == 0 ? -1 : (k - 1) % CHIP_COLORS.length, chipViews.get(k) == chip);
+                for (int k = 0; k < chipViews.size(); k++) styleChip(chipViews.get(k), k % CHIP_COLORS.length, chipViews.get(k) == chip);
                 if (tag.startsWith("land:")) {
                     String cc = tag.substring(5);
                     lookup(() -> RadioSearch.byCountry(cc), "Populäraste i " + g[0], info, adapter, results);
@@ -937,13 +959,13 @@ public class MainActivity extends Activity {
                     lookup(() -> RadioSearch.byTag(tag), g[0], info, adapter, results);
                 }
             });
-            styleChip(chip, colorIndex, i == 0);
+            styleChip(chip, colorIndex, false);
         }
 
         query.setOnEditorActionListener((v, actionId, event) -> {
             String q = query.getText().toString().trim();
             if (q.isEmpty()) { info.setText("Skriv något att söka efter, eller välj en genre."); return true; }
-            for (int k = 0; k < chipViews.size(); k++) styleChip(chipViews.get(k), k == 0 ? -1 : (k - 1) % CHIP_COLORS.length, false);
+            for (int k = 0; k < chipViews.size(); k++) styleChip(chipViews.get(k), k % CHIP_COLORS.length, false);
             lookup(() -> RadioSearch.search(q), "”" + q + "”", info, adapter, results);
             return true;
         });
@@ -954,21 +976,16 @@ public class MainActivity extends Activity {
         updateNowPlaying();
         d.show();
 
-        String[] forYou = GENRES[0][1].substring(4).split("\\|");
-        lookup(() -> RadioSearch.mix(forYou), GENRES[0][0], info, adapter, results);
+        info.setText("Välj en genre eller skriv ett namn.");
     }
 
-    /** Genre chip: "För dig" (index -1) is dark, the others pastel; the chosen one is dark. */
+    /** Genre chip: pastel, or dark when it is the chosen one. */
     private void styleChip(TextView chip, int colorIndex, boolean selected) {
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(22));
-        if (selected || colorIndex < 0 && selected) {
+        if (selected) {
             bg.setColor(getColor(R.color.pill_dark_bg));
             chip.setTextColor(getColor(R.color.pill_dark_fg));
-        } else if (colorIndex < 0) {
-            bg.setColor(getColor(R.color.card));
-            bg.setStroke(dp(1), getColor(R.color.line));
-            chip.setTextColor(getColor(R.color.fg));
         } else {
             bg.setColor(getColor(CHIP_COLORS[colorIndex][0]));
             chip.setTextColor(getColor(CHIP_COLORS[colorIndex][1]));
