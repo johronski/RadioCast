@@ -1,10 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Design B: light Scandinavian. Birch white ground, graphite text, fjord blue accent. -->
 <resources>
-    <color name="bg">#F3F1F6</color>
+    <color name="bg">#F5F4F0</color>
     <color name="card">#FFFFFF</color>
-    <color name="fg">#1A1622</color>
-    <color name="muted">#6B6478</color>
-    <color name="accent">#5B2BD1</color>
+    <color name="surface2">#ECE9E2</color>
+    <color name="line">#E4E0D8</color>
+    <color name="fg">#2B3036</color>
+    <color name="muted">#5D6670</color>
+    <color name="soft_fg">#4A535C</color>
+    <color name="accent">#3E6A8A</color>
+    <color name="accent_text">#2F5470</color>
+    <color name="accent_soft">#E6EEF3</color>
+    <color name="accent_line">#C9D7E1</color>
     <color name="on_accent">#FFFFFF</color>
-    <color name="icon_bg">#5B2BD1</color>
+    <color name="live_bg">#F6E6E1</color>
+    <color name="live_fg">#8E3522</color>
+    <color name="live_dot">#B5452F</color>
+    <color name="warn_bg">#FBF1EE</color>
+    <color name="warn_line">#E4C9C1</color>
+    <color name="danger">#B5452F</color>
+    <color name="snack_bg">#2B3036</color>
+    <color name="snack_fg">#FFFFFF</color>
+    <color name="snack_action">#A9CBE3</color>
+    <color name="logo_plate">#FFFFFF</color>
+    <color name="scrim">#66000000</color>
+    <color name="pill_dark_bg">#2B3036</color>
+    <color name="pill_dark_fg">#FFFFFF</color>
+    <!-- Pastel pairs: fallback logos and genre chips -->
+    <color name="sage_bg">#D9E6DC</color>
+    <color name="sage_fg">#2F5A41</color>
+    <color name="sand_bg">#E9E2D3</color>
+    <color name="sand_fg">#5A4A2E</color>
+    <color name="sky_bg">#D6E5EE</color>
+    <color name="sky_fg">#234F6B</color>
+    <color name="rose_bg">#F2DCD2</color>
+    <color name="rose_fg">#7A3B26</color>
+    <color name="lavender_bg">#E6DFEE</color>
+    <color name="lavender_fg">#4E3D6B</color>
+    <color name="icon_bg">#3E6A8A</color>
+    <color name="on_accent_legacy">#FFFFFF</color>
 </resources>

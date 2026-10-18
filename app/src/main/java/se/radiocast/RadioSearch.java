@@ -27,14 +27,17 @@ public final class RadioSearch {
         public final String language;
         public final int bitrate;
         public final String tags;
+        /** Logo address from the catalogue, or "". */
+        public final String favicon;
 
-        Result(String name, String url, String countryCode, String language, int bitrate, String tags) {
+        Result(String name, String url, String countryCode, String language, int bitrate, String tags, String favicon) {
             this.name = name;
             this.url = url;
             this.countryCode = countryCode;
             this.language = language;
             this.bitrate = bitrate;
             this.tags = tags;
+            this.favicon = favicon;
         }
 
         /** Folded row: "SE · 128 kbps". */
@@ -50,7 +53,7 @@ public final class RadioSearch {
         }
 
         public Station toStation() {
-            return new Station(name, url, countryCode, language, bitrate);
+            return new Station(name, url, countryCode, language, bitrate, favicon, Station.genreFromTags(tags));
         }
 
         /** "Sverige · svenska · 128 kbps" */
@@ -234,9 +237,16 @@ public final class RadioSearch {
                     o.optString("countrycode", "").trim(),
                     o.optString("language", "").trim(),
                     o.optInt("bitrate", 0),
-                    o.optString("tags", "").trim()));
+                    o.optString("tags", "").trim(),
+                    cleanLogo(o.optString("favicon", ""))));
         }
         return out;
+    }
+
+    /** Only http(s) image addresses are used as logos. */
+    static String cleanLogo(String favicon) {
+        String f = favicon == null ? "" : favicon.trim();
+        return (f.startsWith("https://") || f.startsWith("http://")) ? f : "";
     }
 
     private static void merge(List<Result> into, List<Result> more) {

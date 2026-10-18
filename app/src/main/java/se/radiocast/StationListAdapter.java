@@ -1,39 +1,60 @@
 package se.radiocast;
 
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.content.Context;
-import android.graphics.Typeface;
-import android.text.TextUtils;
-import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
-import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
+
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** The channel list on the main screen: plain, or with a foldable heading per country. */
-public class StationListAdapter extends BaseAdapter {
+/** The channel list on the main screen: plain, or under a foldable heading per country. */
+public class StationListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+
+    public interface Listener {
+        void onStationTapped(int stationIndex);
+        void onHeaderTapped(String countryCode);
+    }
+
+    private static final int HEADER = 0, STATION = 1;
 
     private final Context context;
     private final List<Station> stations;
+    private final Listener listener;
     private List<StationGroups.Row> rows = new ArrayList<>();
     private int selected = -1;
-    private boolean grouped;
+    /** Station playing right now (phone or speaker), or -1. */
+    private int playing = -1;
+    /** Line under the playing station, e.g. "Spelar på Kök". */
+    private String playingText = "";
 
-    public StationListAdapter(Context context, List<Station> stations) {
+    public StationListAdapter(Context context, List<Station> stations, Listener listener) {
         this.context = context;
         this.stations = stations;
+        this.listener = listener;
     }
 
-    public void update(List<StationGroups.Row> rows, int selected, boolean grouped) {
+    public void update(List<StationGroups.Row> rows, int selected) {
         this.rows = rows;
         this.selected = selected;
-        this.grouped = grouped;
         notifyDataSetChanged();
     }
+
+    public void setPlaying(int stationIndex, String text) {
+        if (stationIndex == playing && text.equals(playingText)) return;
+        playing = stationIndex;
+        playingText = text;
+        notifyDataSetChanged();
+    }
+
+    public StationGroups.Row rowAt(int position) { return rows.get(position); }
 
     /** List position of a station, or -1 if its group is folded. */
     public int positionOf(int stationIndex) {
@@ -41,67 +62,119 @@ public class StationListAdapter extends BaseAdapter {
         return -1;
     }
 
-    @Override public int getCount() { return rows.size(); }
-    @Override public StationGroups.Row getItem(int position) { return rows.get(position); }
-    @Override public long getItemId(int position) { return position; }
-    @Override public int getViewTypeCount() { return 2; }
-    @Override public int getItemViewType(int position) { return rows.get(position).isHeader() ? 0 : 1; }
+    @Override public int getItemCount() { return rows.size(); }
+    @Override public int getItemViewType(int position) { return rows.get(position).isHeader() ? HEADER : STATION; }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        LayoutInflater inf = LayoutInflater.from(context);
+        if (viewType == HEADER) return new HeaderHolder(inf.inflate(R.layout.item_header, parent, false));
+        return new StationHolder(inf.inflate(R.layout.item_station, parent, false));
+    }
+
+    @Override
+    public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
         StationGroups.Row row = rows.get(position);
-        return row.isHeader() ? header(row, convertView) : station(row, convertView);
+        if (holder instanceof HeaderHolder) ((HeaderHolder) holder).bind(row);
+        else ((StationHolder) holder).bind(row.stationIndex);
     }
 
-    private View header(StationGroups.Row row, View convertView) {
-        TextView t = convertView instanceof TextView ? (TextView) convertView : new TextView(context);
-        t.setPadding(dp(14), dp(14), dp(14), dp(6));
-        t.setTextSize(12);
-        t.setLetterSpacing(0.08f);
-        t.setTypeface(Typeface.DEFAULT_BOLD);
-        t.setTextColor(context.getColor(R.color.muted));
-        String arrow = row.collapsed ? "▸  " : "▾  ";
-        t.setText(arrow + StationGroups.heading(row.headerCountry).toUpperCase(Locale.ROOT) + "  ·  " + row.count);
-        t.setContentDescription(StationGroups.heading(row.headerCountry) + ", " + row.count + " kanaler. Tryck för att "
-                + (row.collapsed ? "visa." : "dölja."));
-        return t;
+    @Override
+    public void onViewRecycled(RecyclerView.ViewHolder holder) {
+        if (holder instanceof StationHolder) ((StationHolder) holder).stopBars();
     }
 
-    private View station(StationGroups.Row row, View convertView) {
-        LinearLayout box;
-        TextView name, code;
-        if (convertView instanceof LinearLayout) {
-            box = (LinearLayout) convertView;
-            name = (TextView) box.getChildAt(0);
-            code = (TextView) box.getChildAt(1);
-        } else {
-            box = new LinearLayout(context);
-            box.setOrientation(LinearLayout.HORIZONTAL);
-            box.setGravity(Gravity.CENTER_VERTICAL);
-            box.setMinimumHeight(dp(48));
-            name = new TextView(context);
-            name.setSingleLine(true);
-            name.setEllipsize(TextUtils.TruncateAt.END);
-            name.setTextSize(16);
-            code = new TextView(context);
-            code.setTextSize(12);
-            code.setTextColor(context.getColor(R.color.muted));
-            box.addView(name, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-            box.addView(code);
+    final class HeaderHolder extends RecyclerView.ViewHolder {
+        final TextView label;
+        final ImageView chevron;
+
+        HeaderHolder(View v) {
+            super(v);
+            label = v.findViewById(R.id.label);
+            chevron = v.findViewById(R.id.chevron);
+            v.setOnClickListener(x -> {
+                int p = getBindingAdapterPosition();
+                if (p != RecyclerView.NO_POSITION) listener.onHeaderTapped(rows.get(p).headerCountry);
+            });
         }
-        Station s = stations.get(row.stationIndex);
-        boolean isSelected = row.stationIndex == selected;
-        box.setPadding(dp(grouped ? 26 : 14), dp(8), dp(14), dp(8));
-        name.setText(StationGroups.shortName(s.name));
-        name.setTypeface(isSelected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-        name.setTextColor(context.getColor(isSelected ? R.color.accent : R.color.fg));
-        // The country is already in the heading when grouped.
-        code.setText(grouped ? "" : s.countryCode);
-        box.setContentDescription(s.name + (isSelected ? ", vald" : ""));
-        return box;
+
+        void bind(StationGroups.Row row) {
+            String heading = StationGroups.heading(row.headerCountry);
+            label.setText(heading.toUpperCase(Locale.ROOT) + "  ·  " + row.count);
+            chevron.setImageResource(row.collapsed ? R.drawable.ic_chevron_right : R.drawable.ic_chevron_down);
+            itemView.setContentDescription(heading + ", " + row.count + " kanaler. Tryck för att "
+                    + (row.collapsed ? "visa." : "dölja."));
+        }
     }
 
-    private int dp(int v) {
-        return Math.round(v * context.getResources().getDisplayMetrics().density);
+    final class StationHolder extends RecyclerView.ViewHolder {
+        final TextView initials, name, sub;
+        final ImageView logo, playHint;
+        final View equalizer;
+        final View[] bars;
+        final List<ObjectAnimator> animators = new ArrayList<>();
+
+        StationHolder(View v) {
+            super(v);
+            initials = v.findViewById(R.id.initials);
+            logo = v.findViewById(R.id.logo);
+            name = v.findViewById(R.id.name);
+            sub = v.findViewById(R.id.sub);
+            playHint = v.findViewById(R.id.play_hint);
+            equalizer = v.findViewById(R.id.equalizer);
+            bars = new View[]{v.findViewById(R.id.bar1), v.findViewById(R.id.bar2),
+                    v.findViewById(R.id.bar3), v.findViewById(R.id.bar4)};
+            v.setOnClickListener(x -> {
+                int p = getBindingAdapterPosition();
+                if (p != RecyclerView.NO_POSITION) listener.onStationTapped(rows.get(p).stationIndex);
+            });
+        }
+
+        void bind(int index) {
+            Station s = stations.get(index);
+            boolean isPlaying = index == playing;
+            boolean isSelected = isPlaying || (playing < 0 && index == selected);
+            Logos.bind(context, s.logo, s.name, initials, logo, 14);
+            name.setText(StationGroups.shortName(s.name));
+            if (isPlaying) {
+                sub.setText(playingText);
+                sub.setTextColor(context.getColor(R.color.accent_text));
+            } else {
+                sub.setText(s.subtitle());
+                sub.setTextColor(context.getColor(R.color.muted));
+            }
+            sub.setVisibility(sub.getText().length() == 0 ? View.GONE : View.VISIBLE);
+            // The chosen or playing station is a raised card; the others sit flat on the page.
+            itemView.setBackgroundResource(isSelected ? R.drawable.bg_card : 0);
+            itemView.setElevation(isSelected ? 2 * context.getResources().getDisplayMetrics().density : 0);
+            playHint.setVisibility(isPlaying ? View.GONE : View.VISIBLE);
+            equalizer.setVisibility(isPlaying ? View.VISIBLE : View.GONE);
+            if (isPlaying) startBars(); else stopBars();
+            itemView.setContentDescription(isPlaying
+                    ? s.name + ", " + playingText
+                    : "Spela " + s.name + (s.genre.isEmpty() ? "" : ", " + s.genre));
+        }
+
+        void startBars() {
+            if (!animators.isEmpty()) return;
+            float[][] heights = {{0.45f, 1f}, {1f, 0.35f}, {0.3f, 0.8f}, {0.75f, 0.4f}};
+            long[] durations = {420, 560, 380, 500};
+            for (int i = 0; i < bars.length; i++) {
+                View bar = bars[i];
+                bar.setPivotY(bar.getLayoutParams().height);
+                ObjectAnimator a = ObjectAnimator.ofFloat(bar, "scaleY", heights[i][0], heights[i][1]);
+                a.setDuration(durations[i]);
+                a.setRepeatCount(ValueAnimator.INFINITE);
+                a.setRepeatMode(ValueAnimator.REVERSE);
+                a.start();
+                animators.add(a);
+            }
+        }
+
+        void stopBars() {
+            for (ObjectAnimator a : animators) a.cancel();
+            animators.clear();
+            for (View bar : bars) bar.setScaleY(0.6f);
+        }
     }
 }

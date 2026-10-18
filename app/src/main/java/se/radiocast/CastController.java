@@ -75,6 +75,16 @@ public class CastController {
      * (frees it for other apps); otherwise the radio keeps playing there.
      */
     public void disconnect(boolean turnOffPlayer) {
+        disconnect(turnOffPlayer, null);
+    }
+
+    /** As {@link #disconnect(boolean)}, then runs {@code after} (on the worker) once disconnected. */
+    public void disconnect(boolean turnOffPlayer, Runnable after) {
+        if (after != null) {
+            disconnect(turnOffPlayer, null);
+            worker.execute(after);
+            return;
+        }
         worker.execute(() -> {
             CastClient c = client;
             String name = device != null ? device.name : "högtalaren";

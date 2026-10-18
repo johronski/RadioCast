@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="4dp"
+    android:background="@drawable/bg_card"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="64dp"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <FrameLayout
+        android:layout_width="48dp"
+        android:layout_height="48dp">
+
+        <TextView
+            android:id="@+id/initials"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/logo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_logo_plate"
+            android:importantForAccessibility="no"
+            android:padding="5dp"
+            android:scaleType="fitCenter"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="8dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:textColor="@color/fg"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/sub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="40dp"
+        android:layout_height="40dp">
+
+        <ImageView
+            android:id="@+id/play_hint"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_play_hint"
+            android:importantForAccessibility="no"
+            android:padding="12dp"
+            android:src="@drawable/ic_play"
+            android:tint="@color/accent" />
+
+        <LinearLayout
+            android:id="@+id/equalizer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <View android:id="@+id/bar1" android:layout_width="3dp" android:layout_height="18dp" android:layout_marginEnd="3dp" android:background="@color/accent" />
+            <View android:id="@+id/bar2" android:layout_width="3dp" android:layout_height="18dp" android:layout_marginEnd="3dp" android:background="@color/accent" />
+            <View android:id="@+id/bar3" android:layout_width="3dp" android:layout_height="18dp" android:layout_marginEnd="3dp" android:background="@color/accent" />
+            <View android:id="@+id/bar4" android:layout_width="3dp" android:layout_height="18dp" android:background="@color/accent" />
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>

@@ -1,12 +1,11 @@
 package se.radiocast;
 
 import android.content.Context;
-import android.text.TextUtils;
-import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.HashSet;
@@ -14,18 +13,25 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Search results, compact by default: a short name and "SE · 128".
- * The arrow on the right unfolds the full name, country, language, quality and genres.
+ * Search results as cards: a short name and "SE · 128 kbps".
+ * Tapping a card unfolds the details and the Provlyssna / + Lägg till buttons.
  */
 public class ResultAdapter extends BaseAdapter {
 
+    public interface Listener {
+        void onTry(RadioSearch.Result r);
+        void onAdd(RadioSearch.Result r);
+    }
+
     private final Context context;
     private final List<RadioSearch.Result> results;
+    private final Listener listener;
     private final Set<Integer> expanded = new HashSet<>();
 
-    public ResultAdapter(Context context, List<RadioSearch.Result> results) {
+    public ResultAdapter(Context context, List<RadioSearch.Result> results, Listener listener) {
         this.context = context;
         this.results = results;
+        this.listener = listener;
     }
 
     /** Call after the result list has been replaced. */
@@ -40,64 +46,38 @@ public class ResultAdapter extends BaseAdapter {
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        LinearLayout row;
-        LinearLayout text;
-        TextView title, info, more;
-        if (convertView instanceof LinearLayout) {
-            row = (LinearLayout) convertView;
-            text = (LinearLayout) row.getChildAt(0);
-            title = (TextView) text.getChildAt(0);
-            info = (TextView) text.getChildAt(1);
-            more = (TextView) row.getChildAt(1);
-        } else {
-            row = new LinearLayout(context);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(4), dp(8), 0, dp(8));
-            text = new LinearLayout(context);
-            text.setOrientation(LinearLayout.VERTICAL);
-            title = new TextView(context);
-            title.setTextSize(16);
-            title.setTextColor(context.getColor(R.color.fg));
-            info = new TextView(context);
-            info.setTextSize(12);
-            info.setTextColor(context.getColor(R.color.muted));
-            text.addView(title);
-            text.addView(info);
-            more = new TextView(context);
-            more.setGravity(Gravity.CENTER);
-            more.setTextSize(20);
-            more.setTextColor(context.getColor(R.color.accent));
-            // Not focusable, so tapping the rest of the row still opens the play/add choice.
-            more.setFocusable(false);
-            row.addView(text, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-            row.addView(more, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        }
-
+        View v = convertView != null ? convertView
+                : LayoutInflater.from(context).inflate(R.layout.item_result, parent, false);
         RadioSearch.Result r = results.get(position);
         boolean open = expanded.contains(position);
-        if (open) {
-            title.setSingleLine(false);
-            title.setEllipsize(null);
-            title.setText(r.name);
-            info.setText(r.longDetails());
-        } else {
-            title.setSingleLine(true);
-            title.setEllipsize(TextUtils.TruncateAt.END);
-            title.setText(StationGroups.shortName(r.name));
-            info.setText(r.shortDetails());
-        }
-        info.setVisibility(info.getText().length() == 0 ? View.GONE : View.VISIBLE);
-        more.setText(open ? "▴" : "▾");
-        more.setContentDescription(open ? "Visa mindre" : "Visa mer om kanalen");
-        more.setOnClickListener(v -> {
+
+        TextView initials = v.findViewById(R.id.initials);
+        ImageView logo = v.findViewById(R.id.logo);
+        TextView name = v.findViewById(R.id.name);
+        TextView sub = v.findViewById(R.id.sub);
+        ImageView chevron = v.findViewById(R.id.chevron);
+        View details = v.findViewById(R.id.details);
+        TextView detailsText = v.findViewById(R.id.details_text);
+
+        Logos.bind(context, r.favicon, r.name, initials, logo, 13);
+        name.setText(open ? r.name : StationGroups.shortName(r.name));
+        name.setMaxLines(open ? 3 : 1);
+        name.setEllipsize(open ? null : android.text.TextUtils.TruncateAt.END);
+        sub.setText(r.shortDetails());
+        sub.setVisibility(r.shortDetails().isEmpty() ? View.GONE : View.VISIBLE);
+        chevron.setImageResource(open ? R.drawable.ic_chevron_up : R.drawable.ic_chevron_down);
+        details.setVisibility(open ? View.VISIBLE : View.GONE);
+        detailsText.setText(r.longDetails());
+        detailsText.setVisibility(r.longDetails().isEmpty() ? View.GONE : View.VISIBLE);
+
+        View head = v.findViewById(R.id.head);
+        head.setContentDescription(StationGroups.shortName(r.name) + ". " + (open ? "Tryck för att visa mindre." : "Tryck för att visa mer."));
+        head.setOnClickListener(x -> {
             if (!expanded.remove(position)) expanded.add(position);
             notifyDataSetChanged();
         });
-        return row;
-    }
-
-    private int dp(int v) {
-        return Math.round(v * context.getResources().getDisplayMetrics().density);
+        v.findViewById(R.id.try_button).setOnClickListener(x -> listener.onTry(r));
+        v.findViewById(R.id.add_button).setOnClickListener(x -> listener.onAdd(r));
+        return v;
     }
 }
