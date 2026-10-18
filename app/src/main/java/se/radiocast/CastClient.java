@@ -235,16 +235,41 @@ public class CastClient {
         return t;
     }
 
-    /** Closes the player on the speaker completely, freeing the speaker for other apps. */
-    public void stopReceiver() throws IOException {
-        if (sessionId == null) requestStatus();
-        if (sessionId != null) {
-            send(SENDER, RECEIVER, NS_RECEIVER, "{\"type\":\"STOP\",\"sessionId\":" + quote(sessionId)
+    /**
+     * Closes whatever is playing on the speaker (our player, or another app such as Spotify or
+     * SVT Play), freeing it. Returns false if nothing was running.
+     */
+    public boolean stopReceiver() throws IOException {
+        String session = sessionId;
+        if (session == null) {
+            // Not our player: ask what runs now and stop that app's session instead.
+            statusLatch = new CountDownLatch(1);
+            send(SENDER, RECEIVER, NS_RECEIVER, "{\"type\":\"GET_STATUS\",\"requestId\":" + requestId.getAndIncrement() + "}");
+            try { statusLatch.await(3, TimeUnit.SECONDS); } catch (InterruptedException ignored) { }
+            session = sessionId != null ? sessionId : runningSession(lastReceiverStatus);
+        }
+        if (session != null) {
+            send(SENDER, RECEIVER, NS_RECEIVER, "{\"type\":\"STOP\",\"sessionId\":" + quote(session)
                     + ",\"requestId\":" + requestId.getAndIncrement() + "}");
         }
         transportId = null;
         sessionId = null;
+        otherAppRunning = false;
         appLatch = new CountDownLatch(1);
+        return session != null;
+    }
+
+    /** The session id of the first app running on the speaker that is not the idle screen, or null. */
+    static String runningSession(String receiverStatus) {
+        if (receiverStatus == null) return null;
+        String[] apps = receiverStatus.split("\"appId\"");
+        for (int i = 1; i < apps.length; i++) {
+            String app = apps[i];
+            if (app.replace(" ", "").contains("\"isIdleScreen\":true")) continue;
+            String id = field(app, "sessionId");
+            if (id != null) return id;
+        }
+        return null;
     }
 
     public void setVolume(double level) throws IOException {

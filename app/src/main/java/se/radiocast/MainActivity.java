@@ -653,7 +653,8 @@ public class MainActivity extends Activity {
             TextView status = row.findViewById(R.id.status);
             Station np = radio.nowPlaying;
             String st = isCurrent
-                    ? "Ansluten" + (np != null && musicActive() ? " · spelar " + StationGroups.shortName(np.name) : "")
+                    ? "Ansluten" + (np != null && musicActive() ? " · spelar " + StationGroups.shortName(np.name)
+                        : (dev.status.startsWith("spelar ") ? " · " + dev.status : ""))
                     : capitalize(dev.status);
             status.setText(st.isEmpty() ? (dev.group ? "Spelar i alla högtalare i gruppen" : "Chromecast") : st);
             status.setTextColor(getColor(isCurrent ? R.color.accent_text : R.color.muted));
