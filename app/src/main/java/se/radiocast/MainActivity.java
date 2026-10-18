@@ -2,7 +2,11 @@ package se.radiocast;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.Manifest;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.media.AudioManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
@@ -84,7 +88,7 @@ public class MainActivity extends Activity {
         stationList.setOnItemClickListener((p, v, pos, id) -> {
             prefs.edit().putInt("station", pos).apply();
             // Tapping a station while casting switches to it right away.
-            if (cast.getState() == CastController.State.CONNECTED) play();
+            if (cast.getState() == CastController.State.CONNECTED || PlaybackService.isActive()) play();
         });
         stationList.setOnItemLongClickListener((p, v, pos, id) -> { confirmDelete(pos); return true; });
         loadStations();
@@ -96,16 +100,20 @@ public class MainActivity extends Activity {
         castButton.setOnClickListener(v -> showCastPicker(null));
         findViewById(R.id.add_station).setOnClickListener(v -> askForStation());
         findViewById(R.id.play).setOnClickListener(v -> play());
-        findViewById(R.id.stop).setOnClickListener(v -> cast.stop());
+        findViewById(R.id.stop).setOnClickListener(v -> {
+            if (cast.getState() == CastController.State.CONNECTED) cast.stop();
+            PlaybackService.stop(this);
+        });
 
         SeekBar volume = findViewById(R.id.volume);
-        volume.setProgress(prefs.getInt("volume", 50));
+        volume.setProgress(prefs.getInt("volume", 100));
         volume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar s, int value, boolean fromUser) { }
             @Override public void onStartTrackingTouch(SeekBar s) { }
             @Override public void onStopTrackingTouch(SeekBar s) {
                 prefs.edit().putInt("volume", s.getProgress()).apply();
-                cast.setVolume(s.getProgress() / 100.0);
+                if (cast.getState() == CastController.State.CONNECTED) cast.setVolume(s.getProgress() / 100.0);
+                else PlaybackService.setVolume(MainActivity.this, s.getProgress() / 100f);
             }
         });
 
@@ -114,20 +122,28 @@ public class MainActivity extends Activity {
             @Override public void onError(String message) { say(message); }
         });
 
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
         showCastState(CastController.State.DISCONNECTED, null);
-        say("Tryck på cast-knappen uppe till höger för att välja högtalare.");
+        say("Tryck Spela för att lyssna i telefonen, eller cast-knappen för att välja högtalare.");
     }
 
     @Override
     protected void onStart() {
         super.onStart();
         discovery.start();
+        PlaybackService.setListener((playing, title, message) -> runOnUiThread(() -> {
+            if (message != null) status.setText(message);
+            if (cast.getState() == CastController.State.DISCONNECTED) {
+                showCastState(CastController.State.DISCONNECTED, null);
+            }
+        }));
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         discovery.stop();
+        PlaybackService.setListener(null);
     }
 
     @Override
@@ -158,7 +174,7 @@ public class MainActivity extends Activity {
                 castButton.setImageResource(R.drawable.ic_cast);
                 castButton.setAlpha(1f);
                 castButton.setContentDescription("Välj högtalare att casta till");
-                castTarget.setText("Ingen högtalare vald");
+                castTarget.setText(PlaybackService.isActive() ? "Spelar i telefonen" : "Ingen högtalare vald");
                 break;
         }
     }
@@ -181,7 +197,8 @@ public class MainActivity extends Activity {
             } else {
                 CastDevice dev = devices.get(which);
                 prefs.edit().putString("device", dev.key()).apply();
-                cast.connect(dev, afterConnect == null ? null : () -> runOnUiThread(afterConnect));
+                Runnable after = handOver(afterConnect);
+                cast.connect(dev, after == null ? null : () -> runOnUiThread(after));
             }
         });
         b.setNegativeButton("Stäng", null);
@@ -234,7 +251,8 @@ public class MainActivity extends Activity {
                     addDevice("Högtalare " + ip, ip, 8009);
                     for (CastDevice dev : devices) {
                         if (dev.key().equals(ip + ":8009")) {
-                            cast.connect(dev, afterConnect == null ? null : () -> runOnUiThread(afterConnect));
+                            Runnable after = handOver(afterConnect);
+                            cast.connect(dev, after == null ? null : () -> runOnUiThread(after));
                         }
                     }
                 })
@@ -247,12 +265,36 @@ public class MainActivity extends Activity {
     private void play() {
         Station s = selectedStation();
         if (s == null) { say("Välj en kanal först."); return; }
-        if (cast.getState() == CastController.State.DISCONNECTED) {
-            // Not connected yet: pick a speaker, then start the station.
-            showCastPicker(this::play);
+        CastController.State state = cast.getState();
+        if (state == CastController.State.CONNECTING) {
+            say("Vänta, ansluter till högtalaren…");
             return;
         }
-        cast.play(s.url, s.name);
+        if (state == CastController.State.CONNECTED) {
+            PlaybackService.stop(this);
+            cast.play(s.url, s.name);
+            return;
+        }
+        // No speaker chosen: play on the phone.
+        askForNotifications();
+        say("Startar " + s.name + " i telefonen…");
+        PlaybackService.play(this, s.url, s.name, prefs.getInt("volume", 100) / 100f);
+        castTarget.setText("Spelar i telefonen");
+    }
+
+    /** When the phone is playing and a speaker is picked, the station moves to the speaker. */
+    private Runnable handOver(Runnable afterConnect) {
+        if (afterConnect != null) return afterConnect;
+        return PlaybackService.isActive() ? this::play : null;
+    }
+
+    /** The playback notification needs this on Android 13+. Playback works without it. */
+    private void askForNotifications() {
+        if (Build.VERSION.SDK_INT >= 33 && !prefs.getBoolean("asked_notif", false)
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            prefs.edit().putBoolean("asked_notif", true).apply();
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+        }
     }
 
     // ----------------------------------------------------------------- stations
