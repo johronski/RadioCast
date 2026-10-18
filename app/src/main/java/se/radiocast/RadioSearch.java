@@ -26,13 +26,31 @@ public final class RadioSearch {
         public final String countryCode;
         public final String language;
         public final int bitrate;
+        public final String tags;
 
-        Result(String name, String url, String countryCode, String language, int bitrate) {
+        Result(String name, String url, String countryCode, String language, int bitrate, String tags) {
             this.name = name;
             this.url = url;
             this.countryCode = countryCode;
             this.language = language;
             this.bitrate = bitrate;
+            this.tags = tags;
+        }
+
+        /** Folded row: "SE · 128 kbps". */
+        public String shortDetails() {
+            return SearchQuery.compact(countryCode, bitrate);
+        }
+
+        /** Unfolded row: "Sverige · svenska · 128 kbps" and the first few genres. */
+        public String longDetails() {
+            String g = SearchQuery.genres(tags, 4);
+            String d = details();
+            return g.isEmpty() ? d : (d.isEmpty() ? g : d + "\n" + g);
+        }
+
+        public Station toStation() {
+            return new Station(name, url, countryCode, language, bitrate);
         }
 
         /** "Sverige · svenska · 128 kbps" */
@@ -215,7 +233,8 @@ public final class RadioSearch {
             out.add(new Result(name, url,
                     o.optString("countrycode", "").trim(),
                     o.optString("language", "").trim(),
-                    o.optInt("bitrate", 0)));
+                    o.optInt("bitrate", 0),
+                    o.optString("tags", "").trim()));
         }
         return out;
     }

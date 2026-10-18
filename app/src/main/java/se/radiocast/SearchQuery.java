@@ -259,6 +259,26 @@ public final class SearchQuery {
         return String.join(" · ", parts);
     }
 
+    /** "SE · 128 kbps", for folded search results. */
+    public static String compact(String countryCode, int bitrate) {
+        List<String> parts = new ArrayList<>();
+        if (countryCode != null && !countryCode.trim().isEmpty()) parts.add(countryCode.trim().toUpperCase(Locale.ROOT));
+        if (bitrate > 0) parts.add(bitrate + " kbps");
+        return String.join(" · ", parts);
+    }
+
+    /** "techno,house,  deep house,techno" becomes "techno, house, deep house" (at most max, no repeats). */
+    public static String genres(String tags, int max) {
+        if (tags == null) return "";
+        Set<String> out = new LinkedHashSet<>();
+        for (String t : tags.split(",")) {
+            String g = t.trim().toLowerCase(Locale.ROOT);
+            if (!g.isEmpty() && g.length() <= 25) out.add(g);
+            if (out.size() >= max) break;
+        }
+        return String.join(", ", out);
+    }
+
     /** What the search is limited to, for the result header, e.g. "Sverige, svenska". */
     public String filtersLabel() {
         List<String> parts = new ArrayList<>();

@@ -56,11 +56,18 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <TextView
-            style="@style/Label"
+        <Button
+            android:id="@+id/group_toggle"
+            style="?android:attr/borderlessButtonStyle"
             android:layout_width="0dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="KANALER" />
+            android:gravity="start|center_vertical"
+            android:paddingStart="4dp"
+            android:text="Egen ordning"
+            android:textAllCaps="false"
+            android:textColor="@color/muted"
+            android:textSize="14sp" />
 
         <Button
             android:id="@+id/search_station"
@@ -76,7 +83,7 @@
             style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="+ Egen länk"
+            android:text="+ Länk"
             android:textAllCaps="false"
             android:textColor="@color/accent" />
     </LinearLayout>
@@ -92,7 +99,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="Håll fingret på en kanal för att ta bort den."
+        android:text="Håll fingret på en kanal för att ta bort den. Tryck på ett land för att fälla ihop."
         android:textColor="@color/muted"
         android:textSize="12sp" />
 

@@ -35,18 +35,12 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
 
-    static final class Station {
-        final String name;
-        final String url;
-        Station(String name, String url) { this.name = name; this.url = url; }
-    }
-
-    private static final String[][] DEFAULT_STATIONS = {
-            {"Radio Nova", "https://novazz.ice.infomaniak.ch/novazz-128.mp3"},
-            {"Nouvo Nova (ny musik)", "https://nova-nouvo.ice.infomaniak.ch/nova-nouvo-128.mp3"},
-            {"Mouv'", "https://icecast.radiofrance.fr/mouv-midfi.mp3"},
-            {"FIP", "https://icecast.radiofrance.fr/fip-midfi.mp3"},
-            {"France Inter", "https://icecast.radiofrance.fr/franceinter-midfi.mp3"},
+    private static final Station[] DEFAULT_STATIONS = {
+            new Station("Radio Nova", "https://novazz.ice.infomaniak.ch/novazz-128.mp3", "FR", "french", 128),
+            new Station("Nouvo Nova (ny musik)", "https://nova-nouvo.ice.infomaniak.ch/nova-nouvo-128.mp3", "FR", "french", 128),
+            new Station("Mouv'", "https://icecast.radiofrance.fr/mouv-midfi.mp3", "FR", "french", 128),
+            new Station("FIP", "https://icecast.radiofrance.fr/fip-midfi.mp3", "FR", "french", 128),
+            new Station("France Inter", "https://icecast.radiofrance.fr/franceinter-midfi.mp3", "FR", "french", 128),
     };
     private static final String ENTER_IP = "Ange IP-adress…";
 
@@ -66,8 +60,13 @@ public class MainActivity extends Activity {
     private final ExecutorService net = Executors.newSingleThreadExecutor();
 
     private SharedPreferences prefs;
-    private ArrayAdapter<String> stationAdapter;
+    private StationListAdapter stationAdapter;
     private ArrayAdapter<String> pickerAdapter;
+    private Button groupToggle;
+    /** Index of the chosen station in the list. */
+    private int selectedIndex;
+    /** What is playing or was last started, including a station only being tried out. */
+    private Station nowPlaying;
     private ListView stationList;
     private TextView status;
     private TextView castTarget;
@@ -97,15 +96,28 @@ public class MainActivity extends Activity {
         pickerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
         refreshPicker();
 
-        stationAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_single_choice, new ArrayList<>());
+        stationAdapter = new StationListAdapter(this, stations);
         stationList.setAdapter(stationAdapter);
-        stationList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
         stationList.setOnItemClickListener((p, v, pos, id) -> {
-            prefs.edit().putInt("station", pos).apply();
-            // Tapping a station while casting switches to it right away.
+            StationGroups.Row row = stationAdapter.getItem(pos);
+            if (row.isHeader()) {
+                toggleCollapsed(row.headerCountry);
+                return;
+            }
+            selectStation(row.stationIndex);
+            // Tapping a station while something plays switches to it right away.
             if (cast.getState() == CastController.State.CONNECTED || PlaybackService.isActive()) play();
         });
-        stationList.setOnItemLongClickListener((p, v, pos, id) -> { confirmDelete(pos); return true; });
+        stationList.setOnItemLongClickListener((p, v, pos, id) -> {
+            StationGroups.Row row = stationAdapter.getItem(pos);
+            if (!row.isHeader()) confirmDelete(row.stationIndex);
+            return true;
+        });
+        groupToggle = findViewById(R.id.group_toggle);
+        groupToggle.setOnClickListener(v -> {
+            prefs.edit().putBoolean("group_by_country", !prefs.getBoolean("group_by_country", false)).apply();
+            refreshStations();
+        });
         loadStations();
 
         for (String ip : prefs.getStringSet("ips", new HashSet<>())) {
@@ -279,30 +291,44 @@ public class MainActivity extends Activity {
 
     // ----------------------------------------------------------------- playback
 
+    /** Plays the chosen station from the list. */
     private void play() {
         Station s = selectedStation();
         if (s == null) { say("Välj en kanal först."); return; }
+        playStation(s, true);
+    }
+
+    /** Plays any station: from the list, or one being tried out from the search (saved = false). */
+    private void playStation(Station s, boolean saved) {
         CastController.State state = cast.getState();
         if (state == CastController.State.CONNECTING) {
             say("Vänta, ansluter till högtalaren…");
             return;
         }
+        nowPlaying = s;
+        String name = StationGroups.shortName(s.name);
         if (state == CastController.State.CONNECTED) {
             PlaybackService.stop(this);
-            cast.play(s.url, s.name);
-            return;
+            cast.play(s.url, name);
+        } else {
+            // No speaker chosen: play on the phone.
+            askForNotifications();
+            say("Startar " + name + " i telefonen…");
+            PlaybackService.play(this, s.url, name, prefs.getInt("volume", 100) / 100f);
+            castTarget.setText("Spelar i telefonen");
         }
-        // No speaker chosen: play on the phone.
-        askForNotifications();
-        say("Startar " + s.name + " i telefonen…");
-        PlaybackService.play(this, s.url, s.name, prefs.getInt("volume", 100) / 100f);
-        castTarget.setText("Spelar i telefonen");
+        if (!saved) say("Provlyssnar " + name + ". Den är inte sparad i din lista.");
     }
 
-    /** When the phone is playing and a speaker is picked, the station moves to the speaker. */
+    /** When the phone is playing and a speaker is picked, what is playing moves to the speaker. */
     private Runnable handOver(Runnable afterConnect) {
         if (afterConnect != null) return afterConnect;
-        return PlaybackService.isActive() ? this::play : null;
+        if (!PlaybackService.isActive()) return null;
+        Station s = nowPlaying;
+        return () -> {
+            if (s != null) playStation(s, stations.contains(s));
+            else play();
+        };
     }
 
     /** The playback notification needs this on Android 13+. Playback works without it. */
@@ -318,32 +344,68 @@ public class MainActivity extends Activity {
 
     private void loadStations() {
         stations.clear();
+        boolean migrated = false;
         String json = prefs.getString("stations", null);
         if (json != null) {
             try {
                 JSONArray arr = new JSONArray(json);
                 for (int i = 0; i < arr.length(); i++) {
                     JSONObject o = arr.getJSONObject(i);
-                    stations.add(new Station(o.getString("name"), o.getString("url")));
+                    String name = o.getString("name"), url = o.getString("url");
+                    if (o.has("cc")) {
+                        stations.add(new Station(name, url, o.optString("cc"), o.optString("lang"), o.optInt("br")));
+                    } else {
+                        // Saved by an older version, without a country: guess it from the address.
+                        stations.add(Station.withGuessedCountry(name, url));
+                        migrated = true;
+                    }
                 }
             } catch (JSONException ignored) {
                 stations.clear();
             }
         }
         if (stations.isEmpty()) {
-            for (String[] s : DEFAULT_STATIONS) stations.add(new Station(s[0], s[1]));
+            for (Station s : DEFAULT_STATIONS) stations.add(s);
         }
-        stationAdapter.clear();
-        for (Station s : stations) stationAdapter.add(s.name);
-        stationAdapter.notifyDataSetChanged();
-        int sel = Math.min(prefs.getInt("station", 0), stations.size() - 1);
-        stationList.setItemChecked(Math.max(sel, 0), true);
+        if (migrated) saveStations();
+        selectedIndex = Math.max(0, Math.min(prefs.getInt("station", 0), stations.size() - 1));
+        refreshStations();
+    }
+
+    /** Redraws the list in the chosen order (own order, or grouped by country). */
+    private void refreshStations() {
+        boolean grouped = prefs.getBoolean("group_by_country", false);
+        Set<String> collapsed = prefs.getStringSet("collapsed", new HashSet<>());
+        stationAdapter.update(StationGroups.rows(stations, grouped, collapsed), selectedIndex, grouped);
+        groupToggle.setText(grouped ? "Per land \u25BE" : "Egen ordning \u25BE");
+        groupToggle.setContentDescription(grouped
+                ? "Kanalerna visas per land. Tryck för egen ordning."
+                : "Kanalerna visas i egen ordning. Tryck för att visa per land.");
+    }
+
+    private void toggleCollapsed(String country) {
+        Set<String> collapsed = new HashSet<>(prefs.getStringSet("collapsed", new HashSet<>()));
+        if (!collapsed.remove(country)) collapsed.add(country);
+        prefs.edit().putStringSet("collapsed", collapsed).apply();
+        refreshStations();
+    }
+
+    private void selectStation(int index) {
+        selectedIndex = index;
+        prefs.edit().putInt("station", index).apply();
+        // Make sure the chosen station is visible, unfolding its country if needed.
+        Set<String> collapsed = new HashSet<>(prefs.getStringSet("collapsed", new HashSet<>()));
+        if (collapsed.remove(stations.get(index).countryCode)) prefs.edit().putStringSet("collapsed", collapsed).apply();
+        refreshStations();
     }
 
     private void saveStations() {
         JSONArray arr = new JSONArray();
         try {
-            for (Station s : stations) arr.put(new JSONObject().put("name", s.name).put("url", s.url));
+            for (Station s : stations) {
+                arr.put(new JSONObject().put("name", s.name).put("url", s.url)
+                        .put("cc", s.countryCode).put("lang", s.language).put("br", s.bitrate));
+            }
         } catch (JSONException ignored) { }
         prefs.edit().putString("stations", arr.toString()).apply();
     }
@@ -369,11 +431,7 @@ public class MainActivity extends Activity {
                         say("Fyll i ett namn och en länk som börjar med http.");
                         return;
                     }
-                    stations.add(new Station(n, u));
-                    saveStations();
-                    prefs.edit().putInt("station", stations.size() - 1).apply();
-                    loadStations();
-                    say(n + " är sparad.");
+                    addStation(Station.withGuessedCountry(n, u), false);
                 })
                 .setNegativeButton("Avbryt", null)
                 .show();
@@ -414,11 +472,11 @@ public class MainActivity extends Activity {
         box.addView(info);
 
         List<RadioSearch.Result> results = new ArrayList<>();
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
+        ResultAdapter adapter = new ResultAdapter(this, results);
         ListView list = new ListView(this);
         list.setAdapter(adapter);
         list.setOnItemClickListener((p, v, pos, id) -> {
-            if (pos < results.size()) confirmAdd(results.get(pos));
+            if (pos < results.size()) chooseResult(results.get(pos));
         });
         box.addView(list, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(320)));
 
@@ -460,7 +518,7 @@ public class MainActivity extends Activity {
         lookup(() -> RadioSearch.mix(forYou), GENRES[0][0], info, adapter, results);
     }
 
-    private void lookup(Lookup what, String label, TextView info, ArrayAdapter<String> adapter,
+    private void lookup(Lookup what, String label, TextView info, ResultAdapter adapter,
                         List<RadioSearch.Result> results) {
         info.setText("Söker " + label + "…");
         net.execute(() -> {
@@ -470,13 +528,11 @@ public class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     results.clear();
                     results.addAll(found);
-                    adapter.clear();
-                    for (RadioSearch.Result r : found) adapter.add(r.label());
-                    adapter.notifyDataSetChanged();
+                    adapter.reset();
                     String head = out.note != null ? out.note + ". " : "";
                     info.setText(found.isEmpty()
                             ? head + "Inga kanaler hittades för " + label + ". Prova ett annat ord eller en genre."
-                            : head + found.size() + " kanaler. Tryck på en för att lägga till.");
+                            : head + found.size() + " kanaler. Tryck på en för att spela eller spara, pilen visar mer.");
                 });
             } catch (IOException e) {
                 runOnUiThread(() -> info.setText(e.getMessage()));
@@ -484,32 +540,37 @@ public class MainActivity extends Activity {
         });
     }
 
-    private void confirmAdd(RadioSearch.Result r) {
+    /** Tapping a search result: try it out, or keep it. */
+    private void chooseResult(RadioSearch.Result r) {
+        String[] choices = {"Spela nu, utan att spara", "Lägg till och spela", "Lägg till i listan"};
         new AlertDialog.Builder(this)
-                .setTitle(r.name)
-                .setMessage(r.details().isEmpty() ? "Lägg till i din lista?" : r.details())
-                .setPositiveButton("Lägg till och spela", (d, w) -> addStation(r.name, r.url, true))
-                .setNeutralButton("Lägg till", (d, w) -> addStation(r.name, r.url, false))
+                .setTitle(StationGroups.shortName(r.name))
+                .setItems(choices, (d, which) -> {
+                    Station s = r.toStation();
+                    if (which == 0) playStation(s, false);
+                    else addStation(s, which == 1);
+                })
                 .setNegativeButton("Avbryt", null)
                 .show();
     }
 
-    private void addStation(String name, String url, boolean playNow) {
+    private void addStation(Station s, boolean playNow) {
         int index = -1;
         for (int i = 0; i < stations.size(); i++) {
-            if (stations.get(i).url.equals(url)) { index = i; break; }
+            if (stations.get(i).url.equals(s.url)) { index = i; break; }
         }
+        String name = StationGroups.shortName(s.name);
         if (index < 0) {
-            stations.add(new Station(name, url));
+            stations.add(s);
             saveStations();
             index = stations.size() - 1;
             say(name + " är tillagd i din lista.");
         } else {
             say(name + " finns redan i din lista.");
         }
-        prefs.edit().putInt("station", index).apply();
-        loadStations();
-        stationList.smoothScrollToPosition(index);
+        selectStation(index);
+        int pos = stationAdapter.positionOf(index);
+        if (pos >= 0) stationList.smoothScrollToPosition(pos);
         if (playNow) play();
     }
 
@@ -517,15 +578,17 @@ public class MainActivity extends Activity {
         return Math.round(v * getResources().getDisplayMetrics().density);
     }
 
-    private void confirmDelete(int pos) {
-        if (pos < 0 || pos >= stations.size()) return;
-        Station s = stations.get(pos);
+    private void confirmDelete(int index) {
+        if (index < 0 || index >= stations.size()) return;
+        Station s = stations.get(index);
         new AlertDialog.Builder(this)
-                .setTitle("Ta bort " + s.name + "?")
+                .setTitle("Ta bort " + StationGroups.shortName(s.name) + "?")
                 .setPositiveButton("Ta bort", (d, w) -> {
-                    stations.remove(pos);
+                    stations.remove(index);
                     saveStations();
-                    prefs.edit().putInt("station", 0).apply();
+                    if (selectedIndex > index) selectedIndex--;
+                    else if (selectedIndex == index) selectedIndex = 0;
+                    prefs.edit().putInt("station", selectedIndex).apply();
                     loadStations();
                 })
                 .setNegativeButton("Avbryt", null)
@@ -533,8 +596,7 @@ public class MainActivity extends Activity {
     }
 
     private Station selectedStation() {
-        int i = stationList.getCheckedItemPosition();
-        return (i >= 0 && i < stations.size()) ? stations.get(i) : null;
+        return (selectedIndex >= 0 && selectedIndex < stations.size()) ? stations.get(selectedIndex) : null;
     }
 
     // -------------------------------------------------------------------- utils
