@@ -50,11 +50,14 @@ public class MainActivity extends Activity {
     };
     private static final String ENTER_IP = "Ange IP-adress…";
 
-    // Shortcuts in the search window: label, catalogue tag ("land:XX" = popular in a country).
+    // Shortcuts in the search window, picked from the Subtest playlist's styles.
+    // "mix:a|b" blends several tags, "land:XX" = most popular in a country, otherwise a tag.
     private static final String[][] GENRES = {
-            {"Elektroniskt", "electronic"}, {"Techno", "techno"}, {"House", "house"},
-            {"Drum & bass", "drum and bass"}, {"Dubstep", "dubstep"}, {"Trance", "trance"},
-            {"Ambient", "ambient"}, {"Hiphop", "hip hop"}, {"Sverige", "land:SE"}, {"Frankrike", "land:FR"},
+            {"För dig", "mix:melodic|synthpop|deep house|chillout|dubstep|afro|rap fr"},
+            {"Melodisk techno", "melodic"}, {"Synthpop", "synthpop"}, {"Deep house", "deep house"},
+            {"Chill", "chillout"}, {"Dubstep", "dubstep"}, {"Drum & bass", "drum and bass"},
+            {"Afrobeats", "afro"}, {"Fransk rap", "mix:rap fr|french rap"}, {"Hiphop", "hip hop"},
+            {"Elektroniskt", "electronic"}, {"Sverige", "land:SE"}, {"Frankrike", "land:FR"},
     };
 
     private final List<CastDevice> devices = new ArrayList<>();
@@ -430,6 +433,9 @@ public class MainActivity extends Activity {
                 if (tag.startsWith("land:")) {
                     String cc = tag.substring(5);
                     lookup(() -> RadioSearch.byCountry(cc), "Populäraste i " + g[0], info, adapter, results);
+                } else if (tag.startsWith("mix:")) {
+                    String[] tags = tag.substring(4).split("\\|");
+                    lookup(() -> RadioSearch.mix(tags), g[0], info, adapter, results);
                 } else {
                     lookup(() -> RadioSearch.byTag(tag), g[0], info, adapter, results);
                 }
@@ -450,7 +456,8 @@ public class MainActivity extends Activity {
                 .setNegativeButton("Stäng", null)
                 .show();
 
-        lookup(() -> RadioSearch.byTag("electronic"), "Elektroniskt", info, adapter, results);
+        String[] forYou = GENRES[0][1].substring(4).split("\\|");
+        lookup(() -> RadioSearch.mix(forYou), GENRES[0][0], info, adapter, results);
     }
 
     private void lookup(Lookup what, String label, TextView info, ArrayAdapter<String> adapter,

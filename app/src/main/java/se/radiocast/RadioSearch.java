@@ -69,6 +69,31 @@ public final class RadioSearch {
         return results;
     }
 
+    /**
+     * A mix: the most popular stations for each tag, taken in turns, so every style is represented.
+     * Tags match partly, so "melodic" also finds "melodic techno".
+     */
+    public static List<Result> mix(String... tags) throws IOException {
+        List<List<Result>> lists = new ArrayList<>();
+        IOException error = null;
+        for (String t : tags) {
+            try {
+                lists.add(query("tag=" + enc(t)));
+            } catch (IOException e) {
+                error = e;
+            }
+        }
+        if (lists.isEmpty() && error != null) throw error;
+        List<Result> out = new ArrayList<>();
+        Set<String> urls = new HashSet<>();
+        for (int i = 0; i < 8; i++) {
+            for (List<Result> l : lists) {
+                if (i < l.size() && urls.add(l.get(i).url)) out.add(l.get(i));
+            }
+        }
+        return out;
+    }
+
     /** The most popular stations in a country, e.g. "SE". */
     public static List<Result> byCountry(String countryCode) throws IOException {
         return query("countrycode=" + enc(countryCode));
