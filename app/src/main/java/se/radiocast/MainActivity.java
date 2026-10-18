@@ -81,9 +81,9 @@ public class MainActivity extends Activity {
     private Reconnect reconnect = Reconnect.NONE;
     private final android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
     private Button stopButton;
-    /** True for a few seconds after "Stoppa uppspelning" while casting: the next press turns off the speaker. */
-    private boolean stopOffersDevice;
-    private final Runnable resetStop = () -> setStopOffersDevice(false);
+    /** Latest news from the connected speaker: is our player running there, and what is it doing. */
+    private boolean speakerPlayerRunning;
+    private String speakerPlayerState = "IDLE";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,6 +109,13 @@ public class MainActivity extends Activity {
                 });
             }
             @Override public void onStatus(String message) { say(message); }
+            @Override public void onSpeakerState(boolean playerRunning, String playerState) {
+                runOnUiThread(() -> {
+                    speakerPlayerRunning = playerRunning;
+                    speakerPlayerState = playerState;
+                    updateStopButton();
+                });
+            }
         });
 
         pickerAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
@@ -152,22 +159,25 @@ public class MainActivity extends Activity {
         findViewById(R.id.add_station).setOnClickListener(v -> askForStation());
         findViewById(R.id.search_station).setOnClickListener(v -> showSearch());
         findViewById(R.id.play).setOnClickListener(v -> play());
-        // First press: stop the music; the speaker's player stays ready, so the next Play is quick.
-        // Pressed again within a few seconds while casting: turn off the Chromecast device too.
+        // The stop button follows what is actually happening (see stopMode):
+        // music playing → stop the music; silent but our player still running on the speaker → turn it off.
         stopButton = findViewById(R.id.stop);
         stopButton.setOnClickListener(v -> {
-            boolean casting = cast.getState() == CastController.State.CONNECTED;
-            if (casting && stopOffersDevice) {
-                setStopOffersDevice(false);
-                cast.stopDevice();
-                return;
+            switch (stopMode()) {
+                case MUSIC:
+                    PlaybackService.stop(this);
+                    if (cast.getState() == CastController.State.CONNECTED) {
+                        cast.stop();
+                        speakerPlayerState = "IDLE"; // the speaker confirms in a moment
+                    }
+                    break;
+                case DEVICE:
+                    cast.stopDevice();
+                    break;
+                default:
+                    break;
             }
-            PlaybackService.stop(this);
-            if (casting) {
-                cast.stop();
-                setStopOffersDevice(true);
-                say("Uppspelningen är stoppad. Tryck igen för att stoppa Chromecast-enheten helt.");
-            }
+            updateStopButton();
         });
 
         SeekBar volume = findViewById(R.id.volume);
@@ -191,6 +201,7 @@ public class MainActivity extends Activity {
 
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         showCastState(CastController.State.DISCONNECTED, null);
+        updateStopButton();
         if (reconnect == Reconnect.NONE) {
             say("Tryck Spela för att lyssna i telefonen, eller cast-knappen för att välja högtalare.");
         }
@@ -202,6 +213,7 @@ public class MainActivity extends Activity {
         discovery.start();
         PlaybackService.setListener((playing, title, message) -> runOnUiThread(() -> {
             if (message != null) status.setText(message);
+            updateStopButton();
             if (cast.getState() == CastController.State.DISCONNECTED) {
                 showCastState(CastController.State.DISCONNECTED, null);
             }
@@ -270,7 +282,6 @@ public class MainActivity extends Activity {
             b.setTitle(devices.isEmpty() ? "Söker efter högtalare…" : "Casta till");
         }
         b.setAdapter(pickerAdapter, (d, which) -> {
-            setStopOffersDevice(false);
             if (which >= devices.size()) {
                 askForIp(afterConnect);
             } else {
@@ -433,12 +444,39 @@ public class MainActivity extends Activity {
 
     // ----------------------------------------------------------------- playback
 
-    private void setStopOffersDevice(boolean on) {
-        stopOffersDevice = on;
-        ui.removeCallbacks(resetStop);
-        stopButton.setText(on ? "Stoppa Chromecast-enhet" : "Stoppa uppspelning");
-        stopButton.setTextColor(getColor(on ? R.color.accent : R.color.fg));
-        if (on) ui.postDelayed(resetStop, 6000);
+    private enum StopMode { MUSIC, DEVICE, NOTHING }
+
+    /** What the stop button would stop right now. */
+    private StopMode stopMode() {
+        if (PlaybackService.isActive()) return StopMode.MUSIC;
+        if (cast.getState() == CastController.State.CONNECTED) {
+            boolean music = speakerPlayerState.equals("PLAYING") || speakerPlayerState.equals("BUFFERING")
+                    || speakerPlayerState.equals("PAUSED");
+            if (music) return StopMode.MUSIC;
+            if (speakerPlayerRunning) return StopMode.DEVICE;
+        }
+        return StopMode.NOTHING;
+    }
+
+    private void updateStopButton() {
+        if (stopButton == null) return;
+        switch (stopMode()) {
+            case MUSIC:
+                stopButton.setText("Stoppa uppspelning");
+                stopButton.setEnabled(true);
+                stopButton.setTextColor(getColor(R.color.fg));
+                break;
+            case DEVICE:
+                stopButton.setText("Stoppa Chromecast-enhet");
+                stopButton.setEnabled(true);
+                stopButton.setTextColor(getColor(R.color.accent));
+                break;
+            default:
+                stopButton.setText("Inget spelas");
+                stopButton.setEnabled(false);
+                stopButton.setTextColor(getColor(R.color.muted));
+                break;
+        }
     }
 
     /** Plays the chosen station from the list. */
@@ -450,7 +488,6 @@ public class MainActivity extends Activity {
 
     /** Plays any station: from the list, or one being tried out from the search (saved = false). */
     private void playStation(Station s, boolean saved) {
-        setStopOffersDevice(false);
         CastController.State state = cast.getState();
         if (state == CastController.State.CONNECTING) {
             say("Vänta, ansluter till högtalaren…");
@@ -472,6 +509,8 @@ public class MainActivity extends Activity {
             castTarget.setText("Spelar i telefonen");
         }
         if (!saved) say("Provlyssnar " + name + ". Den är inte sparad i din lista.");
+        if (state == CastController.State.CONNECTED) speakerPlayerState = "BUFFERING"; // until the speaker reports
+        updateStopButton();
     }
 
     /** When the phone is playing and a speaker is picked, what is playing moves to the speaker. */

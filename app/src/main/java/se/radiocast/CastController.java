@@ -16,6 +16,11 @@ public class CastController {
     public interface Listener {
         void onStateChanged(State state, CastDevice device);
         void onStatus(String message);
+        /**
+         * What the connected speaker is doing: whether our player is running on it,
+         * and its state (PLAYING, BUFFERING, PAUSED or IDLE).
+         */
+        default void onSpeakerState(boolean playerRunning, String playerState) { }
     }
 
     private final Executor worker;
@@ -125,6 +130,7 @@ public class CastController {
             CastDevice d = device;
             try {
                 c.stopReceiver();
+                listener.onSpeakerState(false, "IDLE");
                 listener.onStatus("Chromecast-enheten " + (d != null ? d.name + " " : "")
                         + "är avstängd och ledig för andra appar.");
             } catch (IOException e) {
@@ -173,9 +179,16 @@ public class CastController {
         final CastClient[] holder = new CastClient[1];
         CastClient c = new CastClient(d.host, d.port, new CastClient.Listener() {
             @Override public void onMessage(String text) { }
+            @Override public void onPlayerRunning(boolean running) {
+                worker.execute(() -> {
+                    if (client == holder[0]) listener.onSpeakerState(running, holder[0].getPlayerState());
+                });
+            }
             @Override public void onPlayerState(String playerState) {
                 worker.execute(() -> {
-                    if (client != holder[0] || !"PLAYING".equals(playerState)) return;
+                    if (client != holder[0]) return;
+                    listener.onSpeakerState(holder[0].isPlayerRunning(), playerState);
+                    if (!"PLAYING".equals(playerState)) return;
                     long ms = Timing.current.sound("Ljud på högtalaren");
                     CastDevice dev = device;
                     String where = dev != null ? " på " + dev.name : "";
@@ -223,6 +236,9 @@ public class CastController {
 
     private void setState(State s) {
         state = s;
+        CastClient c = client;
+        if (s == State.CONNECTED && c != null) listener.onSpeakerState(c.isPlayerRunning(), c.getPlayerState());
+        if (s == State.DISCONNECTED) listener.onSpeakerState(false, "IDLE");
         listener.onStateChanged(s, device);
     }
 

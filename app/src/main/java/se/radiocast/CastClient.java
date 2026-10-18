@@ -31,6 +31,8 @@ public class CastClient {
         void onDisconnected(String reason);
         /** The speaker's player changed state: PLAYING, BUFFERING, PAUSED or IDLE. */
         default void onPlayerState(String state) { }
+        /** Our player on the speaker was started (true) or closed (false). */
+        default void onPlayerRunning(boolean running) { }
     }
 
     /** What a speaker is doing, from {@link #probe}. */
@@ -132,8 +134,9 @@ public class CastClient {
             return false;
         }
         if (transportId != null) {
-            // Our player is already running (e.g. the radio is on): just join it.
+            // Our player is already running (e.g. the radio is on): join it and ask what it is doing.
             send(SENDER, transportId, NS_CONNECTION, "{\"type\":\"CONNECT\"}");
+            send(SENDER, transportId, NS_MEDIA, "{\"type\":\"GET_STATUS\",\"requestId\":" + requestId.getAndIncrement() + "}");
             return true;
         }
         if (otherAppRunning) return false;
@@ -164,6 +167,9 @@ public class CastClient {
     }
 
     public String getPlayerState() { return playerState; }
+
+    /** Our player is running on the speaker (it may be silent). */
+    public boolean isPlayerRunning() { return transportId != null; }
 
     /**
      * Stops the music but leaves the player running on the speaker, so the next Play starts quickly.
@@ -314,6 +320,7 @@ public class CastClient {
             send(SENDER, m.source, NS_HEARTBEAT, "{\"type\":\"PONG\"}");
         } else if (NS_RECEIVER.equals(m.namespace) && "RECEIVER_STATUS".equals(type)) {
             lastReceiverStatus = m.payload;
+            boolean wasRunning = transportId != null;
             String app = appObject(m.payload, DEFAULT_MEDIA_RECEIVER);
             if (app != null) {
                 otherAppRunning = false;
@@ -329,7 +336,12 @@ public class CastClient {
                 mediaSessionId = -1;
                 otherAppRunning = m.payload.contains("\"appId\"")
                         && !m.payload.replace(" ", "").contains("\"isIdleScreen\":true");
+                if (!"IDLE".equals(playerState)) {
+                    playerState = "IDLE";
+                    listener.onPlayerState("IDLE");
+                }
             }
+            if (wasRunning != (transportId != null)) listener.onPlayerRunning(transportId != null);
             statusLatch.countDown();
         } else if (NS_RECEIVER.equals(m.namespace) && "LAUNCH_ERROR".equals(type)) {
             appLatch.countDown();
