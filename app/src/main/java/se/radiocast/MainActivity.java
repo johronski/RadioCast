@@ -58,6 +58,8 @@ public class MainActivity extends Activity {
     private final List<Station> stations = new ArrayList<>();
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final ExecutorService net = Executors.newSingleThreadExecutor();
+    /** Asks speakers what they are playing, a few at a time. */
+    private final ExecutorService probes = Executors.newFixedThreadPool(3);
 
     private SharedPreferences prefs;
     private StationListAdapter stationAdapter;
@@ -74,6 +76,10 @@ public class MainActivity extends Activity {
     private CastDiscovery discovery;
     private CastController cast;
     private boolean autoConnectTried;
+    /** Reconnecting to the last speaker at start: none, trying, or gave up (tap to retry). */
+    private enum Reconnect { NONE, TRYING, FAILED }
+    private Reconnect reconnect = Reconnect.NONE;
+    private final android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,7 +94,15 @@ public class MainActivity extends Activity {
 
         cast = new CastController(worker, new CastController.Listener() {
             @Override public void onStateChanged(CastController.State state, CastDevice device) {
-                runOnUiThread(() -> showCastState(state, device));
+                runOnUiThread(() -> {
+                    if (state == CastController.State.CONNECTED && device != null) {
+                        reconnect = Reconnect.NONE;
+                        // Remember the speaker by its unique id, so it is found again if its IP address changes.
+                        prefs.edit().putString("device", device.key()).putString("device_id", device.id)
+                                .putString("device_name", device.name).apply();
+                    }
+                    showCastState(state, device);
+                });
             }
             @Override public void onStatus(String message) { say(message); }
         });
@@ -120,14 +134,21 @@ public class MainActivity extends Activity {
         });
         loadStations();
 
+        startReconnect();
         for (String ip : prefs.getStringSet("ips", new HashSet<>())) {
-            addDevice("Högtalare " + ip, ip, 8009);
+            addDevice("Högtalare " + ip, ip, 8009, "", "");
         }
 
         castButton.setOnClickListener(v -> showCastPicker(null));
+        castTarget.setOnClickListener(v -> {
+            if (reconnect == Reconnect.FAILED) startReconnect();
+            else showCastPicker(null);
+        });
+        status.setOnLongClickListener(v -> { showTiming(); return true; });
         findViewById(R.id.add_station).setOnClickListener(v -> askForStation());
         findViewById(R.id.search_station).setOnClickListener(v -> showSearch());
         findViewById(R.id.play).setOnClickListener(v -> play());
+        // Stops the music only. The player on the speaker stays ready, so the next Play is quick.
         findViewById(R.id.stop).setOnClickListener(v -> {
             if (cast.getState() == CastController.State.CONNECTED) cast.stop();
             PlaybackService.stop(this);
@@ -146,13 +167,17 @@ public class MainActivity extends Activity {
         });
 
         discovery = new CastDiscovery(this, new CastDiscovery.Listener() {
-            @Override public void onFound(String name, String host, int port) { addDevice(name, host, port); }
+            @Override public void onFound(String name, String host, int port, String id, String rs) {
+                addDevice(name, host, port, id, rs);
+            }
             @Override public void onError(String message) { say(message); }
         });
 
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         showCastState(CastController.State.DISCONNECTED, null);
-        say("Tryck Spela för att lyssna i telefonen, eller cast-knappen för att välja högtalare.");
+        if (reconnect == Reconnect.NONE) {
+            say("Tryck Spela för att lyssna i telefonen, eller cast-knappen för att välja högtalare.");
+        }
     }
 
     @Override
@@ -181,6 +206,8 @@ public class MainActivity extends Activity {
         if (cast.getState() != CastController.State.DISCONNECTED) cast.disconnect(false);
         worker.shutdown();
         net.shutdownNow();
+        probes.shutdownNow();
+        ui.removeCallbacksAndMessages(null);
     }
 
     // -------------------------------------------------------------- cast button
@@ -203,20 +230,26 @@ public class MainActivity extends Activity {
                 castButton.setImageResource(R.drawable.ic_cast);
                 castButton.setAlpha(1f);
                 castButton.setContentDescription("Välj högtalare att casta till");
-                castTarget.setText(PlaybackService.isActive() ? "Spelar i telefonen" : "Ingen högtalare vald");
+                String last = prefs.getString("device_name", "");
+                if (reconnect == Reconnect.TRYING) castTarget.setText("Återansluter till " + last + "…");
+                else if (reconnect == Reconnect.FAILED) castTarget.setText("Hittar inte " + last + " · tryck för att försöka igen");
+                else castTarget.setText(PlaybackService.isActive() ? "Spelar i telefonen" : "Ingen högtalare vald");
                 break;
         }
     }
 
-    /** The cast dialog. The list updates while the search finds speakers. */
+    /** The cast dialog. The list updates while the search finds speakers, with what each one is playing. */
     private void showCastPicker(Runnable afterConnect) {
         discovery.start();
         refreshPicker();
+        probeSpeakers();
         AlertDialog.Builder b = new AlertDialog.Builder(this);
         CastDevice current = cast.getDevice();
         if (cast.getState() == CastController.State.CONNECTED && current != null) {
             b.setTitle("Castar till " + current.name);
-            b.setPositiveButton("Sluta casta", (d, w) -> cast.disconnect(true));
+            // Two ways to let go: keep the radio playing there, or turn the speaker's player off.
+            b.setPositiveButton("Stäng av på högtalaren", (d, w) -> cast.disconnect(true));
+            b.setNeutralButton("Koppla från", (d, w) -> cast.disconnect(false));
         } else {
             b.setTitle(devices.isEmpty() ? "Söker efter högtalare…" : "Casta till");
         }
@@ -225,7 +258,7 @@ public class MainActivity extends Activity {
                 askForIp(afterConnect);
             } else {
                 CastDevice dev = devices.get(which);
-                prefs.edit().putString("device", dev.key()).apply();
+                reconnect = Reconnect.NONE;
                 Runnable after = handOver(afterConnect);
                 cast.connect(dev, after == null ? null : () -> runOnUiThread(after));
             }
@@ -234,32 +267,123 @@ public class MainActivity extends Activity {
         b.show();
     }
 
-    private void addDevice(String name, String host, int port) {
-        CastDevice found = null;
+    /** Asks every known speaker what it is doing; the list updates as answers come in. */
+    private void probeSpeakers() {
+        for (CastDevice d : new ArrayList<>(devices)) {
+            String host = d.host;
+            int port = d.port;
+            probes.execute(() -> {
+                CastClient.SpeakerStatus st = CastClient.probe(host, port);
+                runOnUiThread(() -> {
+                    if (st == null) d.status = "svarar inte";
+                    else if (st.idle) d.status = "ledig";
+                    else if (st.ours) d.status = "RadioCast: " + st.text;
+                    else d.status = "spelar " + st.text;
+                    refreshPicker();
+                });
+            });
+        }
+    }
+
+    private void addDevice(String name, String host, int port, String id, String rs) {
         String key = host + ":" + port;
+        CastDevice found = null;
+        // Same speaker: same unique id, or (for speakers added by IP address) same address.
         for (CastDevice d : devices) {
-            if (d.key().equals(key)) { found = d; break; }
+            if (!id.isEmpty() && id.equals(d.id)) { found = d; break; }
+        }
+        if (found == null) {
+            for (CastDevice d : devices) {
+                if (d.key().equals(key) && (d.id.isEmpty() || id.isEmpty() || d.id.equals(id))) { found = d; break; }
+            }
         }
         if (found == null) {
             found = new CastDevice(name, host, port);
             devices.add(found);
-        } else if (!name.startsWith("Högtalare ")) {
-            found.name = name;
+        } else {
+            if (!name.startsWith("Högtalare ")) found.name = name;
+            found.host = host;
+            found.port = port;
         }
+        if (!id.isEmpty()) found.id = id;
+        if (!rs.isEmpty()) found.status = describeAnnounced(rs);
         refreshPicker();
+
         // Reconnect to the speaker used last time, once, without asking.
-        if (!autoConnectTried && key.equals(prefs.getString("device", null))
-                && cast.getState() == CastController.State.DISCONNECTED) {
+        String savedId = prefs.getString("device_id", "");
+        boolean isLast = (!savedId.isEmpty() && savedId.equals(found.id))
+                || found.key().equals(prefs.getString("device", null));
+        if (!autoConnectTried && isLast && cast.getState() == CastController.State.DISCONNECTED) {
             autoConnectTried = true;
             cast.connect(found, null);
         }
     }
 
+    /** What a speaker announces it is playing ("Spotify", "Now Casting: Radio Nova") as list text. */
+    private static String describeAnnounced(String rs) {
+        String t = CastClient.cleanStatus(rs, "");
+        if (t.isEmpty()) return rs.equalsIgnoreCase("Ready To Cast") ? "ledig" : "";
+        return "spelar " + t;
+    }
+
+    /** Looks for the last used speaker at start, retrying for a while, then offers a retry button. */
+    private void startReconnect() {
+        String name = prefs.getString("device_name", "");
+        boolean saved = !name.isEmpty() || prefs.getString("device", null) != null;
+        if (!saved || cast.getState() != CastController.State.DISCONNECTED) return;
+        if (name.isEmpty()) prefs.edit().putString("device_name", "senaste högtalaren").apply();
+        reconnect = Reconnect.TRYING;
+        autoConnectTried = false;
+        showCastState(CastController.State.DISCONNECTED, null);
+        // Speakers sometimes answer the search slowly; ask again a couple of times.
+        ui.removeCallbacksAndMessages(null);
+        if (discovery != null) discovery.start();
+        Runnable again = () -> {
+            if (reconnect != Reconnect.TRYING || cast.getState() != CastController.State.DISCONNECTED) return;
+            autoConnectTried = false;
+            if (discovery != null) discovery.start();
+            String k = prefs.getString("device", null);
+            for (CastDevice d : devices) {
+                boolean last = d.key().equals(k) || (!d.id.isEmpty() && d.id.equals(prefs.getString("device_id", "")));
+                if (last) { autoConnectTried = true; cast.connect(d, null); break; }
+            }
+        };
+        ui.postDelayed(again, 4000);
+        ui.postDelayed(again, 8000);
+        ui.postDelayed(() -> {
+            if (reconnect == Reconnect.TRYING && cast.getState() == CastController.State.DISCONNECTED) {
+                reconnect = Reconnect.FAILED;
+                showCastState(CastController.State.DISCONNECTED, null);
+                say("Hittade inte " + prefs.getString("device_name", "högtalaren")
+                        + ". Kontrollera att den är på och på samma wifi, och tryck på texten under RadioCast för att försöka igen.");
+            }
+        }, 12000);
+        // A speaker added by IP address can be tried right away.
+        String key = prefs.getString("device", null);
+        for (CastDevice d : devices) {
+            if (d.key().equals(key)) { autoConnectTried = true; cast.connect(d, null); break; }
+        }
+    }
+
     private void refreshPicker() {
         pickerAdapter.clear();
-        for (CastDevice d : devices) pickerAdapter.add(d.name);
+        for (CastDevice d : devices) pickerAdapter.add(d.label());
         pickerAdapter.add(ENTER_IP);
         pickerAdapter.notifyDataSetChanged();
+    }
+
+    /** Long press on the status line: how long each step of the last start took. */
+    private void showTiming() {
+        TextView t = new TextView(this);
+        t.setText(Timing.current.summary());
+        t.setTypeface(android.graphics.Typeface.MONOSPACE);
+        t.setTextSize(12);
+        t.setTextIsSelectable(true);
+        new AlertDialog.Builder(this)
+                .setTitle("Tid till ljud")
+                .setView(padded(t))
+                .setPositiveButton("OK", null)
+                .show();
     }
 
     private void askForIp(Runnable afterConnect) {
@@ -275,9 +399,10 @@ public class MainActivity extends Activity {
                     if (!ip.matches("[0-9a-fA-F.:]+")) { say("Det ser inte ut som en IP-adress."); return; }
                     Set<String> ips = new HashSet<>(prefs.getStringSet("ips", new HashSet<>()));
                     ips.add(ip);
-                    prefs.edit().putStringSet("ips", ips).putString("device", ip + ":8009").apply();
+                    prefs.edit().putStringSet("ips", ips).apply();
                     autoConnectTried = true;
-                    addDevice("Högtalare " + ip, ip, 8009);
+                    reconnect = Reconnect.NONE;
+                    addDevice("Högtalare " + ip, ip, 8009, "", "");
                     for (CastDevice dev : devices) {
                         if (dev.key().equals(ip + ":8009")) {
                             Runnable after = handOver(afterConnect);
@@ -307,6 +432,9 @@ public class MainActivity extends Activity {
         }
         nowPlaying = s;
         String name = StationGroups.shortName(s.name);
+        CastDevice target = cast.getDevice();
+        Timing.current.start(name + (state == CastController.State.CONNECTED && target != null
+                ? " på " + target.name : " i telefonen"));
         if (state == CastController.State.CONNECTED) {
             PlaybackService.stop(this);
             cast.play(s.url, name);

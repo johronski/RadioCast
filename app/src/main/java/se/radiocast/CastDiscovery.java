@@ -14,7 +14,11 @@ import java.util.Map;
 public class CastDiscovery {
 
     public interface Listener {
-        void onFound(String name, String host, int port);
+        /**
+         * @param id     the speaker's unique id (stays the same when its IP address changes), or ""
+         * @param status what it is playing right now, e.g. "Spotify", or "" when idle
+         */
+        void onFound(String name, String host, int port, String id, String status);
         void onError(String message);
     }
 
@@ -85,7 +89,9 @@ public class CastDiscovery {
                     String name = friendlyName(info);
                     String host = info.getHost() != null ? info.getHost().getHostAddress() : null;
                     int port = info.getPort();
-                    if (host != null) main.post(() -> listener.onFound(name, host, port));
+                    String id = attribute(info, "id");
+                    String status = attribute(info, "rs");
+                    if (host != null) main.post(() -> listener.onFound(name, host, port, id, status));
                     done();
                 }
             });
@@ -102,11 +108,15 @@ public class CastDiscovery {
     }
 
     private static String friendlyName(NsdServiceInfo info) {
+        String fn = attribute(info, "fn");
+        return fn.isEmpty() ? info.getServiceName() : fn;
+    }
+
+    /** A value the speaker announces about itself (fn = name, id = unique id, rs = what it plays). */
+    private static String attribute(NsdServiceInfo info, String key) {
         Map<String, byte[]> attrs = info.getAttributes();
-        if (attrs != null) {
-            byte[] fn = attrs.get("fn");
-            if (fn != null && fn.length > 0) return new String(fn, StandardCharsets.UTF_8);
-        }
-        return info.getServiceName();
+        if (attrs == null) return "";
+        byte[] v = attrs.get(key);
+        return v == null ? "" : new String(v, StandardCharsets.UTF_8).trim();
     }
 }

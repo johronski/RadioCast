@@ -121,8 +121,10 @@ public class PlaybackService extends Service {
                 @Override public void onIsPlayingChanged(boolean isPlaying) {
                     if (isPlaying) {
                         playing = true;
+                        long ms = Timing.current.sound("Ljud i telefonen");
                         goForeground(currentTitle, "Spelar på telefonen");
-                        notifyState(true, "Spelar " + currentTitle + " på telefonen.");
+                        notifyState(true, "Spelar " + currentTitle + " i telefonen"
+                                + (ms >= 0 ? " · ljud efter " + Timing.seconds(ms) : "") + ".");
                     }
                 }
 
@@ -136,6 +138,7 @@ public class PlaybackService extends Service {
                 }
 
                 @Override public void onPlaybackStateChanged(int state) {
+                    if (state == Player.STATE_READY) Timing.current.mark("Strömmen ansluten och buffrad");
                     if (state == Player.STATE_ENDED) stopPlayback("Sändningen tog slut.");
                 }
 
@@ -148,6 +151,7 @@ public class PlaybackService extends Service {
     }
 
     private void start(String url, String title) {
+        Timing.current.mark("Telefonens spelare startad");
         currentTitle = title;
         playing = false;
         notifyState(false, "Ansluter till " + title + "…");

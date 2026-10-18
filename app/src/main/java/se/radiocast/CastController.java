@@ -23,6 +23,8 @@ public class CastController {
     private volatile CastClient client;
     private volatile CastDevice device;
     private volatile State state = State.DISCONNECTED;
+    /** Name of what was last started on the speaker, for status texts. */
+    private volatile String currentTitle;
 
     public CastController(Executor worker, Listener listener) {
         this.worker = worker;
@@ -45,6 +47,7 @@ public class CastController {
             setState(State.CONNECTING);
             listener.onStatus("Ansluter till " + d.name + "…");
             if (open(d)) {
+                Timing.current.mark("Ansluten till " + d.name);
                 // Start the speaker's player now, so pressing Play is quicker.
                 try {
                     CastClient c = client;
@@ -62,17 +65,22 @@ public class CastController {
         });
     }
 
-    /** Disconnects. With stopPlayback the speaker also stops; otherwise the radio keeps playing. */
-    public void disconnect(boolean stopPlayback) {
+    /**
+     * Lets go of the speaker. With turnOffPlayer the player on the speaker is closed completely
+     * (frees it for other apps); otherwise the radio keeps playing there.
+     */
+    public void disconnect(boolean turnOffPlayer) {
         worker.execute(() -> {
             CastClient c = client;
-            if (c != null && stopPlayback) {
-                try { c.stop(); } catch (IOException ignored) { }
+            String name = device != null ? device.name : "högtalaren";
+            if (c != null && turnOffPlayer) {
+                try { c.stopReceiver(); } catch (IOException ignored) { }
             }
             closeClient();
             device = null;
             setState(State.DISCONNECTED);
-            listener.onStatus(stopPlayback ? "Castningen är avslutad." : "Frånkopplad. Radion spelar vidare på högtalaren.");
+            listener.onStatus(turnOffPlayer ? "Spelaren på " + name + " är avstängd."
+                    : "Frånkopplad. Radion spelar vidare på " + name + ".");
         });
     }
 
@@ -81,22 +89,25 @@ public class CastController {
             CastClient c = liveClient();
             if (c == null) return;
             listener.onStatus("Startar " + title + "…");
+            currentTitle = title;
             try {
                 c.play(url, title, contentType(url));
-                listener.onStatus("Spelar " + title + " på " + device.name + ".");
+                // The speaker has the stream but is still filling its buffer; "Spelar" comes with the sound.
+                if (!"PLAYING".equals(c.getPlayerState())) listener.onStatus("Buffrar " + title + "…");
             } catch (IOException e) {
                 failed(e);
             }
         });
     }
 
+    /** Stops the music but keeps the speaker's player running, so the next Play is quick. */
     public void stop() {
         worker.execute(() -> {
             CastClient c = liveClient();
             if (c == null) return;
             try {
-                c.stop();
-                listener.onStatus("Stoppad.");
+                c.stopMedia();
+                listener.onStatus("Stoppad. Högtalaren är redo, så nästa start går fort.");
             } catch (IOException e) {
                 failed(e);
             }
@@ -143,6 +154,16 @@ public class CastController {
         final CastClient[] holder = new CastClient[1];
         CastClient c = new CastClient(d.host, d.port, new CastClient.Listener() {
             @Override public void onMessage(String text) { }
+            @Override public void onPlayerState(String playerState) {
+                worker.execute(() -> {
+                    if (client != holder[0] || !"PLAYING".equals(playerState)) return;
+                    long ms = Timing.current.sound("Ljud på högtalaren");
+                    CastDevice dev = device;
+                    String where = dev != null ? " på " + dev.name : "";
+                    String t = currentTitle != null ? currentTitle : "radio";
+                    listener.onStatus("Spelar " + t + where + (ms >= 0 ? " · ljud efter " + Timing.seconds(ms) : "") + ".");
+                });
+            }
             @Override public void onDisconnected(String reason) {
                 worker.execute(() -> {
                     if (client == holder[0] && client != null) {

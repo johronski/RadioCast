@@ -29,6 +29,24 @@ public class CastClient {
     public interface Listener {
         void onMessage(String text);
         void onDisconnected(String reason);
+        /** The speaker's player changed state: PLAYING, BUFFERING, PAUSED or IDLE. */
+        default void onPlayerState(String state) { }
+    }
+
+    /** What a speaker is doing, from {@link #probe}. */
+    public static final class SpeakerStatus {
+        /** Nothing is playing (or only the idle screen). */
+        public final boolean idle;
+        /** Our radio player (Google's media player) is running. */
+        public final boolean ours;
+        /** Short text such as "Spotify" or "Radio Nova". Empty when idle. */
+        public final String text;
+
+        SpeakerStatus(boolean idle, boolean ours, String text) {
+            this.idle = idle;
+            this.ours = ours;
+            this.text = text;
+        }
     }
 
     static final String DEFAULT_MEDIA_RECEIVER = "CC1AD845";
@@ -53,6 +71,10 @@ public class CastClient {
     private volatile CountDownLatch appLatch = new CountDownLatch(1);
     private volatile CountDownLatch mediaLatch = new CountDownLatch(1);
     private volatile CountDownLatch statusLatch = new CountDownLatch(1);
+    private volatile CountDownLatch mediaStatusLatch = new CountDownLatch(1);
+    private volatile String lastReceiverStatus = "";
+    private volatile long mediaSessionId = -1;
+    private volatile String playerState = "IDLE";
     private volatile String mediaError;
     /** Another app (e.g. Spotify) is playing on the speaker. */
     private volatile boolean otherAppRunning;
@@ -129,6 +151,7 @@ public class CastClient {
                 + ",\"streamType\":\"LIVE\",\"contentType\":" + quote(contentType)
                 + ",\"metadata\":{\"metadataType\":0,\"title\":" + quote(title) + "}}}";
         send(SENDER, transportId, NS_MEDIA, load);
+        Timing.current.mark("Ström skickad till högtalaren");
         try {
             if (!mediaLatch.await(15, TimeUnit.SECONDS)) {
                 throw new IOException("Högtalaren svarade inte på uppspelningen.");
@@ -137,9 +160,73 @@ public class CastClient {
             throw new IOException("Avbruten");
         }
         if (mediaError != null) throw new IOException(mediaError);
+        Timing.current.mark("Högtalaren tog emot strömmen och buffrar");
     }
 
-    public void stop() throws IOException {
+    public String getPlayerState() { return playerState; }
+
+    /**
+     * Stops the music but leaves the player running on the speaker, so the next Play starts quickly.
+     */
+    public void stopMedia() throws IOException {
+        if (transportId == null) return;
+        if (mediaSessionId < 0) {
+            mediaStatusLatch = new CountDownLatch(1);
+            send(SENDER, transportId, NS_MEDIA, "{\"type\":\"GET_STATUS\",\"requestId\":" + requestId.getAndIncrement() + "}");
+            try { mediaStatusLatch.await(3, TimeUnit.SECONDS); } catch (InterruptedException ignored) { }
+        }
+        if (mediaSessionId < 0) return; // nothing loaded, so nothing to stop
+        send(SENDER, transportId, NS_MEDIA, "{\"type\":\"STOP\",\"mediaSessionId\":" + mediaSessionId
+                + ",\"requestId\":" + requestId.getAndIncrement() + "}");
+    }
+
+    /**
+     * Asks a speaker what it is doing, without disturbing it. Blocking, a few seconds at most.
+     * Returns null if the speaker cannot be reached.
+     */
+    public static SpeakerStatus probe(String host, int port) {
+        CastClient c = new CastClient(host, port, new Listener() {
+            @Override public void onMessage(String text) { }
+            @Override public void onDisconnected(String reason) { }
+        });
+        try {
+            c.connect();
+            c.statusLatch = new CountDownLatch(1);
+            c.send(SENDER, RECEIVER, NS_RECEIVER, "{\"type\":\"GET_STATUS\",\"requestId\":1}");
+            if (!c.statusLatch.await(3, TimeUnit.SECONDS)) return null;
+            return describe(c.lastReceiverStatus);
+        } catch (Exception e) {
+            return null;
+        } finally {
+            c.close();
+        }
+    }
+
+    /** Turns a RECEIVER_STATUS reply into a SpeakerStatus. */
+    static SpeakerStatus describe(String receiverStatus) {
+        String ours = appObject(receiverStatus, DEFAULT_MEDIA_RECEIVER);
+        if (ours != null) {
+            String t = field(ours, "statusText");
+            return new SpeakerStatus(false, true, cleanStatus(t, "Radio"));
+        }
+        if (!receiverStatus.contains("\"appId\"") || receiverStatus.replace(" ", "").contains("\"isIdleScreen\":true")) {
+            return new SpeakerStatus(true, false, "");
+        }
+        Matcher m = Pattern.compile("\"displayName\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").matcher(receiverStatus);
+        String name = m.find() ? m.group(1) : "";
+        return new SpeakerStatus(false, false, name.isEmpty() ? "en annan app" : name);
+    }
+
+    /** "Now Casting: Radio Nova" or "Casting: Radio Nova" becomes "Radio Nova". */
+    public static String cleanStatus(String statusText, String fallback) {
+        if (statusText == null) return fallback;
+        String t = statusText.replaceFirst("(?i)^(now )?casting:\\s*", "").trim();
+        if (t.isEmpty() || t.equalsIgnoreCase("Ready To Cast") || t.equalsIgnoreCase("Default Media Receiver")) return fallback;
+        return t;
+    }
+
+    /** Closes the player on the speaker completely, freeing the speaker for other apps. */
+    public void stopReceiver() throws IOException {
         if (sessionId == null) requestStatus();
         if (sessionId != null) {
             send(SENDER, RECEIVER, NS_RECEIVER, "{\"type\":\"STOP\",\"sessionId\":" + quote(sessionId)
@@ -182,6 +269,7 @@ public class CastClient {
             throw new IOException("Avbruten");
         }
         send(SENDER, transportId, NS_CONNECTION, "{\"type\":\"CONNECT\"}");
+        Timing.current.mark("Spelaren startad på högtalaren");
     }
 
     private void heartbeatLoop() {
@@ -212,6 +300,7 @@ public class CastClient {
             mediaLatch.countDown();
             appLatch.countDown();
             statusLatch.countDown();
+            mediaStatusLatch.countDown();
             if (running) {
                 running = false;
                 listener.onDisconnected("Anslutningen till högtalaren bröts.");
@@ -224,6 +313,7 @@ public class CastClient {
         if (NS_HEARTBEAT.equals(m.namespace) && "PING".equals(type)) {
             send(SENDER, m.source, NS_HEARTBEAT, "{\"type\":\"PONG\"}");
         } else if (NS_RECEIVER.equals(m.namespace) && "RECEIVER_STATUS".equals(type)) {
+            lastReceiverStatus = m.payload;
             String app = appObject(m.payload, DEFAULT_MEDIA_RECEIVER);
             if (app != null) {
                 otherAppRunning = false;
@@ -236,6 +326,7 @@ public class CastClient {
             } else {
                 transportId = null;
                 sessionId = null;
+                mediaSessionId = -1;
                 otherAppRunning = m.payload.contains("\"appId\"")
                         && !m.payload.replace(" ", "").contains("\"isIdleScreen\":true");
             }
@@ -244,6 +335,15 @@ public class CastClient {
             appLatch.countDown();
         } else if (NS_MEDIA.equals(m.namespace)) {
             if ("MEDIA_STATUS".equals(type)) {
+                Matcher id = Pattern.compile("\"mediaSessionId\"\\s*:\\s*(\\d+)").matcher(m.payload);
+                if (id.find()) mediaSessionId = Long.parseLong(id.group(1));
+                String state = field(m.payload, "playerState");
+                if (state == null && m.payload.replace(" ", "").contains("\"status\":[]")) state = "IDLE";
+                if (state != null && !state.equals(playerState)) {
+                    playerState = state;
+                    listener.onPlayerState(state);
+                }
+                mediaStatusLatch.countDown();
                 mediaLatch.countDown();
             } else if ("LOAD_FAILED".equals(type) || "LOAD_CANCELLED".equals(type) || "INVALID_REQUEST".equals(type)) {
                 mediaError = "Högtalaren kunde inte spela strömmen. Kontrollera länken.";
