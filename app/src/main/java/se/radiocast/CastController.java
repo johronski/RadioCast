@@ -45,6 +45,13 @@ public class CastController {
             setState(State.CONNECTING);
             listener.onStatus("Ansluter till " + d.name + "…");
             if (open(d)) {
+                // Start the speaker's player now, so pressing Play is quicker.
+                try {
+                    CastClient c = client;
+                    if (c != null) c.prepare();
+                } catch (IOException ignored) {
+                    // Not fatal: the player is started on Play instead.
+                }
                 listener.onStatus("Ansluten till " + d.name + ".");
                 if (afterConnect != null) afterConnect.run();
             } else {

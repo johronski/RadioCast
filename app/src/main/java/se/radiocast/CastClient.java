@@ -52,7 +52,10 @@ public class CastClient {
     private volatile String sessionId;
     private volatile CountDownLatch appLatch = new CountDownLatch(1);
     private volatile CountDownLatch mediaLatch = new CountDownLatch(1);
+    private volatile CountDownLatch statusLatch = new CountDownLatch(1);
     private volatile String mediaError;
+    /** Another app (e.g. Spotify) is playing on the speaker. */
+    private volatile boolean otherAppRunning;
 
     public CastClient(String host, int port, Listener listener) {
         this.host = host;
@@ -91,6 +94,29 @@ public class CastClient {
         Thread beat = new Thread(this::heartbeatLoop, "cast-heartbeat");
         beat.setDaemon(true);
         beat.start();
+    }
+
+    /**
+     * Gets the speaker ready so Play starts faster: starts the media player on it now,
+     * unless another app is using the speaker (then it waits until Play, so nothing is interrupted).
+     * Returns true if the player is ready.
+     */
+    public boolean prepare() throws IOException {
+        statusLatch = new CountDownLatch(1);
+        send(SENDER, RECEIVER, NS_RECEIVER, "{\"type\":\"GET_STATUS\",\"requestId\":" + requestId.getAndIncrement() + "}");
+        try {
+            statusLatch.await(4, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            return false;
+        }
+        if (transportId != null) {
+            // Our player is already running (e.g. the radio is on): just join it.
+            send(SENDER, transportId, NS_CONNECTION, "{\"type\":\"CONNECT\"}");
+            return true;
+        }
+        if (otherAppRunning) return false;
+        ensureApp();
+        return true;
     }
 
     /** Launches the media receiver if needed and starts the stream. */
@@ -185,6 +211,7 @@ public class CastClient {
             mediaError = "Anslutningen till högtalaren bröts.";
             mediaLatch.countDown();
             appLatch.countDown();
+            statusLatch.countDown();
             if (running) {
                 running = false;
                 listener.onDisconnected("Anslutningen till högtalaren bröts.");
@@ -199,6 +226,7 @@ public class CastClient {
         } else if (NS_RECEIVER.equals(m.namespace) && "RECEIVER_STATUS".equals(type)) {
             String app = appObject(m.payload, DEFAULT_MEDIA_RECEIVER);
             if (app != null) {
+                otherAppRunning = false;
                 String t = field(app, "transportId");
                 if (t != null) {
                     transportId = t;
@@ -208,7 +236,10 @@ public class CastClient {
             } else {
                 transportId = null;
                 sessionId = null;
+                otherAppRunning = m.payload.contains("\"appId\"")
+                        && !m.payload.replace(" ", "").contains("\"isIdleScreen\":true");
             }
+            statusLatch.countDown();
         } else if (NS_RECEIVER.equals(m.namespace) && "LAUNCH_ERROR".equals(type)) {
             appLatch.countDown();
         } else if (NS_MEDIA.equals(m.namespace)) {

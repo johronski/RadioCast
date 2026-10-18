@@ -381,7 +381,7 @@ public class MainActivity extends Activity {
 
     // ------------------------------------------------------------------- search
 
-    private interface Lookup { List<RadioSearch.Result> run() throws IOException; }
+    private interface Lookup { RadioSearch.Outcome run() throws IOException; }
 
     private void showSearch() {
         int pad = dp(16);
@@ -392,7 +392,7 @@ public class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         EditText query = new EditText(this);
-        query.setHint("Namn eller genre, t.ex. P3 eller techno");
+        query.setHint("T.ex. sverige p3, techno, franska nyheter");
         query.setSingleLine(true);
         query.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         Button go = new Button(this);
@@ -465,15 +465,18 @@ public class MainActivity extends Activity {
         info.setText("Söker " + label + "…");
         net.execute(() -> {
             try {
-                List<RadioSearch.Result> found = what.run();
+                RadioSearch.Outcome out = what.run();
+                List<RadioSearch.Result> found = out.results;
                 runOnUiThread(() -> {
                     results.clear();
                     results.addAll(found);
                     adapter.clear();
                     for (RadioSearch.Result r : found) adapter.add(r.label());
                     adapter.notifyDataSetChanged();
-                    info.setText(found.isEmpty() ? "Inga kanaler hittades för " + label + "."
-                            : label + ": " + found.size() + " kanaler. Tryck på en för att lägga till.");
+                    String head = out.note != null ? out.note + ". " : "";
+                    info.setText(found.isEmpty()
+                            ? head + "Inga kanaler hittades för " + label + ". Prova ett annat ord eller en genre."
+                            : head + found.size() + " kanaler. Tryck på en för att lägga till.");
                 });
             } catch (IOException e) {
                 runOnUiThread(() -> info.setText(e.getMessage()));
@@ -484,7 +487,7 @@ public class MainActivity extends Activity {
     private void confirmAdd(RadioSearch.Result r) {
         new AlertDialog.Builder(this)
                 .setTitle(r.name)
-                .setMessage(r.label().substring(r.label().indexOf('\n') + 1))
+                .setMessage(r.details().isEmpty() ? "Lägg till i din lista?" : r.details())
                 .setPositiveButton("Lägg till och spela", (d, w) -> addStation(r.name, r.url, true))
                 .setNeutralButton("Lägg till", (d, w) -> addStation(r.name, r.url, false))
                 .setNegativeButton("Avbryt", null)
