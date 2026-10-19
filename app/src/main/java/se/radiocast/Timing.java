@@ -47,6 +47,20 @@ public final class Timing {
         return soundAt - start;
     }
 
+    /** Like {@link #sound(String)}, but for sound that started at an earlier moment ({@link #now()} time). */
+    public synchronized long soundAt(String label, long at) {
+        if (start < 0) return -1;
+        if (soundAt < 0) {
+            labels.add(label);
+            times.add(at);
+            soundAt = at;
+        }
+        return soundAt - start;
+    }
+
+    /** Whether a start is being measured and sound has not been registered yet. */
+    public synchronized boolean waitingForSound() { return start >= 0 && soundAt < 0; }
+
     public synchronized boolean hasResult() { return soundAt >= 0; }
 
     /** "3,4 s" */
@@ -70,7 +84,7 @@ public final class Timing {
         return b.toString();
     }
 
-    private static long now() {
+    static long now() {
         return System.nanoTime() / 1_000_000L;
     }
 }

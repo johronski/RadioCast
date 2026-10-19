@@ -37,6 +37,8 @@ public class CastClient {
         default void onVolume(double level) { }
         /** What the speaker's player has loaded: the stream address and its title. */
         default void onMedia(String url, String title) { }
+        /** The playback position the speaker reports, in seconds (it moves only while sound plays). */
+        default void onPosition(double seconds) { }
     }
 
     /** What a speaker is doing, from {@link #probe}. */
@@ -82,6 +84,9 @@ public class CastClient {
     private volatile long mediaSessionId = -1;
     private volatile String playerState = "IDLE";
     private volatile String mediaError;
+    /** Request id of the LOAD being answered; statuses about the old stream are ignored until then. */
+    private volatile int loadRequest = -1;
+    private volatile long loadSessionBefore = -1;
     /** Another app (e.g. Spotify) is playing on the speaker. */
     private volatile boolean otherAppRunning;
 
@@ -153,7 +158,11 @@ public class CastClient {
         ensureApp();
         mediaLatch = new CountDownLatch(1);
         mediaError = null;
-        String load = "{\"type\":\"LOAD\",\"requestId\":" + requestId.getAndIncrement()
+        int id = requestId.getAndIncrement();
+        loadSessionBefore = mediaSessionId;
+        loadRequest = id;
+        playerState = "LOADING"; // so the new stream's PLAYING is reported even if the old one was playing
+        String load = "{\"type\":\"LOAD\",\"requestId\":" + id
                 + ",\"autoplay\":true,\"currentTime\":0,\"media\":{\"contentId\":" + quote(url)
                 + ",\"streamType\":\"LIVE\",\"contentType\":" + quote(contentType)
                 + ",\"metadata\":{\"metadataType\":0,\"title\":" + quote(title) + "}}}";
@@ -171,6 +180,12 @@ public class CastClient {
     }
 
     public String getPlayerState() { return playerState; }
+
+    /** Asks the speaker for its playback position (the answer arrives as onPosition). */
+    public void requestMediaStatus() throws IOException {
+        String t = transportId;
+        if (t != null) send(SENDER, t, NS_MEDIA, "{\"type\":\"GET_STATUS\",\"requestId\":" + requestId.getAndIncrement() + "}");
+    }
 
     /** Our player is running on the speaker (it may be silent). */
     public boolean isPlayerRunning() { return transportId != null; }
@@ -380,6 +395,16 @@ public class CastClient {
             appLatch.countDown();
         } else if (NS_MEDIA.equals(m.namespace)) {
             if ("MEDIA_STATUS".equals(type)) {
+                if (loadRequest >= 0) {
+                    // Until the LOAD is answered, statuses describe the previous stream.
+                    // The answer to the LOAD, or any status about a newer media session, is about the new stream.
+                    Matcher rq = Pattern.compile("\"requestId\"\\s*:\\s*(\\d+)").matcher(m.payload);
+                    Matcher ms = Pattern.compile("\"mediaSessionId\"\\s*:\\s*(\\d+)").matcher(m.payload);
+                    boolean answer = rq.find() && Integer.parseInt(rq.group(1)) == loadRequest;
+                    boolean newer = ms.find() && Long.parseLong(ms.group(1)) > loadSessionBefore;
+                    if (!answer && !newer) return;
+                    loadRequest = -1;
+                }
                 Matcher id = Pattern.compile("\"mediaSessionId\"\\s*:\\s*(\\d+)").matcher(m.payload);
                 if (id.find()) mediaSessionId = Long.parseLong(id.group(1));
                 String state = field(m.payload, "playerState");
@@ -393,10 +418,15 @@ public class CastClient {
                     playerState = state;
                     listener.onPlayerState(state);
                 }
+                Matcher pos = Pattern.compile("\"currentTime\"\\s*:\\s*([0-9.]+)").matcher(m.payload);
+                if (pos.find()) {
+                    try { listener.onPosition(Double.parseDouble(pos.group(1))); } catch (NumberFormatException ignored) { }
+                }
                 mediaStatusLatch.countDown();
                 mediaLatch.countDown();
             } else if ("LOAD_FAILED".equals(type) || "LOAD_CANCELLED".equals(type) || "INVALID_REQUEST".equals(type)) {
                 mediaError = "Högtalaren kunde inte spela strömmen. Kontrollera länken.";
+                loadRequest = -1;
                 mediaLatch.countDown();
             }
         } else if (NS_CONNECTION.equals(m.namespace) && "CLOSE".equals(type) && m.source.equals(transportId)) {

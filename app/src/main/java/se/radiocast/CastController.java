@@ -34,6 +34,17 @@ public class CastController {
     private volatile State state = State.DISCONNECTED;
     /** Name of what was last started on the speaker, for status texts. */
     private volatile String currentTitle;
+    /** Asks the speaker for its position while waiting for the sound to really start. */
+    private final java.util.concurrent.ScheduledExecutorService poller =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "cast-position");
+                t.setDaemon(true);
+                return t;
+            });
+    private volatile java.util.concurrent.ScheduledFuture<?> polling;
+    /** When the speaker said PLAYING, and the first position it reported after that. */
+    private volatile long playingAt = -1;
+    private volatile double firstPosition = -1;
 
     public CastController(Executor worker, Listener listener) {
         this.worker = worker;
@@ -208,12 +219,25 @@ public class CastController {
                 worker.execute(() -> {
                     if (client != holder[0]) return;
                     listener.onSpeakerState(holder[0].isPlayerRunning(), playerState);
-                    if (!"PLAYING".equals(playerState)) return;
-                    long ms = Timing.current.sound("Ljud på högtalaren");
-                    CastDevice dev = device;
-                    String where = dev != null ? " på " + dev.name : "";
-                    String t = currentTitle != null ? currentTitle : "radio";
-                    listener.onStatus("Spelar " + t + where + (ms >= 0 ? " · ljud efter " + Timing.seconds(ms) : "") + ".");
+                    if (!"PLAYING".equals(playerState)) { stopPolling(); return; }
+                    if (!Timing.current.waitingForSound()) { announcePlaying(-1); return; }
+                    // The speaker says PLAYING when its player starts, which can be before anything is heard.
+                    // The sound counts as started when the playback position starts moving.
+                    Timing.current.mark("Högtalaren säger att den spelar");
+                    playingAt = Timing.now();
+                    firstPosition = -1;
+                    startPolling(holder[0]);
+                });
+            }
+            @Override public void onPosition(double seconds) {
+                worker.execute(() -> {
+                    if (client != holder[0] || polling == null) return;
+                    if (firstPosition < 0) { firstPosition = seconds; return; }
+                    if (seconds - firstPosition < 0.2) return;
+                    // Moving: the sound started about (seconds - firstPosition) before now, at the earliest at PLAYING.
+                    long began = Math.max(playingAt, Timing.now() - Math.round((seconds - firstPosition) * 1000));
+                    stopPolling();
+                    announcePlaying(Timing.current.soundAt("Ljud på högtalaren (positionen rör sig)", began));
                 });
             }
             @Override public void onDisconnected(String reason) {
@@ -237,6 +261,36 @@ public class CastController {
         client = c;
         setState(State.CONNECTED);
         return true;
+    }
+
+    private void startPolling(CastClient c) {
+        stopPolling();
+        long deadline = Timing.now() + 8000;
+        polling = poller.scheduleWithFixedDelay(() -> {
+            if (Timing.now() > deadline) {
+                worker.execute(() -> {
+                    if (polling == null) return;
+                    stopPolling();
+                    // The position never moved (some streams do not report it): count from PLAYING.
+                    announcePlaying(Timing.current.soundAt("Ljud på högtalaren (enligt högtalaren)", playingAt));
+                });
+                return;
+            }
+            try { c.requestMediaStatus(); } catch (IOException ignored) { }
+        }, 0, 250, java.util.concurrent.TimeUnit.MILLISECONDS);
+    }
+
+    private void stopPolling() {
+        java.util.concurrent.ScheduledFuture<?> p = polling;
+        polling = null;
+        if (p != null) p.cancel(false);
+    }
+
+    private void announcePlaying(long ms) {
+        CastDevice dev = device;
+        String where = dev != null ? " på " + dev.name : "";
+        String t = currentTitle != null ? currentTitle : "radio";
+        listener.onStatus("Spelar " + t + where + (ms >= 0 ? " · ljud efter " + Timing.seconds(ms) : "") + ".");
     }
 
     private void failed(IOException e) {
