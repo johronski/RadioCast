@@ -1,0 +1,95 @@
+== ICY nova https://novazz.ice.infomaniak.ch/novazz-128.mp3
+  url: https://novazz.ice.infomaniak.ch/novazz-128.mp3 metaint: 16000 icy-name: /novazz-128
+  META: b"StreamTitle='';StreamUrl='';adw_ad='true';durationMilliseconds='30484';adId='46479';insertionType='preroll';\x00\x00\x00\x00"
+== ICY fip https://icecast.radiofrance.fr/fip-midfi.mp3
+  url: https://icecast.radiofrance.fr/fip-midfi.mp3 metaint: None icy-name: fip-midfi.mp3
+== ICY mouv https://icecast.radiofrance.fr/mouv-midfi.mp3
+  url: https://icecast.radiofrance.fr/mouv-midfi.mp3 metaint: None icy-name: mouv-midfi.mp3
+== ICY inter https://icecast.radiofrance.fr/franceinter-midfi.mp3
+  url: https://icecast.radiofrance.fr/franceinter-midfi.mp3 metaint: None icy-name: franceinter-midfi.mp3
+== ICY p3a https://sverigesradio.se/topsy/direkt/164-hi-mp3
+  url: https://edge1.sr.se/p3-mp3-96 metaint: 16384 icy-name: 
+  META: b"StreamTitle='Morgonpasset i P3 med David Druid och Linnea Wikblad, spelar nu Titiyo - Come Along';\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+== ICY p3b https://live1.sr.se/p3-aac-192
+  url: https://edge2.sr.se/p3-aac-128 metaint: 16384 icy-name: 
+  META: b"StreamTitle='Morgonpasset i P3 med David Druid och Linnea Wikblad, spelar nu Titiyo - Come Along';\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+== ICY p3c https://sverigesradio.se/topsy/direkt/srapi/164.mp3
+  url: https://edge1.sr.se/p3-mp3-96 metaint: 16384 icy-name: 
+  META: b"StreamTitle='Morgonpasset i P3 med David Druid och Linnea Wikblad, spelar nu Titiyo - Come Along';\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+== STATUS https://icecast.radiofrance.fr/status-json.xsl None b'HTTP Error 403: Forbidden'
+== STATUS https://novazz.ice.infomaniak.ch/status-json.xsl None b'HTTP Error 404: Not Found'
+== API https://api.sr.se/api/v2/playlists/rightnow?channelid=164&format=json 200 application/json
+{"playlist":{"previoussong":{"title":"Sten, Sax, Påse Sten","description":"Valter Nilsson - Sten, Sax, Påse Sten","artist":"Valter Nilsson","composer":"Valter Nilsson | Johan Weber | Valter Nilsson | Johan Weber","albumname":"Sten, Sax, Påse Sten","recordlabel":"BlackValley Records","starttimeutc":"\/Date(1792388196000)\/","stoptimeutc":"\/Date(1792388389000)\/"},"song":{"title":"Come Along","description":"Titiyo - Come Along","artist":"Titiyo","composer":"Peter Svensson","recordlabel":"Superstudio","starttimeutc":"\/Date(1792388636000)\/","stoptimeutc":"\/Date(1792388856000)\/"},"channel":{"id":164,"name":"P3"}}}
+== API https://www.radiofrance.fr/fip/api/live?webradio=fip None None
+HTTP Error 404: Not Found
+== API https://www.radiofrance.fr/mouv/api/live?webradio=mouv None None
+HTTP Error 404: Not Found
+== API https://www.radiofrance.fr/franceinter/api/live?webradio=franceinter None None
+HTTP Error 404: Not Found
+== API https://www.radiofrance.fr/franceinter/api/live None None
+HTTP Error 404: Not Found
+== API https://www.radiofrance.fr/mouv/api/live None None
+HTTP Error 404: Not Found
+== API https://www.radiofrance.fr/fip/api/live None None
+HTTP Error 404: Not Found
+== API https://www.nova.fr/radios-data/www.nova.fr/all.json 200 application/json; charset=utf-8
+[
+    {
+        "radio": {
+            "id": "910",
+            "name": "Radio Nova",
+            "code": "radio-nova",
+            "stream_url": "https:\/\/novazz.ice.infomaniak.ch\/novazz-128.mp3",
+            "thumbnail": "https:\/\/www.lesinrocks.com\/wp-content\/thumbnails\/uploads\/sites\/2\/2024\/05\/NOVA-nova-400x496-1-t-1600x1984.png",
+            "image": "https:\/\/www.lesinrocks.com\/wp-content\/thumbnails\/uploads\/sites\/2\/2024\/05\/NOVA-nova-400x496-1-t-800x992-crop.png",
+            "background_image": "https:\/\/www.lesinrocks.com\/wp-content\/thumbnails\/uploads\/sites\/2\/2024\/05\/NOVA-nova-400x496-1-t-1600x1984.png"
+        },
+        "currentShow": {
+            "id": 241289,
+            "title": "NOVA LE MATIN",
+            "author": "S\u00e9GO RAFFAITIN, RAPH\u00e4L YEM, AZZEDDINE AHMED-CHAOUCH, THOMAS PORCHER ET RAYENE",
+            "cover": "https:\/\/www.lesinrocks.com\/wp-content\/thumbnails\/uploads\/sites\/2\/2023\/09\/Nova-le-matin-1-t-2000x2000.jpg",
+            "start": "06:30",
+            "end": "09:00",
+            "is_live_playlist": "1"
+        },
+        "currentTrack": {
+            "id": "109320",
+            "title": "COME AND GET YOUR LOVE",
+            "artist": "REDBONE",
+            "media_url": "https:\/\/www.lesinrocks.com\/wp-content\/uploads\/sites\/2\/2024\/04\/webservices_1000x1000-000000-80-0-0.jpg-202.jpeg",
+            "diffusion_date": "2026-10-19 07:46:16",
+            "duration": "03:11",
+            "spotify_url": null,
+            "deezer_url": "https:\/\/www.deezer.com\/track\/392284592",
+            "itunes_url": "https:\/\/itunes.apple.com\/WebObjects\/MZStore.woa\/wa\/search?term=REDBONE COME AND GET YOUR LOVE&media=music&entity=song&at=10ltae&ct=cetaitkoicetitre",
+            "image": "https:\/\/www.lesinrocks.com\/wp-content\/uploads\/sites\/2\/2024\/04\/webservices_1000x1000-000000-80-0-0.jpg-202.jpeg"
+        }
+    },
+    {
+        "radio": {
+            "id": "196018",
+            "name": "Nova Hip-Hop",
+            "code": "nova-hip-hop",
+            "stream_url": "https:\/\/nova-odn.ice.infomaniak.ch\/nova-odn-128.mp3",
+            "thumbnail": "https:\/\/www.lesinrocks.com\/wp-content\/thumbnails\/uploads\/sites\/2\/2024\/04\/NOVA-HIPHOP-400x496-1-t-1600x1984.png",
+            "image": "https:\/\/www.lesinrocks.com\/wp-content\/thumbnails\/uploads\/sites\/2\/2024\/04\/NOVA-HIPHOP-400x496-1-t-800x992-crop.png",
+            "background_image": "https:\/\/www.lesinrocks.com\/wp-content\/thumbnails\/uploads\/sites\/2\/2024\/04\/NOVA-HIPHOP-400x496-1-t-1600x1984.png"
+        },
+        "currentShow": null,
+        "currentTrack": {
+            "id": "114155",
+            "title": "HIP 2 DA GAME",
+            "artist": "LORD FINESSE Feat. KID CAPRI",
+            "media_url": "https:\/\/www.lesinrocks.com\/wp-content\/uploads\/sites\/2\/2025\/04\/webservices_1000x1000-000000-80-0-0.jpg-207.jpeg",
+            "diffusion_date": "2026-10-19 07:45:01",
+            "duration": "04:00",
+
+== API https://www.nova.fr/wp-json/radios/v1/onair None None
+HTTP Error 403: Forbidden
+RB SceneSat Radio (MP3) https://streams.scenesat.com/main/hq.mp3
+RB Sveriges Radio - P3 https://live1.sr.se/p3-aac-320
+RB Sveriges Radio - P3 https://live1.sr.se/p3-mp3-96
+RB Sveriges Radio - P3 Din gata https://live1.sr.se/dingata-aac-320
+RB Sveriges Radio P3 https://edge1.sr.se/p3-aac-320
+RB Sveriges radio P3 (mp3) https://live1.sr.se/p3-mp3-96
