@@ -157,7 +157,7 @@ public final class SongWatcher {
 
         // While casting on wifi: follow the stream's own titles over one steady connection.
         long nowMs = System.currentTimeMillis();
-        boolean shadowOk = !phone && (foreground || lockScreen()) && onWifi()
+        boolean shadowOk = !known && !phone && (foreground || lockScreen()) && onWifi()
                 && !isBad(state(url), "shadow", nowMs);
         if (shadowOk) {
             startShadow(url, s.name);
@@ -166,8 +166,12 @@ public final class SongWatcher {
             stopShadow();
         }
 
+        // A channel with its own song list (Radio France, Nova, Sveriges Radio) uses only that:
+        // the titles inside its stream are often the programme or adverts.
+        boolean known = patternFor(url) != null;
+
         // On the phone the song comes with the stream: no extra traffic.
-        if (phone && url.equals(playerUrl)) {
+        if (!known && phone && url.equals(playerUrl)) {
             String text = SongText.clean(playerTitle, s.name);
             if (text != null) {
                 publish(new Song(text, coverFor(text, null), url));
@@ -185,6 +189,7 @@ public final class SongWatcher {
             return;
         }
         misses = 0;
+        if (f.text == null) { publish(null); return; } // talk: nothing to show
         if (!f.text.equals(lastText)) {
             lastText = f.text;
             lastChange = now;
@@ -192,7 +197,7 @@ public final class SongWatcher {
             // The same title for a long time: maybe the source froze. See if another source disagrees.
             lastChange = now;
             Found other = lookupOther(url, s.name, f.source);
-            if (other != null && !other.text.equals(f.text)) {
+            if (other != null && other.text != null && !other.text.equals(f.text)) {
                 remember(url, other.source, f.source);
                 f = other;
                 lastText = f.text;
@@ -212,7 +217,7 @@ public final class SongWatcher {
         long now = System.currentTimeMillis();
         String src = st.optString("src", "");
         if (src.equals("none")) {
-            if (now < st.optLong("retry")) return null;
+            if (now < st.optLong("retry") && patternFor(url) == null) return null;
             src = "";
         }
         if (!src.isEmpty() && !src.equals("icy")) {
@@ -275,8 +280,11 @@ public final class SongWatcher {
                 default: return null;
             }
             if (raw == null) return null;
+            if (raw.text == null) return raw; // the source works, but no song right now
             String text = SongText.clean(raw.text, stationName);
-            return text == null ? null : new Found(text, raw.cover, source);
+            // Junk from a known source means "no song now"; from the others it means "not usable".
+            if (text == null) return source.equals("pattern") ? new Found(null, null, source) : null;
+            return new Found(text, raw.cover, source);
         } catch (IOException | JSONException | RuntimeException e) {
             return null;
         }
@@ -284,23 +292,87 @@ public final class SongWatcher {
 
     // ---------------------------------------------------------------- sources
 
-    /** A known now-playing address for this stream's provider (meta-sources.json). */
-    private Found fromPattern(String url) throws IOException, JSONException {
+    /** The known source in meta-sources.json for this stream and the address to ask, or null. */
+    private String[] patternFor(String url) {
         JSONArray list = patterns();
         for (int i = 0; i < list.length(); i++) {
-            JSONObject p = list.getJSONObject(i);
-            Matcher m = Pattern.compile(p.getString("match")).matcher(url);
-            if (!m.find()) continue;
-            String api = p.getString("url");
-            for (int g = m.groupCount(); g >= 1; g--) {
-                api = api.replace("$" + g, m.group(g) != null ? m.group(g) : "");
-            }
-            JSONObject json = new JSONObject(get(api, 512 * 1024));
-            String text = fill(p.getString("song"), json);
-            String cover = p.has("cover") ? stringAt(json, p.getString("cover")) : null;
-            return text == null ? null : new Found(text, cover, "pattern");
+            JSONObject p = list.optJSONObject(i);
+            if (p == null) continue;
+            try {
+                Matcher m = Pattern.compile(p.getString("match")).matcher(url);
+                if (!m.find()) continue;
+                String key = m.groupCount() >= 1 && m.group(1) != null ? m.group(1) : "";
+                JSONObject map = p.optJSONObject("map");
+                if (map != null) {
+                    if (!map.has(key)) continue;
+                    key = map.get(key).toString();
+                }
+                return new String[]{String.valueOf(i), p.getString("url").replace("$1", key)};
+            } catch (JSONException | RuntimeException ignored) { }
         }
         return null;
+    }
+
+    /**
+     * A known now-playing address for this stream's provider (meta-sources.json).
+     * Returns a Found without text when the source answered but nothing with a title plays (talk).
+     */
+    private Found fromPattern(String url) throws IOException, JSONException {
+        String[] hit = patternFor(url);
+        if (hit == null) return null;
+        JSONObject p = patterns().getJSONObject(Integer.parseInt(hit[0]));
+        String body = get(hit[1], 1024 * 1024).trim();
+        String type = p.optString("type", "json");
+        if (type.equals("radiofrance-livemeta")) return liveMeta(new JSONObject(body));
+
+        JSONObject item;
+        if (type.equals("list")) {
+            // A list of channels: take the one playing this stream.
+            JSONArray arr = body.startsWith("[") ? new JSONArray(body) : new JSONObject(body).getJSONArray(p.optString("list"));
+            item = null;
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.optJSONObject(i);
+                if (o != null && sameStream(stringAt(o, p.getString("select")), url)) { item = o; break; }
+            }
+            if (item == null) return null;
+        } else {
+            item = new JSONObject(body);
+        }
+        String text = fill(p.getString("song"), item);
+        String cover = p.has("cover") ? stringAt(item, p.getString("cover")) : null;
+        return new Found(text, cover, "pattern");
+    }
+
+    /** Radio France: the step that is a song and plays right now. */
+    private static Found liveMeta(JSONObject json) throws JSONException {
+        JSONObject steps = json.getJSONObject("steps");
+        long now = System.currentTimeMillis() / 1000;
+        Iterator<String> keys = steps.keys();
+        while (keys.hasNext()) {
+            JSONObject st = steps.optJSONObject(keys.next());
+            if (st == null || !"song".equals(str(st, "embedType"))) continue;
+            if (st.optLong("start") > now || st.optLong("end") + 5 < now) continue;
+            String artist = str(st, "performers").trim();
+            if (artist.isEmpty()) artist = str(st, "authors").trim();
+            String title = str(st, "title").trim();
+            if (title.isEmpty()) continue;
+            String visual = str(st, "visual");
+            return new Found(artist.isEmpty() ? title : artist + " – " + title,
+                    visual.startsWith("http") ? visual : null, "pattern");
+        }
+        return new Found(null, null, "pattern"); // talk or a programme without music
+    }
+
+    private static String str(JSONObject o, String key) {
+        Object v = o.opt(key);
+        return v instanceof String ? (String) v : "";
+    }
+
+    /** The same stream, whatever the scheme: compares host and path. */
+    private static boolean sameStream(String a, String b) {
+        if (a == null || b == null) return false;
+        return a.replaceFirst("^https?://", "").toLowerCase(Locale.ROOT)
+                .equals(b.replaceFirst("^https?://", "").toLowerCase(Locale.ROOT));
     }
 
     /** Icecast's status page lists every stream on the server with its current title. */
@@ -465,10 +537,10 @@ public final class SongWatcher {
     private JSONArray patterns() {
         long now = System.currentTimeMillis();
         if (patterns == null) {
-            String saved = prefs.getString("meta_sources", null);
-            patterns = parsePatterns(saved);
-            if (patterns == null) patterns = parsePatterns(asset());
-            if (patterns == null) patterns = new JSONArray();
+            // The newer of the saved copy from the repo and the copy inside the app.
+            String saved = prefs.getString("meta_sources", null), bundled = asset();
+            String best = version(saved) >= version(bundled) ? saved : bundled;
+            use(best);
             patternsCheckedAt = prefs.getLong("meta_sources_at", 0);
         }
         if (now - patternsCheckedAt > 24 * 3600_000L) {
@@ -476,16 +548,33 @@ public final class SongWatcher {
             prefs.edit().putLong("meta_sources_at", now).apply();
             try {
                 String body = get(PATTERNS_URL, 256 * 1024);
-                JSONArray fresh = parsePatterns(body);
-                if (fresh != null) {
-                    patterns = fresh;
+                if (parsePatterns(body) != null && version(body) >= patternsVersion) {
                     prefs.edit().putString("meta_sources", body).apply();
+                    use(body);
                 }
             } catch (IOException ignored) {
                 // Keep what we have.
             }
         }
         return patterns;
+    }
+
+    private int patternsVersion = -1;
+
+    /** Starts using a sources file; a newer version also forgets which sources failed before. */
+    private void use(String json) {
+        JSONArray list = parsePatterns(json);
+        patterns = list != null ? list : new JSONArray();
+        patternsVersion = version(json);
+        if (patternsVersion > prefs.getInt("meta_sources_version", 0)) {
+            prefs.edit().putInt("meta_sources_version", patternsVersion).remove("song_sources").apply();
+        }
+    }
+
+    private static int version(String json) {
+        if (json == null) return -1;
+        try { return new JSONObject(json).optInt("version", 0); }
+        catch (JSONException e) { return -1; }
     }
 
     private static JSONArray parsePatterns(String json) {

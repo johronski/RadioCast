@@ -2,7 +2,7 @@ name: Probe
 on:
   push:
     branches: [probe]
-    paths: ['.github/probe/**', '.github/workflows/probe.yml']
+    paths: ['.github/**', 'app/src/main/**']
 permissions:
   contents: write
 jobs:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 .github/probe/probe.py > probe-result.txt 2>&1 || true
+      - run: bash .github/probe/run.sh > probe-result.txt 2>&1 || true
       - run: |
           git config user.name RadioCast; git config user.email radiocast@users.noreply.github.com
           git add probe-result.txt; git commit -m "probe result [skip ci]"; git push
