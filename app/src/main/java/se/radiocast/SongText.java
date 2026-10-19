@@ -14,6 +14,8 @@ public final class SongText {
     private SongText() { }
 
     private static final Pattern STREAM_TITLE = Pattern.compile("StreamTitle='(.*?)';", Pattern.DOTALL);
+    private static final Pattern NOW_PLAYING =
+            Pattern.compile("(?i)(?:spelar nu|now playing|en ce moment)\\s*:?\\s+(.+)$");
     private static final String[] JUNK = {
             "unknown", "advert", "advertisement", "commercial", "jingle", "publicité", "pub", "promo",
             "station id", "id", "live", "en direct", "direct", "radio", "music", "musique", "untitled", "n/a", "null",
@@ -45,6 +47,9 @@ public final class SongText {
     public static String clean(String raw, String stationName) {
         if (raw == null) return null;
         String t = raw.replace('\u0000', ' ').replaceAll("\\s+", " ").trim();
+        // "Morgonpasset i P3 med …, spelar nu Titiyo - Come Along": keep only the song.
+        Matcher now = NOW_PLAYING.matcher(t);
+        if (now.find()) t = now.group(1).trim();
         t = t.replaceAll("^[-–—|:•\\s]+|[-–—|:•\\s]+$", "").trim();
         if (t.length() < 3) return null;
         String low = t.toLowerCase(Locale.ROOT);
@@ -67,7 +72,23 @@ public final class SongText {
             if (tt.isEmpty() || st.contains(tt)) return null;
             if (!shortName.isEmpty() && tt.contains(shortName) && tt.length() <= shortName.length() + 12) return null;
         }
-        return t;
+        return capitalise(t);
+    }
+
+    /** "COME AND GET YOUR LOVE" becomes "Come And Get Your Love"; mixed case is left alone. */
+    static String capitalise(String t) {
+        int upper = 0, letters = 0;
+        for (char c : t.toCharArray()) {
+            if (Character.isLetter(c)) { letters++; if (Character.isUpperCase(c)) upper++; }
+        }
+        if (letters < 4 || upper * 10 < letters * 8) return t; // mostly lowercase: leave it
+        StringBuilder sb = new StringBuilder(t.length());
+        boolean start = true;
+        for (char c : t.toCharArray()) {
+            sb.append(start ? c : Character.toLowerCase(c));
+            start = !Character.isLetterOrDigit(c) && c != '\'' && c != '\u2019';
+        }
+        return sb.toString();
     }
 
     /** Lowercase letters and digits only, for comparing names. */
