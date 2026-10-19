@@ -4,6 +4,9 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.net.Uri;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
@@ -103,7 +106,8 @@ public class MainActivity extends Activity {
     private TextView chipText, orderCountry, orderOwn;
     private RecyclerView stationList;
     private StationListAdapter stationAdapter;
-    private TextView npInitials, npName, npStatus;
+    private TextView npInitials, npName, npStatus, npSong;
+    private SongWatcher.Listener songListener;
     private ImageView npLogo;
     private View npLive;
     private ImageButton npButton;
@@ -156,6 +160,11 @@ public class MainActivity extends Activity {
         npLogo = findViewById(R.id.np_logo);
         npName = findViewById(R.id.np_name);
         npStatus = findViewById(R.id.np_status);
+        npSong = findViewById(R.id.np_song);
+        npSong.setOnClickListener(v -> {
+            SongWatcher.Song song = radio.songs.current();
+            if (song != null) openInSpotify(song.text);
+        });
         npLive = findViewById(R.id.np_live);
         npButton = findViewById(R.id.np_button);
         npProgress = findViewById(R.id.np_progress);
@@ -193,6 +202,8 @@ public class MainActivity extends Activity {
             }
         };
         radio.addListener(castListener);
+        songListener = song -> runOnUiThread(this::updateNowPlaying);
+        radio.songs.addListener(songListener);
 
         // Station list
         stationAdapter = new StationListAdapter(this, stations, new StationListAdapter.Listener() {
@@ -259,6 +270,7 @@ public class MainActivity extends Activity {
     protected void onStart() {
         super.onStart();
         discovery.start();
+        radio.songs.setForeground(true);
         syncNowPlaying();
         PlaybackService.setListener((playing, title, message) -> runOnUiThread(() -> {
             localPlaying = playing;
@@ -272,6 +284,7 @@ public class MainActivity extends Activity {
     protected void onStop() {
         super.onStop();
         discovery.stop();
+        radio.songs.setForeground(false);
         PlaybackService.setListener(null);
     }
 
@@ -280,6 +293,7 @@ public class MainActivity extends Activity {
         super.onDestroy();
         // The cast connection lives on in Radio, so the notification and lock screen keep working.
         radio.removeListener(castListener);
+        radio.songs.removeListener(songListener);
         net.shutdownNow();
         probes.shutdownNow();
         ui.removeCallbacksAndMessages(null);
@@ -350,9 +364,17 @@ public class MainActivity extends Activity {
 
         // Hidden until something has been played.
         npCard.setVisibility(s == null ? View.GONE : View.VISIBLE);
+        // The song, when the station tells it: tap to look it up in Spotify.
+        SongWatcher.Song song = radio.songs.current();
+        boolean showSong = active && s != null && song != null;
         if (s != null) {
-            Logos.bind(this, s.logo, s.name, npInitials, npLogo, 15);
+            Logos.bind(this, showSong && song.cover != null ? song.cover : s.logo, s.name, npInitials, npLogo, 15);
             npName.setText(StationGroups.shortName(s.name));
+        }
+        npSong.setVisibility(showSong ? View.VISIBLE : View.GONE);
+        if (showSong) {
+            npSong.setText("\u266A " + song.text);
+            npSong.setContentDescription("Spelas nu: " + song.text + ". Tryck för att söka låten i Spotify.");
         }
         npStatus.setText(status);
         npStatus.setTextColor(getColor(error ? R.color.danger : R.color.muted));
@@ -369,7 +391,7 @@ public class MainActivity extends Activity {
             View bar = searchDialog.findViewById(R.id.mini_bar);
             bar.setVisibility(s == null ? View.GONE : View.VISIBLE);
             miniName.setText(s != null ? StationGroups.shortName(s.name) : "");
-            miniStatus.setText(status);
+            miniStatus.setText(showSong ? song.text : status);
             miniButton.setImageResource(active ? R.drawable.ic_stop : R.drawable.ic_play);
             miniButton.setContentDescription(active ? "Stoppa uppspelning" : "Spela");
         }
@@ -469,7 +491,9 @@ public class MainActivity extends Activity {
         PopupMenu menu = new PopupMenu(this, anchor);
         menu.getMenu().add(0, 1, 0, "Tid till ljud för senaste start");
         menu.getMenu().add(0, 2, 1, "Visa tipsen igen");
-        menu.getMenu().add(0, 3, 2, "Om RadioCast");
+        menu.getMenu().add(0, 4, 2, "Visa låt på låsskärmen (mer data)")
+                .setCheckable(true).setChecked(radio.songs.lockScreen());
+        menu.getMenu().add(0, 3, 3, "Om RadioCast");
         menu.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
                 case 1: showTiming(); return true;
@@ -478,10 +502,30 @@ public class MainActivity extends Activity {
                     refreshStations();
                     return true;
                 case 3: showAbout(); return true;
+                case 4:
+                    boolean on = !radio.songs.lockScreen();
+                    radio.songs.setLockScreen(on);
+                    showSnack(on ? "Låten visas på låsskärmen även när appen är stängd. Det drar ungefär 3 MB i timmen."
+                            : "Låten hämtas bara när appen är öppen, om kanalen inte har en egen låtlista.", null, null);
+                    return true;
                 default: return false;
             }
         });
         menu.show();
+    }
+
+    /** Searches the song in the Spotify app, or on Spotify's website if the app is missing. */
+    private void openInSpotify(String song) {
+        String q = Uri.encode(song.replace(" \u2013 ", " "));
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("spotify:search:" + q)));
+        } catch (ActivityNotFoundException e) {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://open.spotify.com/search/" + q)));
+            } catch (ActivityNotFoundException e2) {
+                showSnack("Hittade varken Spotify eller en webbläsare.", null, null);
+            }
+        }
     }
 
     /** How long each step of the last start took. */

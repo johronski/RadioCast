@@ -19,6 +19,8 @@ public final class Radio {
 
     public final ExecutorService worker = Executors.newSingleThreadExecutor();
     public final CastController cast;
+    /** Which song is playing, when the station tells it. */
+    public final SongWatcher songs;
     private final Context app;
     private final List<CastController.Listener> listeners = new CopyOnWriteArrayList<>();
 
@@ -49,6 +51,7 @@ public final class Radio {
                 speakerPlayerRunning = playerRunning;
                 speakerPlayerState = playerState;
                 CastControlService.refresh(app);
+                if (songs != null) songs.poke();
                 for (CastController.Listener l : listeners) l.onSpeakerState(playerRunning, playerState);
             }
             @Override public void onSpeakerMedia(String url, String title) {
@@ -66,6 +69,7 @@ public final class Radio {
                 for (CastController.Listener l : listeners) l.onSpeakerVolume(level);
             }
         });
+        songs = new SongWatcher(app, this);
     }
 
     public static synchronized Radio get(Context context) {

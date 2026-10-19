@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "comment": "Kända källor för 'vad spelas nu' per strömleverantör. RadioCast hämtar filen en gång per dygn. match = reguljärt uttryck mot strömlänken, url = adress där $1 ersätts med första gruppen, song = mall med {sökväg.i.json}, cover = sökväg till omslagsbild (valfri).",
+  "sources": [
+    {
+      "id": "radiofrance-fip",
+      "match": "radiofrance\\.fr/(fip[a-z_]*)-(?:midfi|hifi|lofi)",
+      "url": "https://www.radiofrance.fr/fip/api/live?webradio=$1",
+      "song": "{now.secondLine.title} – {now.firstLine.title}",
+      "cover": "now.visuals.card.src"
+    }
+  ]
+}

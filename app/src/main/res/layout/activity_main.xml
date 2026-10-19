@@ -347,6 +347,18 @@
                     </LinearLayout>
 
                     <TextView
+                        android:id="@+id/np_song"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@color/accent_text"
+                        android:textSize="14sp"
+                        android:visibility="gone" />
+
+                    <TextView
                         android:id="@+id/np_status"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

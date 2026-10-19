@@ -111,8 +111,12 @@ public class CastControlService extends Service {
         boolean music = r.speakerMusicActive();
         boolean buffering = "BUFFERING".equals(r.speakerPlayerState);
         Station s = r.nowPlaying;
-        String title = s != null ? StationGroups.shortName(s.name) : "RadioCast";
+        String station = s != null ? StationGroups.shortName(s.name) : "RadioCast";
         String text = (music ? (buffering ? "Startar på " : "Spelar på ") : "Stoppad · ") + r.targetName();
+        // With a known song: the song as title, the station and speaker below it.
+        SongWatcher.Song song = music ? r.songs.current() : null;
+        String title = song != null ? song.text : station;
+        if (song != null) text = station + " · " + text;
 
         volume.setCurrentVolume(currentVolumeStep());
         session.setMetadata(new MediaMetadata.Builder()

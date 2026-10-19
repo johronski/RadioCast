@@ -22,6 +22,7 @@ import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.extractor.metadata.icy.IcyInfo;
 
 /** Plays a radio stream on the phone itself, also when the app is in the background. */
 public class PlaybackService extends Service {
@@ -67,6 +68,25 @@ public class PlaybackService extends Service {
     /** The stream playing (or starting) in the phone, or null. */
     public static String currentStream() { return active ? streamUrl : null; }
     private static volatile String streamUrl;
+    private static volatile PlaybackService running;
+
+    /** The song changed: show it in the notification and on the lock screen. */
+    static void refreshSong() {
+        PlaybackService s = running;
+        if (s == null) return;
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            if (running != s || !active) return;
+            s.updateSession(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_BUFFERING);
+            s.goForeground(currentTitle, playing ? "Spelar i telefonen" : "Ansluter…");
+        });
+    }
+
+    /** The current song while this service plays, or null. */
+    private static SongWatcher.Song song() {
+        Radio r = Radio.peek();
+        SongWatcher.Song s = r != null ? r.songs.current() : null;
+        return s != null && s.stationUrl.equals(streamUrl) ? s : null;
+    }
 
     public static void play(Context c, String url, String title, float volume) {
         active = true;
@@ -88,6 +108,7 @@ public class PlaybackService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        running = this;
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         NotificationChannel ch = new NotificationChannel(CHANNEL, "Uppspelning", NotificationManager.IMPORTANCE_LOW);
         ch.setDescription("Visas medan radion spelar på telefonen");
@@ -105,9 +126,11 @@ public class PlaybackService extends Service {
 
     private void updateSession(int state) {
         if (session == null) return;
+        SongWatcher.Song song = song();
+        String station = currentTitle != null ? currentTitle : "RadioCast";
         session.setMetadata(new MediaMetadata.Builder()
-                .putString(MediaMetadata.METADATA_KEY_TITLE, currentTitle != null ? currentTitle : "RadioCast")
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, "Spelar i telefonen")
+                .putString(MediaMetadata.METADATA_KEY_TITLE, song != null ? song.text : station)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, song != null ? station : "Spelar i telefonen")
                 .build());
         session.setPlaybackState(new PlaybackState.Builder()
                 .setState(state, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1f)
@@ -171,6 +194,16 @@ public class PlaybackService extends Service {
                     }
                 }
 
+                @Override public void onMetadata(androidx.media3.common.Metadata metadata) {
+                    // The stream's song titles (ICY), which come for free with the stream.
+                    for (int i = 0; i < metadata.length(); i++) {
+                        androidx.media3.common.Metadata.Entry e = metadata.get(i);
+                        if (e instanceof IcyInfo && ((IcyInfo) e).title != null) {
+                            Radio.get(PlaybackService.this).songs.onPlayerTitle(currentUrl, ((IcyInfo) e).title);
+                        }
+                    }
+                }
+
                 @Override public void onPlaybackStateChanged(int state) {
                     if (state == Player.STATE_READY) Timing.current.mark("Strömmen ansluten och buffrad");
                     if (state == Player.STATE_ENDED) stopPlayback("Sändningen tog slut.");
@@ -229,8 +262,8 @@ public class PlaybackService extends Service {
                 new Intent(this, PlaybackService.class).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE);
         Notification n = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(title != null ? title : "RadioCast")
-                .setContentText(text)
+                .setContentTitle(song() != null ? song().text : (title != null ? title : "RadioCast"))
+                .setContentText(song() != null ? (title != null ? title + " · " : "") + text : text)
                 .setContentIntent(openPi)
                 .setOngoing(true)
                 .setShowWhen(false)
@@ -252,6 +285,7 @@ public class PlaybackService extends Service {
     public void onDestroy() {
         releasePlayer();
         active = false;
+        if (running == this) running = null;
         if (session != null) {
             session.setActive(false);
             session.release();
