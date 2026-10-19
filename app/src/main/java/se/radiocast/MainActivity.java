@@ -106,7 +106,7 @@ public class MainActivity extends Activity {
     private TextView chipText, orderCountry, orderOwn;
     private RecyclerView stationList;
     private StationListAdapter stationAdapter;
-    private TextView npInitials, npName, npStatus, npSong;
+    private TextView npInitials, npName, npStatus, npSong, npTitle;
     private SongWatcher.Listener songListener;
     private ImageView npLogo;
     private View npLive;
@@ -161,6 +161,7 @@ public class MainActivity extends Activity {
         npName = findViewById(R.id.np_name);
         npStatus = findViewById(R.id.np_status);
         npSong = findViewById(R.id.np_song);
+        npTitle = findViewById(R.id.np_title);
         findViewById(R.id.np_text).setOnClickListener(v -> showSongSheet());
         npLive = findViewById(R.id.np_live);
         npButton = findViewById(R.id.np_button);
@@ -367,9 +368,16 @@ public class MainActivity extends Activity {
 
         // Hidden until something has been played.
         npCard.setVisibility(s == null ? View.GONE : View.VISIBLE);
-        // With a known song: title, artist, then the station and status. Tap for the full view.
-        SongWatcher.Song song = radio.songs.current();
-        boolean showSong = active && s != null && song != null;
+        // The channel on top; below it the song (note = title, person = artist); then the status.
+        // During talk the last song is shown greyed as "Senast: …". Tap for the full view.
+        SongWatcher.Song song = active ? radio.songs.current() : null;
+        SongWatcher.Song last = null;
+        if (active && song == null && s != null) {
+            List<SongWatcher.Song> recent = radio.songs.recent(PlaybackService.currentStream() != null
+                    ? PlaybackService.currentStream() : s.url);
+            if (!recent.isEmpty() && System.currentTimeMillis() - recent.get(0).at < 20 * 60_000) last = recent.get(0);
+        }
+        boolean showSong = song != null && s != null;
         if (s != null) {
             boolean cover = showSong && song.cover != null;
             Logos.bind(this, cover ? song.cover : s.logo, s.name, npInitials, npLogo, 15);
@@ -377,15 +385,27 @@ public class MainActivity extends Activity {
             npLogo.setPadding(pad, pad, pad, pad);
             npLogo.setScaleType(cover ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
             npLogo.setClipToOutline(true);
-            npName.setText(showSong ? song.shortTitle() : StationGroups.shortName(s.name));
+            npName.setText(StationGroups.shortName(s.name));
+            // With a song the channel is a small heading; without, it is the main line.
+            boolean small = showSong || last != null;
+            npName.setTextSize(small ? 13 : 16);
+            npName.setTextColor(getColor(small ? R.color.muted : R.color.fg));
         }
-        String artist = showSong ? song.artist() : "";
-        npSong.setVisibility(artist.isEmpty() ? View.GONE : View.VISIBLE);
-        npSong.setText(artist);
-        if (showSong) status = StationGroups.shortName(s.name) + " · " + status;
-        findViewById(R.id.np_text).setContentDescription(showSong
-                ? "Spelas nu: " + song.title() + (artist.isEmpty() ? "" : " av " + artist) + ". " + status + ". Tryck för mer."
-                : null);
+        SongWatcher.Song shown = showSong ? song : last;
+        String artist = shown != null ? shown.artist() : "";
+        npTitle.setVisibility(shown != null ? View.VISIBLE : View.GONE);
+        npSong.setVisibility(shown != null && !artist.isEmpty() ? View.VISIBLE : View.GONE);
+        if (shown != null) {
+            npTitle.setText(showSong ? shown.shortTitle() : "Senast: " + shown.shortTitle());
+            npTitle.setTextColor(getColor(showSong ? R.color.fg : R.color.muted));
+            npSong.setText(artist);
+            npSong.setTextColor(getColor(showSong ? R.color.soft_fg : R.color.muted));
+        }
+        findViewById(R.id.np_text).setContentDescription(s == null ? null
+                : StationGroups.shortName(s.name) + ". "
+                + (shown == null ? "" : (showSong ? "Låt: " : "Senast spelade låt: ") + shown.title()
+                        + (artist.isEmpty() ? "" : ". Artist: " + artist) + ". ")
+                + status + ". Tryck för mer.");
         npStatus.setText(status);
         npStatus.setTextColor(getColor(error ? R.color.danger : R.color.muted));
         npStatus.setMaxLines(error ? 2 : 1);
@@ -401,8 +421,8 @@ public class MainActivity extends Activity {
             View bar = searchDialog.findViewById(R.id.mini_bar);
             bar.setVisibility(s == null ? View.GONE : View.VISIBLE);
             miniName.setText(s != null ? StationGroups.shortName(s.name) : "");
-            if (showSong) miniName.setText(song.shortTitle());
-            miniStatus.setText(showSong ? (artist.isEmpty() ? status : artist) : status);
+            if (showSong) miniName.setText(song.shortTitle() + (artist.isEmpty() ? "" : " · " + artist));
+            miniStatus.setText(showSong ? StationGroups.shortName(s.name) + " · " + status : status);
             miniButton.setImageResource(active ? R.drawable.ic_stop : R.drawable.ic_play);
             miniButton.setContentDescription(active ? "Stoppa uppspelning" : "Spela");
         }
@@ -443,37 +463,57 @@ public class MainActivity extends Activity {
         cover.setClipToOutline(true);
         TextView title = d.findViewById(R.id.song_title), artist = d.findViewById(R.id.song_artist);
         TextView where = d.findViewById(R.id.song_station), spotify = d.findViewById(R.id.song_spotify);
+        ((TextView) d.findViewById(R.id.song_channel)).setText(station);
+        boolean hasArtist = song != null && !song.artist().isEmpty();
+        d.findViewById(R.id.song_title_label).setVisibility(song != null ? View.VISIBLE : View.GONE);
+        d.findViewById(R.id.song_artist_label).setVisibility(hasArtist ? View.VISIBLE : View.GONE);
+        title.setVisibility(song != null ? View.VISIBLE : View.GONE);
+        artist.setVisibility(hasArtist ? View.VISIBLE : View.GONE);
+        String playingWhere = casting() ? "Spelar på " + targetName() : "Spelar i telefonen";
         if (song != null) {
             title.setText(song.title());
             artist.setText(song.artist());
-            artist.setVisibility(song.artist().isEmpty() ? View.GONE : View.VISIBLE);
-            where.setText(station + " · " + (casting() ? "Spelar på " + targetName() : "Spelar i telefonen"));
+            where.setText(playingWhere);
             spotify.setVisibility(View.VISIBLE);
             spotify.setOnClickListener(v -> openInSpotify(song.text));
         } else {
-            title.setText(station);
-            artist.setVisibility(View.GONE);
-            where.setText(musicActive() ? "Kanalen berättar inte vilken låt som spelas just nu." : "Stoppad");
+            where.setText(musicActive() ? "Kanalen berättar inte vilken låt som spelas just nu.\n" + playingWhere : "Stoppad");
             spotify.setVisibility(View.GONE);
         }
-        // Earlier songs on this channel: tap one to look it up in Spotify.
+        // Earlier songs on this channel, title above artist: tap one to look it up in Spotify.
         LinearLayout list = d.findViewById(R.id.song_recent);
         list.removeAllViews();
-        List<SongWatcher.Song> recent = radio.songs.recent(song != null ? song.stationUrl : s.url);
+        List<SongWatcher.Song> recent = radio.songs.recent(song != null ? song.stationUrl
+                : (PlaybackService.currentStream() != null ? PlaybackService.currentStream() : s.url));
         d.findViewById(R.id.song_recent_head).setVisibility(recent.isEmpty() ? View.GONE : View.VISIBLE);
+        android.util.TypedValue tv = new android.util.TypedValue();
+        boolean ripple = getTheme().resolveAttribute(android.R.attr.selectableItemBackground, tv, true);
+        java.text.DateFormat clock = android.text.format.DateFormat.getTimeFormat(this);
         for (SongWatcher.Song r : recent) {
-            TextView row = new TextView(this);
-            row.setText(r.artist().isEmpty() ? r.shortTitle() : r.shortTitle() + "  ·  " + r.artist());
-            row.setTextColor(getColor(R.color.fg));
-            row.setTextSize(14);
-            row.setMaxLines(1);
-            row.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setMinHeight(dp(44));
-            row.setBackgroundResource(android.R.drawable.list_selector_background);
-            android.util.TypedValue tv = new android.util.TypedValue();
-            if (getTheme().resolveAttribute(android.R.attr.selectableItemBackground, tv, true)) row.setBackgroundResource(tv.resourceId);
-            row.setContentDescription(r.title() + (r.artist().isEmpty() ? "" : " av " + r.artist()) + ". Tryck för att söka i Spotify.");
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setPadding(0, dp(8), 0, dp(8));
+            if (ripple) row.setBackgroundResource(tv.resourceId);
+            TextView t = new TextView(this);
+            t.setText(r.shortTitle());
+            t.setTextColor(getColor(R.color.fg));
+            t.setTextSize(15);
+            t.setMaxLines(1);
+            t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            t.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_note, 0, 0, 0);
+            t.setCompoundDrawablePadding(dp(6));
+            t.setCompoundDrawableTintList(ColorStateList.valueOf(getColor(R.color.accent_text)));
+            row.addView(t);
+            TextView a = new TextView(this);
+            a.setText((r.artist().isEmpty() ? "" : r.artist() + "  ·  ") + clock.format(new java.util.Date(r.at)));
+            a.setTextColor(getColor(R.color.muted));
+            a.setTextSize(13);
+            a.setMaxLines(1);
+            a.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            a.setPadding(dp(22), dp(1), 0, 0);
+            row.addView(a);
+            row.setContentDescription("Låt: " + r.title() + (r.artist().isEmpty() ? "" : ". Artist: " + r.artist())
+                    + ". Tryck för att söka i Spotify.");
             row.setOnClickListener(v -> openInSpotify(r.text));
             list.addView(row);
         }

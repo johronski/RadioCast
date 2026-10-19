@@ -72,7 +72,10 @@ public final class SongText {
             if (tt.isEmpty() || st.contains(tt)) return null;
             if (!shortName.isEmpty() && tt.contains(shortName) && tt.length() <= shortName.length() + 12) return null;
         }
-        return capitalise(t);
+        if (!looksLikeSong) return capitalise(t);
+        // Artist and title on their own: "RACHEL CHINOURIRI – One song away" gets only the artist fixed.
+        String[] parts = split(t);
+        return capitalise(parts[0]) + " – " + capitalise(parts[1]);
     }
 
     /** "COME AND GET YOUR LOVE" becomes "Come And Get Your Love"; mixed case is left alone. */
@@ -82,6 +85,7 @@ public final class SongText {
             if (Character.isLetter(c)) { letters++; if (Character.isUpperCase(c)) upper++; }
         }
         if (letters < 4 || upper * 10 < letters * 8) return t; // mostly lowercase: leave it
+        if (!t.trim().contains(" ") && letters <= 5) return t; // ABBA, AC/DC: probably meant that way
         StringBuilder sb = new StringBuilder(t.length());
         boolean start = true;
         for (char c : t.toCharArray()) {
