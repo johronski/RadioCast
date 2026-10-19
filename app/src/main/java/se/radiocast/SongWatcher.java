@@ -155,6 +155,10 @@ public final class SongWatcher {
             publish(null);
         }
 
+        // A channel with its own song list (Radio France, Nova, Sveriges Radio) uses only that:
+        // the titles inside its stream are often the programme or adverts.
+        boolean known = patternFor(url) != null;
+
         // While casting on wifi: follow the stream's own titles over one steady connection.
         long nowMs = System.currentTimeMillis();
         boolean shadowOk = !known && !phone && (foreground || lockScreen()) && onWifi()
@@ -165,10 +169,6 @@ public final class SongWatcher {
         } else {
             stopShadow();
         }
-
-        // A channel with its own song list (Radio France, Nova, Sveriges Radio) uses only that:
-        // the titles inside its stream are often the programme or adverts.
-        boolean known = patternFor(url) != null;
 
         // On the phone the song comes with the stream: no extra traffic.
         if (!known && phone && url.equals(playerUrl)) {
@@ -285,7 +285,7 @@ public final class SongWatcher {
             // Junk from a known source means "no song now"; from the others it means "not usable".
             if (text == null) return source.equals("pattern") ? new Found(null, null, source) : null;
             return new Found(text, raw.cover, source);
-        } catch (IOException | JSONException | RuntimeException e) {
+        } catch (Exception e) {
             return null;
         }
     }
@@ -308,7 +308,7 @@ public final class SongWatcher {
                     key = map.get(key).toString();
                 }
                 return new String[]{String.valueOf(i), p.getString("url").replace("$1", key)};
-            } catch (JSONException | RuntimeException ignored) { }
+            } catch (Exception ignored) { }
         }
         return null;
     }
@@ -524,7 +524,7 @@ public final class SongWatcher {
                 String art = r.optString("artworkUrl100");
                 if (!art.isEmpty()) { found = art.replace("100x100bb", "300x300bb"); break; }
             }
-        } catch (IOException | JSONException | RuntimeException ignored) {
+        } catch (Exception ignored) {
             // No cover: the station's logo is shown instead.
         }
         synchronized (covers) { covers.put(text, found); }
