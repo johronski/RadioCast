@@ -2,6 +2,7 @@ package se.radiocast;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -34,10 +35,11 @@ import java.util.regex.Pattern;
  * <ol>
  * <li>the phone's own player, when the phone plays (free: the song comes with the stream)</li>
  * <li>a known now-playing address for the stream's provider (from meta-sources.json in the repo)</li>
+ * <li>following the stream's own song titles over one steady connection ("shadowing"), only on wifi
+ *     (not on mobile data), and only while the app is on screen unless the song is wanted on the lock screen</li>
+ * <li>a known now-playing address for the stream's provider (from meta-sources.json in the repo)</li>
  * <li>the radio server's status page (Icecast or Shoutcast)</li>
- * <li>a short look into the stream: read up to the first song block, then hang up</li>
  * </ol>
- * The short look runs only while the app is on screen, unless the user wants the song on the lock screen.
  */
 public final class SongWatcher {
 
@@ -59,7 +61,9 @@ public final class SongWatcher {
     private static final long STUCK_MS = 20 * 60_000;
     private static final long BAD_FOR_MS = 24 * 3600_000L;
     private static final long NONE_RETRY_MS = 6 * 3600_000L;
-    private static final String[] SOURCES = {"pattern", "icecast", "shoutcast", "icy"};
+    private static final String[] SOURCES = {"pattern", "icecast", "shoutcast"};
+    /** The speaker plays a few seconds behind the stream; show a new title when it is heard, not before. */
+    private static final long SHADOW_DELAY_MS = 3000;
 
     private final Context app;
     private final Radio radio;
@@ -77,6 +81,11 @@ public final class SongWatcher {
     private volatile Song song;
     private volatile boolean foreground;
     private volatile String playerTitle, playerUrl;
+
+    // Shadowing: one steady connection to the stream, reading only its song titles.
+    private volatile String shadowUrl;
+    private volatile boolean shadowLive;
+    private volatile HttpURLConnection shadowConn;
 
     // Worker-thread state
     private String watchedUrl;
@@ -98,13 +107,13 @@ public final class SongWatcher {
     public void addListener(Listener l) { listeners.add(l); }
     public void removeListener(Listener l) { listeners.remove(l); }
 
-    /** The app is on screen (the short look into the stream is allowed then). */
+    /** The app is on screen (following the stream's titles is allowed then, on wifi). */
     public void setForeground(boolean on) {
         foreground = on;
         if (on) poke();
     }
 
-    /** Show the song on the lock screen while casting, also when the app is not open (uses more data). */
+    /** Follow the song also when the app is not open, so the lock screen shows it (on wifi only). */
     public boolean lockScreen() { return prefs.getBoolean("song_lockscreen", false); }
     public void setLockScreen(boolean on) { prefs.edit().putBoolean("song_lockscreen", on).apply(); poke(); }
 
@@ -131,6 +140,7 @@ public final class SongWatcher {
         boolean phone = PlaybackService.isActive();
         boolean speaker = radio.speakerMusicActive();
         if (s == null || (!phone && !speaker)) {
+            stopShadow();
             if (watchedUrl != null) { watchedUrl = null; publish(null); }
             return;
         }
@@ -141,7 +151,19 @@ public final class SongWatcher {
             misses = 0;
             lastText = null;
             if (!phone) { playerTitle = null; playerUrl = null; }
+            stopShadow();
             publish(null);
+        }
+
+        // While casting on wifi: follow the stream's own titles over one steady connection.
+        long nowMs = System.currentTimeMillis();
+        boolean shadowOk = !phone && (foreground || lockScreen()) && onWifi()
+                && !isBad(state(url), "shadow", nowMs);
+        if (shadowOk) {
+            startShadow(url, s.name);
+            if (shadowLive) return; // titles arrive by themselves
+        } else {
+            stopShadow();
         }
 
         // On the phone the song comes with the stream: no extra traffic.
@@ -156,8 +178,7 @@ public final class SongWatcher {
         if (now < nextFetch) return;
         nextFetch = now + POLL_MS;
 
-        boolean mayPeek = !phone && (foreground || lockScreen());
-        Found f = lookup(url, s.name, phone, mayPeek);
+        Found f = lookup(url, s.name);
         if (f == null) {
             // Keep the last song through a short gap; clear it when nothing comes for a while.
             if (++misses >= 3) publish(null);
@@ -170,7 +191,7 @@ public final class SongWatcher {
         } else if (now - lastChange > STUCK_MS) {
             // The same title for a long time: maybe the source froze. See if another source disagrees.
             lastChange = now;
-            Found other = lookupOther(url, s.name, phone, mayPeek, f.source);
+            Found other = lookupOther(url, s.name, f.source);
             if (other != null && !other.text.equals(f.text)) {
                 remember(url, other.source, f.source);
                 f = other;
@@ -186,7 +207,7 @@ public final class SongWatcher {
     }
 
     /** Uses the remembered source; finds a new one when there is none or it keeps failing. */
-    private Found lookup(String url, String stationName, boolean phone, boolean mayPeek) {
+    private Found lookup(String url, String stationName) {
         JSONObject st = state(url);
         long now = System.currentTimeMillis();
         String src = st.optString("src", "");
@@ -194,7 +215,7 @@ public final class SongWatcher {
             if (now < st.optLong("retry")) return null;
             src = "";
         }
-        if (!src.isEmpty() && allowed(src, phone, mayPeek)) {
+        if (!src.isEmpty() && !src.equals("icy")) {
             Found f = fetch(src, url, stationName);
             if (f != null) {
                 put(st, "fails", 0);
@@ -209,10 +230,8 @@ public final class SongWatcher {
             put(st, "fails", 0);
         }
         // Look for a source that works.
-        boolean triedAll = true;
         for (String c : SOURCES) {
             if (c.equals(src) || isBad(st, c, now)) continue;
-            if (!allowed(c, phone, mayPeek)) { triedAll = false; continue; }
             Found f = fetch(c, url, stationName);
             if (f != null) {
                 put(st, "src", c);
@@ -221,19 +240,17 @@ public final class SongWatcher {
                 return f;
             }
         }
-        if (triedAll) {
-            put(st, "src", "none");
-            put(st, "retry", now + NONE_RETRY_MS);
-        }
+        put(st, "src", "none");
+        put(st, "retry", now + NONE_RETRY_MS);
         save(url, st);
         return null;
     }
 
-    private Found lookupOther(String url, String stationName, boolean phone, boolean mayPeek, String except) {
+    private Found lookupOther(String url, String stationName, String except) {
         long now = System.currentTimeMillis();
         JSONObject st = state(url);
         for (String c : SOURCES) {
-            if (c.equals(except) || isBad(st, c, now) || !allowed(c, phone, mayPeek)) continue;
+            if (c.equals(except) || isBad(st, c, now)) continue;
             Found f = fetch(c, url, stationName);
             if (f != null) return f;
         }
@@ -248,11 +265,6 @@ public final class SongWatcher {
         save(url, st);
     }
 
-    /** The short look into the stream is not needed while the phone plays, and only allowed when wanted. */
-    private static boolean allowed(String source, boolean phone, boolean mayPeek) {
-        return !source.equals("icy") || (!phone && mayPeek);
-    }
-
     private Found fetch(String source, String url, String stationName) {
         try {
             Found raw;
@@ -260,7 +272,6 @@ public final class SongWatcher {
                 case "pattern": raw = fromPattern(url); break;
                 case "icecast": raw = fromIcecast(url); break;
                 case "shoutcast": raw = fromShoutcast(url); break;
-                case "icy": raw = fromStream(url); break;
                 default: return null;
             }
             if (raw == null) return null;
@@ -321,32 +332,98 @@ public final class SongWatcher {
         return new Found(body, null, "shoutcast");
     }
 
-    /** Reads the stream up to its first song block (the current song), then hangs up. */
-    private Found fromStream(String url) throws IOException {
-        HttpURLConnection c = open(url);
-        c.setRequestProperty("Icy-MetaData", "1");
-        try {
-            if (c.getResponseCode() != 200) return null;
-            int metaint;
-            try { metaint = Integer.parseInt(c.getHeaderField("icy-metaint").trim()); }
-            catch (RuntimeException e) { return null; } // the stream carries no song titles
-            if (metaint <= 0 || metaint > 256 * 1024) return null;
-            InputStream in = new BufferedInputStream(c.getInputStream());
-            for (int block = 0; block < 2; block++) {
-                skipFully(in, metaint);
-                int len = in.read();
-                if (len < 0) return null;
-                len *= 16;
-                if (len == 0) continue; // no change announced in this block; the next one usually has it
-                byte[] meta = new byte[len];
-                readFully(in, meta);
-                String title = SongText.streamTitle(SongText.decode(meta, len));
-                return title == null ? null : new Found(title, null, "icy");
-            }
-            return null;
-        } finally {
-            c.disconnect();
+    // ---------------------------------------------------------------- shadowing
+
+    /** Not on mobile data: following a stream costs about as much as listening to it. */
+    private boolean onWifi() {
+        ConnectivityManager cm = (ConnectivityManager) app.getSystemService(Context.CONNECTIVITY_SERVICE);
+        return cm != null && cm.getActiveNetwork() != null && !cm.isActiveNetworkMetered();
+    }
+
+    private void startShadow(String url, String stationName) {
+        if (url.equals(shadowUrl)) return;
+        stopShadow();
+        shadowUrl = url;
+        Thread t = new Thread(() -> shadow(url, stationName), "song-shadow");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private void stopShadow() {
+        shadowUrl = null;
+        shadowLive = false;
+        HttpURLConnection c = shadowConn;
+        shadowConn = null;
+        if (c != null) {
+            new Thread(c::disconnect).start(); // unblocks the reading thread
         }
+    }
+
+    /** One steady connection; reads the song blocks between the audio and throws the audio away. */
+    private void shadow(String url, String stationName) {
+        int failures = 0;
+        while (url.equals(shadowUrl)) {
+            HttpURLConnection c = null;
+            try {
+                c = open(url);
+                c.setReadTimeout(20_000);
+                c.setRequestProperty("Icy-MetaData", "1");
+                shadowConn = c;
+                if (c.getResponseCode() != 200) throw new IOException("HTTP " + c.getResponseCode());
+                int metaint;
+                try { metaint = Integer.parseInt(c.getHeaderField("icy-metaint").trim()); }
+                catch (RuntimeException e) { metaint = -1; }
+                if (metaint <= 0 || metaint > 256 * 1024) {
+                    // This stream carries no titles: do not try again for a day; the other sources take over.
+                    giveUpShadow(url);
+                    return;
+                }
+                if (!url.equals(shadowUrl)) return;
+                shadowLive = true;
+                failures = 0;
+                InputStream in = new BufferedInputStream(c.getInputStream());
+                byte[] meta = new byte[255 * 16];
+                while (url.equals(shadowUrl)) {
+                    skipFully(in, metaint);
+                    int len = in.read();
+                    if (len < 0) throw new IOException("Strömmen tog slut");
+                    len *= 16;
+                    if (len == 0) continue;
+                    readFully(in, meta, len);
+                    String title = SongText.streamTitle(SongText.decode(meta, len));
+                    if (title != null) onShadowTitle(url, title, stationName);
+                }
+            } catch (IOException | RuntimeException e) {
+                if (!url.equals(shadowUrl)) return;
+                shadowLive = false;
+                if (++failures >= 3) { giveUpShadow(url); return; }
+                try { Thread.sleep(5000L * failures); } catch (InterruptedException ie) { return; }
+            } finally {
+                if (c != null) c.disconnect();
+            }
+        }
+    }
+
+    private void giveUpShadow(String url) {
+        exec.execute(() -> {
+            JSONObject st = state(url);
+            markBad(st, "shadow", System.currentTimeMillis() + BAD_FOR_MS);
+            save(url, st);
+            if (url.equals(shadowUrl)) { shadowUrl = null; shadowLive = false; }
+            nextFetch = 0;
+        });
+    }
+
+    /** A new title from the stream: shown when the speaker plays it, a few seconds later. */
+    private void onShadowTitle(String url, String raw, String stationName) {
+        String text = SongText.clean(raw, stationName);
+        exec.schedule(() -> {
+            if (!url.equals(shadowUrl) || !url.equals(watchedUrl)) return;
+            if (text == null) { publish(null); return; } // a jingle or the station's name
+            lastText = text;
+            lastChange = System.currentTimeMillis();
+            publish(new Song(text, coverFor(text, null), url));
+        }, SHADOW_DELAY_MS, TimeUnit.MILLISECONDS);
     }
 
     // ---------------------------------------------------------------- cover art
@@ -561,10 +638,10 @@ public final class SongWatcher {
         }
     }
 
-    private static void readFully(InputStream in, byte[] b) throws IOException {
+    private static void readFully(InputStream in, byte[] b, int length) throws IOException {
         int off = 0;
-        while (off < b.length) {
-            int r = in.read(b, off, b.length - off);
+        while (off < length) {
+            int r = in.read(b, off, length - off);
             if (r < 0) throw new IOException("Strömmen tog slut");
             off += r;
         }

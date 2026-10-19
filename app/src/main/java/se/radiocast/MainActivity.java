@@ -491,7 +491,7 @@ public class MainActivity extends Activity {
         PopupMenu menu = new PopupMenu(this, anchor);
         menu.getMenu().add(0, 1, 0, "Tid till ljud för senaste start");
         menu.getMenu().add(0, 2, 1, "Visa tipsen igen");
-        menu.getMenu().add(0, 4, 2, "Visa låt på låsskärmen (mer data)")
+        menu.getMenu().add(0, 4, 2, "Visa låt på låsskärmen (wifi)")
                 .setCheckable(true).setChecked(radio.songs.lockScreen());
         menu.getMenu().add(0, 3, 3, "Om RadioCast");
         menu.setOnMenuItemClickListener(item -> {
@@ -505,8 +505,8 @@ public class MainActivity extends Activity {
                 case 4:
                     boolean on = !radio.songs.lockScreen();
                     radio.songs.setLockScreen(on);
-                    showSnack(on ? "Låten visas på låsskärmen även när appen är stängd. Det drar ungefär 3 MB i timmen."
-                            : "Låten hämtas bara när appen är öppen, om kanalen inte har en egen låtlista.", null, null);
+                    showSnack(on ? "Låten följs även när appen är stängd, så den syns på låsskärmen. Bara på wifi."
+                            : "Låten följs bara när appen är öppen, utom för kanaler med egen låtlista.", null, null);
                     return true;
                 default: return false;
             }
