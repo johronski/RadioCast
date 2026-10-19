@@ -1,18 +1,8 @@
-app/src/main/java/se/radiocast/SongWatcher.java:160: error: cannot find symbol
-        boolean shadowOk = !known && !phone && (foreground || lockScreen()) && onWifi()
-                            ^
-  symbol:   variable known
-  location: class SongWatcher
-app/src/main/java/se/radiocast/SongWatcher.java:288: error: Alternatives in a multi-catch statement cannot be related by subclassing
-        } catch (IOException | JSONException | RuntimeException e) {
-                                               ^
-  Alternative JSONException is a subclass of alternative RuntimeException
-app/src/main/java/se/radiocast/SongWatcher.java:311: error: Alternatives in a multi-catch statement cannot be related by subclassing
-            } catch (JSONException | RuntimeException ignored) { }
-                                     ^
-  Alternative JSONException is a subclass of alternative RuntimeException
-app/src/main/java/se/radiocast/SongWatcher.java:527: error: Alternatives in a multi-catch statement cannot be related by subclassing
-        } catch (IOException | JSONException | RuntimeException ignored) {
-                                               ^
-  Alternative JSONException is a subclass of alternative RuntimeException
-4 errors
+Radio Nova: [pattern] Redbone – Come And Get Your Love  cover=https://www.lesinrocks.com/wp-content/uploads/sites/2/2024/04/webservices_1000x1000-000000-80-0-0.jpg-202.jpeg
+Nouvo Nova: [pattern] Dua Saleh – Firestorm  cover=https://www.lesinrocks.com/wp-content/uploads/sites/2/2026/07/webservices_1000x1000-000000-80-0-0.jpg-1.jpeg
+Mouv': [pattern] ASSIA – Le prix pour t aimer (habibi maareft ach n oullek)  cover=https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/09/d64501ef-3bb7-4f77-9355-ac55c32e5c5b/400x400_rf_omm_0000317704_dnc.0054708288.jpg
+FIP: [pattern] Steve Watson – Born to boogie  cover=https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/08/0d1eadf9-94a2-41bc-b8ae-7704764878f0/400x400_rf_omm_0001471583_dnc.0065729481.jpg
+France Inter: [pattern] null  cover=null
+Sveriges Radio - P3: [pattern] Yukimi, Dina Ögon & Little Dragon – Vann Du Livet?  cover=null
+P3 id: [pattern] Yukimi, Dina Ögon & Little Dragon – Vann Du Livet?  cover=null
+SceneSat: [icecast] Civil Citizen – Hurt  cover=null
