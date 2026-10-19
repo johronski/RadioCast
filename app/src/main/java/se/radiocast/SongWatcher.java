@@ -48,6 +48,12 @@ public final class SongWatcher {
         Song(String text, String cover, String stationUrl) {
             this.text = text; this.cover = cover; this.stationUrl = stationUrl;
         }
+        /** The artist, or "" when the source gave only a title. */
+        public String artist() { return SongText.split(text)[0]; }
+        /** The full title. */
+        public String title() { return SongText.split(text)[1]; }
+        /** The title without "(Radio Edit)" and the like, for small spaces. */
+        public String shortTitle() { return SongText.shortTitle(title()); }
         boolean same(Song o) {
             return o != null && text.equals(o.text) && eq(cover, o.cover) && stationUrl.equals(o.stationUrl);
         }
@@ -79,6 +85,8 @@ public final class SongWatcher {
     };
 
     private volatile Song song;
+    /** The latest songs, newest first (all channels; filtered per channel when shown). */
+    private final java.util.LinkedList<Song> history = new java.util.LinkedList<>();
     private volatile boolean foreground;
     private volatile String playerTitle, playerUrl;
 
@@ -104,6 +112,21 @@ public final class SongWatcher {
     }
 
     public Song current() { return song; }
+
+    /** Songs played before the current one on this channel, newest first. */
+    public List<Song> recent(String stationUrl) {
+        List<Song> out = new ArrayList<>();
+        Song now = song;
+        synchronized (history) {
+            for (Song s : history) {
+                if (!s.stationUrl.equals(stationUrl)) continue;
+                if (now != null && s.text.equals(now.text)) continue;
+                out.add(s);
+                if (out.size() >= 8) break;
+            }
+        }
+        return out;
+    }
     public void addListener(Listener l) { listeners.add(l); }
     public void removeListener(Listener l) { listeners.remove(l); }
 
@@ -676,6 +699,13 @@ public final class SongWatcher {
         Song old = song;
         if (s == null ? old == null : s.same(old)) return;
         song = s;
+        if (s != null) {
+            synchronized (history) {
+                if (history.isEmpty() || !history.getFirst().text.equals(s.text)) history.addFirst(s);
+                else { history.removeFirst(); history.addFirst(s); } // same song, maybe now with a cover
+                while (history.size() > 40) history.removeLast();
+            }
+        }
         for (Listener l : listeners) l.onSong(s);
         CastControlService.refresh(app);
         PlaybackService.refreshSong();

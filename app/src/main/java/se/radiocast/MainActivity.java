@@ -161,10 +161,7 @@ public class MainActivity extends Activity {
         npName = findViewById(R.id.np_name);
         npStatus = findViewById(R.id.np_status);
         npSong = findViewById(R.id.np_song);
-        npSong.setOnClickListener(v -> {
-            SongWatcher.Song song = radio.songs.current();
-            if (song != null) openInSpotify(song.text);
-        });
+        findViewById(R.id.np_text).setOnClickListener(v -> showSongSheet());
         npLive = findViewById(R.id.np_live);
         npButton = findViewById(R.id.np_button);
         npProgress = findViewById(R.id.np_progress);
@@ -364,18 +361,25 @@ public class MainActivity extends Activity {
 
         // Hidden until something has been played.
         npCard.setVisibility(s == null ? View.GONE : View.VISIBLE);
-        // The song, when the station tells it: tap to look it up in Spotify.
+        // With a known song: title, artist, then the station and status. Tap for the full view.
         SongWatcher.Song song = radio.songs.current();
         boolean showSong = active && s != null && song != null;
         if (s != null) {
-            Logos.bind(this, showSong && song.cover != null ? song.cover : s.logo, s.name, npInitials, npLogo, 15);
-            npName.setText(StationGroups.shortName(s.name));
+            boolean cover = showSong && song.cover != null;
+            Logos.bind(this, cover ? song.cover : s.logo, s.name, npInitials, npLogo, 15);
+            int pad = cover ? 0 : dp(6);
+            npLogo.setPadding(pad, pad, pad, pad);
+            npLogo.setScaleType(cover ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
+            npLogo.setClipToOutline(true);
+            npName.setText(showSong ? song.shortTitle() : StationGroups.shortName(s.name));
         }
-        npSong.setVisibility(showSong ? View.VISIBLE : View.GONE);
-        if (showSong) {
-            npSong.setText("\u266A " + song.text);
-            npSong.setContentDescription("Spelas nu: " + song.text + ". Tryck för att söka låten i Spotify.");
-        }
+        String artist = showSong ? song.artist() : "";
+        npSong.setVisibility(artist.isEmpty() ? View.GONE : View.VISIBLE);
+        npSong.setText(artist);
+        if (showSong) status = StationGroups.shortName(s.name) + " · " + status;
+        findViewById(R.id.np_text).setContentDescription(showSong
+                ? "Spelas nu: " + song.title() + (artist.isEmpty() ? "" : " av " + artist) + ". " + status + ". Tryck för mer."
+                : null);
         npStatus.setText(status);
         npStatus.setTextColor(getColor(error ? R.color.danger : R.color.muted));
         npStatus.setMaxLines(error ? 2 : 1);
@@ -391,12 +395,82 @@ public class MainActivity extends Activity {
             View bar = searchDialog.findViewById(R.id.mini_bar);
             bar.setVisibility(s == null ? View.GONE : View.VISIBLE);
             miniName.setText(s != null ? StationGroups.shortName(s.name) : "");
-            miniStatus.setText(showSong ? song.text : status);
+            if (showSong) miniName.setText(song.shortTitle());
+            miniStatus.setText(showSong ? (artist.isEmpty() ? status : artist) : status);
             miniButton.setImageResource(active ? R.drawable.ic_stop : R.drawable.ic_play);
             miniButton.setContentDescription(active ? "Stoppa uppspelning" : "Spela");
         }
 
         stationAdapter.setPlaying(active && s != null ? indexOfUrl(s.url) : -1, status);
+        refreshSongSheet();
+    }
+
+    private Dialog songSheet;
+
+    /** The full view of what is playing: big cover, the whole title, Spotify, and earlier songs. */
+    private void showSongSheet() {
+        if (radio.nowPlaying == null) return;
+        Dialog d = new Dialog(this, R.style.Sheet);
+        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        d.setContentView(R.layout.sheet_song);
+        Window w = d.getWindow();
+        if (w != null) {
+            w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            w.setGravity(Gravity.BOTTOM);
+        }
+        d.setOnDismissListener(x -> songSheet = null);
+        songSheet = d;
+        refreshSongSheet();
+        d.show();
+    }
+
+    private void refreshSongSheet() {
+        Dialog d = songSheet;
+        Station s = radio.nowPlaying;
+        if (d == null || s == null) return;
+        SongWatcher.Song song = musicActive() ? radio.songs.current() : null;
+        String station = StationGroups.shortName(s.name);
+        TextView initials = d.findViewById(R.id.song_initials);
+        ImageView cover = d.findViewById(R.id.song_cover);
+        Logos.bind(this, song != null && song.cover != null ? song.cover : s.logo, s.name, initials, cover, 18);
+        cover.setPadding(0, 0, 0, 0);
+        cover.setClipToOutline(true);
+        TextView title = d.findViewById(R.id.song_title), artist = d.findViewById(R.id.song_artist);
+        TextView where = d.findViewById(R.id.song_station), spotify = d.findViewById(R.id.song_spotify);
+        if (song != null) {
+            title.setText(song.title());
+            artist.setText(song.artist());
+            artist.setVisibility(song.artist().isEmpty() ? View.GONE : View.VISIBLE);
+            where.setText(station + " · " + (casting() ? "Spelar på " + targetName() : "Spelar i telefonen"));
+            spotify.setVisibility(View.VISIBLE);
+            spotify.setOnClickListener(v -> openInSpotify(song.text));
+        } else {
+            title.setText(station);
+            artist.setVisibility(View.GONE);
+            where.setText(musicActive() ? "Kanalen berättar inte vilken låt som spelas just nu." : "Stoppad");
+            spotify.setVisibility(View.GONE);
+        }
+        // Earlier songs on this channel: tap one to look it up in Spotify.
+        LinearLayout list = d.findViewById(R.id.song_recent);
+        list.removeAllViews();
+        List<SongWatcher.Song> recent = radio.songs.recent(song != null ? song.stationUrl : s.url);
+        d.findViewById(R.id.song_recent_head).setVisibility(recent.isEmpty() ? View.GONE : View.VISIBLE);
+        for (SongWatcher.Song r : recent) {
+            TextView row = new TextView(this);
+            row.setText(r.artist().isEmpty() ? r.shortTitle() : r.shortTitle() + "  ·  " + r.artist());
+            row.setTextColor(getColor(R.color.fg));
+            row.setTextSize(14);
+            row.setMaxLines(1);
+            row.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setMinHeight(dp(44));
+            row.setBackgroundResource(android.R.drawable.list_selector_background);
+            android.util.TypedValue tv = new android.util.TypedValue();
+            if (getTheme().resolveAttribute(android.R.attr.selectableItemBackground, tv, true)) row.setBackgroundResource(tv.resourceId);
+            row.setContentDescription(r.title() + (r.artist().isEmpty() ? "" : " av " + r.artist()) + ". Tryck för att söka i Spotify.");
+            row.setOnClickListener(v -> openInSpotify(r.text));
+            list.addView(row);
+        }
     }
 
     /** Tapping a channel plays it; tapping the one already playing leaves it playing. */

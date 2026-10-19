@@ -294,6 +294,9 @@
 
                 <LinearLayout
                     android:id="@+id/np_text"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="12dp"
@@ -350,11 +353,10 @@
                         android:id="@+id/np_song"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:background="?android:attr/selectableItemBackground"
+                        android:layout_marginTop="1dp"
                         android:ellipsize="end"
                         android:maxLines="1"
-                        android:textColor="@color/accent_text"
+                        android:textColor="@color/soft_fg"
                         android:textSize="14sp"
                         android:visibility="gone" />
 
