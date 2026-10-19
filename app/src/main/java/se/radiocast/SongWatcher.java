@@ -45,6 +45,8 @@ public final class SongWatcher {
 
     public static final class Song {
         public final String text, cover, stationUrl;
+        /** When the song was first seen (for "Senast: …" during talk). */
+        public final long at = System.currentTimeMillis();
         Song(String text, String cover, String stationUrl) {
             this.text = text; this.cover = cover; this.stationUrl = stationUrl;
         }
@@ -180,7 +182,9 @@ public final class SongWatcher {
 
         // A channel with its own song list (Radio France, Nova, Sveriges Radio) uses only that:
         // the titles inside its stream are often the programme or adverts.
-        boolean known = patternFor(url) != null;
+        // While its list is having a break, the stream's titles stand in (songs only, not programme names).
+        boolean hasList = patternFor(url) != null;
+        boolean known = hasList && !isBad(state(url), "pattern", System.currentTimeMillis());
 
         // While casting on wifi: follow the stream's own titles over one steady connection.
         long nowMs = System.currentTimeMillis();
@@ -195,7 +199,7 @@ public final class SongWatcher {
 
         // On the phone the song comes with the stream: no extra traffic.
         if (!known && phone && url.equals(playerUrl)) {
-            String text = SongText.clean(playerTitle, s.name);
+            String text = songsOnly(SongText.clean(playerTitle, s.name), hasList);
             if (text != null) {
                 publish(new Song(text, coverFor(text, null), url));
                 return;
@@ -244,7 +248,9 @@ public final class SongWatcher {
             src = "";
         }
         if (!src.isEmpty() && !src.equals("icy")) {
+            networkTrouble = false;
             Found f = fetch(src, url, stationName);
+            if (f == null && networkTrouble) return null; // try again at the next poll, nothing is broken
             if (f != null) {
                 put(st, "fails", 0);
                 save(url, st);
@@ -253,7 +259,8 @@ public final class SongWatcher {
             int fails = st.optInt("fails") + 1;
             put(st, "fails", fails);
             if (fails < 3) { save(url, st); return null; } // a hiccup: try the same source next time
-            markBad(st, src, now + BAD_FOR_MS);
+            // A channel's own list gets a short break (an hour); the others a day.
+            markBad(st, src, now + (src.equals("pattern") ? 3600_000L : BAD_FOR_MS));
             put(st, "src", "");
             put(st, "fails", 0);
         }
@@ -309,8 +316,21 @@ public final class SongWatcher {
             if (text == null) return source.equals("pattern") ? new Found(null, null, source) : null;
             return new Found(text, raw.cover, source);
         } catch (Exception e) {
+            // No network (switching networks, no coverage) says nothing about the source itself.
+            networkTrouble = e instanceof java.net.UnknownHostException || e instanceof java.net.SocketTimeoutException
+                    || e instanceof java.net.ConnectException || e instanceof java.net.NoRouteToHostException
+                    || (e instanceof java.net.SocketException && !(e instanceof java.net.ProtocolException))
+                    || !online();
             return null;
         }
+    }
+
+    /** The last failure was the network, not the source. */
+    private boolean networkTrouble;
+
+    private boolean online() {
+        ConnectivityManager cm = (ConnectivityManager) app.getSystemService(Context.CONNECTIVITY_SERVICE);
+        return cm != null && cm.getActiveNetwork() != null;
     }
 
     // ---------------------------------------------------------------- sources
@@ -499,6 +519,11 @@ public final class SongWatcher {
         }
     }
 
+    /** For channels with their own list, a stand-in title counts only if it is "Artist – Title". */
+    private static String songsOnly(String text, boolean channelHasList) {
+        return text != null && channelHasList && !text.contains(" – ") ? null : text;
+    }
+
     private void giveUpShadow(String url) {
         exec.execute(() -> {
             JSONObject st = state(url);
@@ -511,9 +536,10 @@ public final class SongWatcher {
 
     /** A new title from the stream: shown when the speaker plays it, a few seconds later. */
     private void onShadowTitle(String url, String raw, String stationName) {
-        String text = SongText.clean(raw, stationName);
+        String cleaned = SongText.clean(raw, stationName);
         exec.schedule(() -> {
             if (!url.equals(shadowUrl) || !url.equals(watchedUrl)) return;
+            String text = songsOnly(cleaned, patternFor(url) != null);
             if (text == null) { publish(null); return; } // a jingle or the station's name
             lastText = text;
             lastChange = System.currentTimeMillis();

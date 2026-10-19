@@ -40,4 +40,14 @@
         <item name="android:textSize">12sp</item>
         <item name="android:letterSpacing">0.08</item>
     </style>
+    <!-- Small caps label above a value, e.g. "LÅT" and "ARTIST" in the song view. -->
+    <style name="SongLabel">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.12</item>
+        <item name="android:textColor">@color/muted</item>
+        <item name="android:textSize">11sp</item>
+    </style>
 </resources>

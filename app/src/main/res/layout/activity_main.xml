@@ -349,12 +349,33 @@
                             android:textSize="16sp" />
                     </LinearLayout>
 
+                    <!-- The song: the title with a note, the artist with a person, so they are easy to tell apart. -->
+                    <TextView
+                        android:id="@+id/np_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:drawableStart="@drawable/ic_note"
+                        android:drawablePadding="6dp"
+                        android:drawableTint="@color/accent_text"
+                        android:ellipsize="end"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center_vertical"
+                        android:maxLines="1"
+                        android:textColor="@color/fg"
+                        android:textSize="15sp"
+                        android:visibility="gone" />
+
                     <TextView
                         android:id="@+id/np_song"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="1dp"
+                        android:layout_marginTop="2dp"
+                        android:drawableStart="@drawable/ic_person"
+                        android:drawablePadding="6dp"
+                        android:drawableTint="@color/muted"
                         android:ellipsize="end"
+                        android:gravity="center_vertical"
                         android:maxLines="1"
                         android:textColor="@color/soft_fg"
                         android:textSize="14sp"
