@@ -5,3 +5,4 @@ cd $GITHUB_WORKSPACE
 S=app/src/main/java/se/radiocast
 javac -encoding UTF-8 -cp /tmp/p/json.jar -d /tmp/p/out $(find .github/probe/stubs -name '*.java') $S/SongWatcher.java $S/SongText.java $S/Station.java $S/StationGroups.java $S/SearchQuery.java
 java -cp /tmp/p/out:/tmp/p/json.jar se.radiocast.SongProbe
+echo "== SR raw"; curl -s "https://api.sr.se/api/v2/playlists/rightnow?channelid=164&format=json" | head -c 1500; echo

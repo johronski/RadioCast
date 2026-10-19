@@ -12,7 +12,7 @@ public class SongProbe {
       {"Mouv'","https://icecast.radiofrance.fr/mouv-midfi.mp3"},
       {"FIP","https://icecast.radiofrance.fr/fip-midfi.mp3"},
       {"France Inter","https://icecast.radiofrance.fr/franceinter-midfi.mp3"},
-      {"Sveriges Radio - P3","https://live1.sr.se/p3-aac-320"},
+      {"Sveriges Radio - P3","https://live1.sr.se/p3-aac-320"},{"P3 b","https://sverigesradio.se/topsy/direkt/164-hi-aac"},{"P3 c","http://http-live.sr.se/p3-mp3-192"},
       {"P3 id","https://sverigesradio.se/topsy/direkt/srapi/164.mp3"},
       {"SceneSat","https://streams.scenesat.com/main/hq.mp3"},
     };

@@ -129,8 +129,10 @@ public class PlaybackService extends Service {
         SongWatcher.Song song = song();
         String station = currentTitle != null ? currentTitle : "RadioCast";
         session.setMetadata(new MediaMetadata.Builder()
-                .putString(MediaMetadata.METADATA_KEY_TITLE, song != null ? song.text : station)
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, song != null ? station : "Spelar i telefonen")
+                .putString(MediaMetadata.METADATA_KEY_TITLE, song != null ? song.shortTitle() : station)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, song != null && !song.artist().isEmpty() ? song.artist()
+                        : (song != null ? station : "Spelar i telefonen"))
+                .putString(MediaMetadata.METADATA_KEY_ALBUM, station)
                 .build());
         session.setPlaybackState(new PlaybackState.Builder()
                 .setState(state, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1f)
@@ -262,8 +264,10 @@ public class PlaybackService extends Service {
                 new Intent(this, PlaybackService.class).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE);
         Notification n = new Notification.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(song() != null ? song().text : (title != null ? title : "RadioCast"))
-                .setContentText(song() != null ? (title != null ? title + " · " : "") + text : text)
+                .setContentTitle(song() != null ? song().shortTitle() : (title != null ? title : "RadioCast"))
+                .setContentText(song() != null
+                        ? (song().artist().isEmpty() ? "" : song().artist() + " · ") + (title != null ? title + " · " : "") + text
+                        : text)
                 .setContentIntent(openPi)
                 .setOngoing(true)
                 .setShowWhen(false)

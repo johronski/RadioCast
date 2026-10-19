@@ -96,6 +96,19 @@ public final class SongText {
         return s.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]", "");
     }
 
+    private static final String EXTRAS =
+            "radio edit|radio version|single version|album version|edit|remaster(?:ed)?(?: \\d{4})?|\\d{4} remaster(?:ed)?"
+            + "|explicit|clean|mono|stereo|original mix|extended mix|extended version|version courte";
+    private static final Pattern BRACKETED = Pattern.compile("(?i)\\s*[(\\[](?:" + EXTRAS + ")[^)\\]]*[)\\]]");
+    private static final Pattern TRAILING = Pattern.compile("(?i)\\s+[-–]\\s+(?:" + EXTRAS + ").*$");
+
+    /** The title without "(Radio Edit)", "(Remastered 2011)", "- Single Version" and the like. */
+    public static String shortTitle(String title) {
+        String t = BRACKETED.matcher(title).replaceAll("");
+        t = TRAILING.matcher(t).replaceAll("").trim();
+        return t.isEmpty() ? title : t;
+    }
+
     /** "Artist – Title" as artist and title (title alone when there is no separator). */
     public static String[] split(String song) {
         int i = song.indexOf(" – ");
