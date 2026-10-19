@@ -437,13 +437,7 @@ public class MainActivity extends Activity {
     private void showSongSheet() {
         if (radio.nowPlaying == null) return;
         Dialog d = new Dialog(this, R.style.Sheet);
-        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        d.setContentView(R.layout.sheet_song);
-        Window w = d.getWindow();
-        if (w != null) {
-            w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            w.setGravity(Gravity.BOTTOM);
-        }
+        SheetFrame.install(d, R.layout.sheet_song); // close button, drag down, tap outside
         d.setOnDismissListener(x -> songSheet = null);
         songSheet = d;
         refreshSongSheet();
@@ -775,13 +769,7 @@ public class MainActivity extends Activity {
         discovery.start();
         probeSpeakers();
         Dialog d = new Dialog(this, R.style.Sheet);
-        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        d.setContentView(R.layout.sheet_cast);
-        Window w = d.getWindow();
-        if (w != null) {
-            w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            w.setGravity(Gravity.BOTTOM);
-        }
+        SheetFrame.install(d, R.layout.sheet_cast); // close button, drag down, tap outside
         d.findViewById(R.id.enter_ip).setOnClickListener(v -> { d.dismiss(); askForIp(afterConnect); });
         d.findViewById(R.id.disconnect).setOnClickListener(v -> { d.dismiss(); cast.disconnect(false); });
         d.findViewById(R.id.stop_device).setOnClickListener(v -> { d.dismiss(); cast.disconnect(true); });
