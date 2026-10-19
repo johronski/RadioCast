@@ -1,8 +1,12 @@
-Radio Nova: [pattern] Redbone – Come And Get Your Love  cover=https://www.lesinrocks.com/wp-content/uploads/sites/2/2024/04/webservices_1000x1000-000000-80-0-0.jpg-202.jpeg
-Nouvo Nova: [pattern] Dua Saleh – Firestorm  cover=https://www.lesinrocks.com/wp-content/uploads/sites/2/2026/07/webservices_1000x1000-000000-80-0-0.jpg-1.jpeg
-Mouv': [pattern] ASSIA – Le prix pour t aimer (habibi maareft ach n oullek)  cover=https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/09/d64501ef-3bb7-4f77-9355-ac55c32e5c5b/400x400_rf_omm_0000317704_dnc.0054708288.jpg
-FIP: [pattern] Steve Watson – Born to boogie  cover=https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/08/0d1eadf9-94a2-41bc-b8ae-7704764878f0/400x400_rf_omm_0001471583_dnc.0065729481.jpg
+Radio Nova: [pattern] RACHEL CHINOURIRI – One song away from crying  cover=https://www.lesinrocks.com/wp-content/uploads/sites/2/2026/09/webservices_1000x1000-000000-80-0-0.jpg-13.jpeg
+Nouvo Nova: [pattern] Steve Lacy – Oh Yeah?  cover=null
+Mouv': [pattern] THE GAME – Love it or hate it (feat. Snoop Dogg, Cool & Dre)  cover=https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/08/38b4502b-8ae5-4899-82cf-96faaf75c1b8/400x400_sc_rf_omm_a39cb5bc-8b71-444c-8b82-63aa3e4530fd.0163120205.png.jpg
+FIP: [pattern] Jaguare Affair – Comment lui dire  cover=https://www.radiofrance.fr/s3/cruiser-production-eu3/2025/10/e8f24118-017c-4d6f-91ad-22eaf563c4af/400x400_sc_rf_omm_0004159056_dnc.0156439437.jpg
 France Inter: [pattern] null  cover=null
-Sveriges Radio - P3: [pattern] Yukimi, Dina Ögon & Little Dragon – Vann Du Livet?  cover=null
-P3 id: [pattern] Yukimi, Dina Ögon & Little Dragon – Vann Du Livet?  cover=null
-SceneSat: [icecast] Civil Citizen – Hurt  cover=null
+Sveriges Radio - P3: [pattern] null  cover=null
+P3 b: [pattern] null  cover=null
+P3 c: [pattern] null  cover=null
+P3 id: [pattern] null  cover=null
+SceneSat: [icecast] 7bit Hero – Bubble Bobble 'Bubble Dragon' OC ReMix  cover=null
+== SR raw
+{"playlist":{"previoussong":{"title":"Marianne","description":"Fontaines D.C. - Marianne","artist":"Fontaines D.C.","composer":"Carlos O'Connell | Conor Curley | Conor Deegan Iii | Elysian Collective | Grian Chatten | Laura Moody | Richard Jones | Tom Coll","albumname":"Dopamine Chamber","recordlabel":"XL","starttimeutc":"\/Date(1792398773000)\/","stoptimeutc":"\/Date(1792398990000)\/"},"channel":{"id":164,"name":"P3"}}}
