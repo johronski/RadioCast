@@ -179,6 +179,7 @@ public class MainActivity extends Activity {
                         // Remember the speaker by its unique id, so it is found again if its IP address changes.
                         prefs.edit().putString("device", device.key()).putString("device_id", device.id)
                                 .putString("device_name", device.name).apply();
+                        rememberPlace(device);
                         askForNotifications(); // for the casting notification and lock-screen controls
                     }
                     updateCastChip();
@@ -250,9 +251,12 @@ public class MainActivity extends Activity {
             @Override public void onFound(String name, String host, int port, String id, String rs, boolean group) {
                 addDevice(name, host, port, id, rs, group);
             }
-            @Override public void onError(String message) { notifyUser(message); }
+            // On mobile data there is nothing to find; no need to say so.
+            @Override public void onError(String message) { if (place != null) notifyUser(message); }
         });
 
+        place = NetworkPlace.current(this);
+        applyPlace();
         if (!radio.casting()) startReconnect();
         for (String ip : prefs.getStringSet("ips", new HashSet<>())) {
             addDevice("Högtalare " + ip, ip, 8009, "", "", false);
@@ -268,6 +272,7 @@ public class MainActivity extends Activity {
         super.onStart();
         discovery.start();
         radio.songs.setForeground(true);
+        watchNetwork(true);
         syncNowPlaying();
         PlaybackService.setListener((playing, title, message) -> runOnUiThread(() -> {
             localPlaying = playing;
@@ -282,6 +287,7 @@ public class MainActivity extends Activity {
         super.onStop();
         discovery.stop();
         radio.songs.setForeground(false);
+        watchNetwork(false);
         PlaybackService.setListener(null);
     }
 
@@ -890,6 +896,99 @@ public class MainActivity extends Activity {
         String t = CastClient.cleanStatus(rs, "");
         if (t.isEmpty()) return rs.equalsIgnoreCase("Ready To Cast") ? "ledig" : "";
         return "spelar " + t;
+    }
+
+    // ================================================================ home network
+
+    /** The network the phone is on now (null on mobile data); see {@link NetworkPlace}. */
+    private String place;
+    private android.net.ConnectivityManager.NetworkCallback networkCallback;
+
+    /**
+     * Makes the last speaker used on this network the one to reconnect to. On mobile data or an
+     * unknown network there is none, so the app does not look for the speakers at home.
+     */
+    private void applyPlace() {
+        JSONObject homes;
+        try { homes = new JSONObject(prefs.getString("homes", "{}")); } catch (JSONException e) { homes = new JSONObject(); }
+        JSONObject here = place != null ? homes.optJSONObject(place) : null;
+        if (here == null && place != null && homes.length() == 0) {
+            // First run with this version: adopt the saved speaker if it is on this network.
+            String key = prefs.getString("device", null);
+            if (key != null && NetworkPlace.isLocal(this, key.substring(0, key.lastIndexOf(':')))) {
+                here = new JSONObject();
+                try {
+                    here.put("device", key).put("device_id", prefs.getString("device_id", ""))
+                            .put("device_name", prefs.getString("device_name", ""));
+                    homes.put(place, here);
+                    prefs.edit().putString("homes", homes.toString()).apply();
+                } catch (JSONException ignored) { }
+            }
+        }
+        SharedPreferences.Editor e = prefs.edit();
+        if (here != null) {
+            e.putString("device", here.optString("device")).putString("device_id", here.optString("device_id"))
+                    .putString("device_name", here.optString("device_name"));
+        } else {
+            e.remove("device").remove("device_id").remove("device_name");
+        }
+        e.apply();
+    }
+
+    /** Remembers the speaker as the last one used on this network. */
+    private void rememberPlace(CastDevice device) {
+        if (place == null) return;
+        try {
+            JSONObject homes = new JSONObject(prefs.getString("homes", "{}"));
+            homes.put(place, new JSONObject().put("device", device.key()).put("device_id", device.id)
+                    .put("device_name", device.name));
+            prefs.edit().putString("homes", homes.toString()).apply();
+        } catch (JSONException ignored) { }
+    }
+
+    /** Notices when the phone changes network (home, away, another wifi) while the app is open. */
+    private void watchNetwork(boolean on) {
+        android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+        if (cm == null) return;
+        if (!on) {
+            if (networkCallback != null) {
+                try { cm.unregisterNetworkCallback(networkCallback); } catch (RuntimeException ignored) { }
+                networkCallback = null;
+            }
+            return;
+        }
+        networkChanged(); // it may have changed while the app was in the background
+        if (networkCallback != null) return;
+        networkCallback = new android.net.ConnectivityManager.NetworkCallback() {
+            @Override public void onAvailable(android.net.Network n) { runOnUiThread(() -> networkChanged()); }
+            @Override public void onLost(android.net.Network n) { runOnUiThread(() -> networkChanged()); }
+            @Override public void onLinkPropertiesChanged(android.net.Network n, android.net.LinkProperties lp) {
+                runOnUiThread(() -> networkChanged());
+            }
+        };
+        try { cm.registerDefaultNetworkCallback(networkCallback); } catch (RuntimeException ignored) { networkCallback = null; }
+    }
+
+    private void networkChanged() {
+        String now = NetworkPlace.current(this);
+        if (now == null ? place == null : now.equals(place)) return;
+        place = now;
+        if (casting()) return; // the speaker connection handles a lost network itself
+        // Another place: forget the speakers found here and look again.
+        reconnectTimers.removeCallbacksAndMessages(null);
+        reconnect = Reconnect.NONE;
+        unreachable = null;
+        autoConnectTried = false;
+        devices.clear();
+        applyPlace();
+        discovery.stop();
+        discovery.start();
+        for (String ip : prefs.getStringSet("ips", new HashSet<>())) {
+            addDevice("Högtalare " + ip, ip, 8009, "", "", false);
+        }
+        startReconnect();
+        updateCastChip();
+        refreshSheet();
     }
 
     /** Looks for the last used speaker at start, retrying for a while, then offers a retry button. */
