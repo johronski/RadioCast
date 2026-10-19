@@ -1,12 +1,12 @@
-Radio Nova: [pattern] RACHEL CHINOURIRI – One song away from crying  cover=https://www.lesinrocks.com/wp-content/uploads/sites/2/2026/09/webservices_1000x1000-000000-80-0-0.jpg-13.jpeg
-Nouvo Nova: [pattern] Steve Lacy – Oh Yeah?  cover=null
-Mouv': [pattern] THE GAME – Love it or hate it (feat. Snoop Dogg, Cool & Dre)  cover=https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/08/38b4502b-8ae5-4899-82cf-96faaf75c1b8/400x400_sc_rf_omm_a39cb5bc-8b71-444c-8b82-63aa3e4530fd.0163120205.png.jpg
-FIP: [pattern] Jaguare Affair – Comment lui dire  cover=https://www.radiofrance.fr/s3/cruiser-production-eu3/2025/10/e8f24118-017c-4d6f-91ad-22eaf563c4af/400x400_sc_rf_omm_0004159056_dnc.0156439437.jpg
+Radio Nova: [pattern] David Walters – Vini Jwen Mwen  cover=https://www.lesinrocks.com/wp-content/uploads/sites/2/2026/06/webservices_1000x1000-000000-80-0-0.jpg-23.jpeg
+Nouvo Nova: [pattern] Benny Sings – Parachute  cover=https://www.lesinrocks.com/wp-content/uploads/sites/2/2026/06/webservices_1000x1000-000000-80-0-0.jpg-360.jpeg
+Mouv': [pattern] ADELA – Nicole Kidman  cover=https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/09/0a9313a9-de0d-41ad-a37c-f54d7e53adb3/400x400_sc_rf_omm_b3c509ac-44aa-4994-ba1c-86f8654dea82.0163919148.jpg
+FIP: [pattern] The Stance Brothers – Prayer  cover=https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/09/7f57647f-9fb6-4139-98c1-80da985441dd/400x400_rf_omm_0000224476_dnc.0057110799.jpg
 France Inter: [pattern] null  cover=null
-Sveriges Radio - P3: [pattern] null  cover=null
-P3 b: [pattern] null  cover=null
-P3 c: [pattern] null  cover=null
-P3 id: [pattern] null  cover=null
-SceneSat: [icecast] 7bit Hero – Bubble Bobble 'Bubble Dragon' OC ReMix  cover=null
+Sveriges Radio - P3: [pattern] Troye Sivan – Party  cover=null
+P3 b: [pattern] Troye Sivan – Party  cover=null
+P3 c: [pattern] Troye Sivan – Party  cover=null
+P3 id: [pattern] Troye Sivan – Party  cover=null
+SceneSat: [icecast] Rob Hubbard – Flash Gordon (by Chris Abbott, Marcel Donne & Boz)  cover=null
 == SR raw
-{"playlist":{"previoussong":{"title":"Marianne","description":"Fontaines D.C. - Marianne","artist":"Fontaines D.C.","composer":"Carlos O'Connell | Conor Curley | Conor Deegan Iii | Elysian Collective | Grian Chatten | Laura Moody | Richard Jones | Tom Coll","albumname":"Dopamine Chamber","recordlabel":"XL","starttimeutc":"\/Date(1792398773000)\/","stoptimeutc":"\/Date(1792398990000)\/"},"channel":{"id":164,"name":"P3"}}}
+{"playlist":{"previoussong":{"title":"Hoppet","description":"Jalda - Hoppet","artist":"Jalda","composer":"Abel/Jalda Badouran/William Segerdahl","recordlabel":"Universal Music","starttimeutc":"\/Date(1792399182000)\/","stoptimeutc":"\/Date(1792399350000)\/"},"song":{"title":"Party","description":"Troye Sivan - Party","artist":"Troye Sivan","composer":"Troye Sivan  | Leland  | Tyde Levi  | Rob Lfo  | Kaelyn Behr  | Elvira Anderfjärd  | Tove Burman  | Luka Kloser  | Mirwais Ahmadzai  | Madonna","albumname":"Party","recordlabel":"TOKKYS MUSIC, LLC UNDER EXCLUSIVE LICENSE TO INTERSCOPE RECORDS","starttimeutc":"\/Date(1792399502000)\/","stoptimeutc":"\/Date(1792399703000)\/"},"channel":{"id":164,"name":"P3"}}}
