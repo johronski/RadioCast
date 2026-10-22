@@ -4,7 +4,6 @@ public class SongProbe {
   public static void main(String[] a) throws Exception {
     Radio r = new Radio(); android.content.Context c = new android.content.Context();
     SongWatcher w = new SongWatcher(c, r);
-    Method fp = SongWatcher.class.getDeclaredMethod("fromPattern", String.class); fp.setAccessible(true);
     Method look = SongWatcher.class.getDeclaredMethod("lookup", String.class, String.class); look.setAccessible(true);
     String[][] st = {
       {"Radio Nova","https://novazz.ice.infomaniak.ch/novazz-128.mp3"},
