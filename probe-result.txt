@@ -1,30 +1,10 @@
-== https://api.sr.se/api/v2/playlists/getplaylistbychannelid?channelid=164&startdatetime=2026-10-22T00:00:00&enddatetime=2026-10-22T23:59:00&format=json&size=5
-{
-  "errors": {
-    "id": [
-      "The id field is required."
-    ]
-  },
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-  "title": "One or more validation errors occurred.",
-  "status": 400,
-  "traceId": "00-84a36cceaaf8928cdff942dbed97beb9-5f58c55172a82e19-00"
-}
-== https://api.sr.se/api/v2/playlists/getplaylistbychannelid?channelid=164&format=json&size=5
-{
-  "errors": {
-    "id": [
-      "The id field is required."
-    ]
-  },
-  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-  "title": "One or more validation errors occurred.",
-  "status": 400,
-  "traceId": "00-fa0596d3e19733146e7b24700bcd83a2-51b0a3e94aa7d414-00"
-}
+== https://api.sr.se/api/v2/playlists/getplaylistbychannelid?id=164&startdatetime=2026-10-22T00:00:00&enddatetime=2026-10-22T23:59:00&format=json&size=5
+{"copyright":"Copyright Sveriges Radio 2026. All rights reserved.","song":[{"title":"Joy.","description":"Raye, Amma & Absolutely - Joy.","artist":"Raye, Amma & Absolutely","composer":"Rachel Keen  | Lauren Keen  | Abby-Lynn Keen  | Mike Sabath  | Tom Richards","albumname":"This Music May Contain Hope.","recordlabel":"Human Re Sources","starttimeutc":"\/Date(1792638457000)\/","stoptimeutc":"\/Date(1792638715000)\/"},{"title":"Hazard","description":"Richard Marx - Hazard","artist":"Richard Marx","composer":"Richard Marx","recordlabel":"EVA","starttimeutc":"\/Date(1792638125000)\/","stoptimeutc":"\/Date(1792638432000)\/"},{"title":"Keep On Walking","description":"Salem Al Fakir - Keep On Walking","artist":"Salem Al Fakir","composer":"Salem Al Fakir","recordlabel":"","starttimeutc":"\/Date(1792637813000)\/","stoptimeutc":"\/Date(1792637993000)\/"},{"title":"Let Me Cry","description":"Cleo Sol - Let Me Cry","artist":"Cleo Sol","composer":"Cleopatra Nikolic  | Dean Josiah Cover","albumname":"Gentlewoman","recordlabel":"Forever Living Originals","starttimeutc":"\/Date(1792637548000)\/","stoptimeutc":"\/Date(1792637746000)\/"},{"title":"Ordinary World","description":"Duran Duran - Ordinary World","artist":"Duran Duran","composer":"Duran Duran","albumname":"Duran Duran","recordlabel":"EMI","starttimeutc":"\/Date(1792637042000)\/","stoptimeutc":"\/Date(1792637315000)\/"}]}
+== https://api.sr.se/api/v2/playlists/getplaylistbychannelid?id=164&format=json&size=5
+{"copyright":"Copyright Sveriges Radio 2026. All rights reserved.","song":[{"title":"Joy.","description":"Raye, Amma & Absolutely - Joy.","artist":"Raye, Amma & Absolutely","composer":"Rachel Keen  | Lauren Keen  | Abby-Lynn Keen  | Mike Sabath  | Tom Richards","albumname":"This Music May Contain Hope.","recordlabel":"Human Re Sources","starttimeutc":"\/Date(1792638457000)\/","stoptimeutc":"\/Date(1792638715000)\/"},{"title":"Hazard","description":"Richard Marx - Hazard","artist":"Richard Marx","composer":"Richard Marx","recordlabel":"EVA","starttimeutc":"\/Date(1792638125000)\/","stoptimeutc":"\/Date(1792638432000)\/"},{"title":"Keep On Walking","description":"Salem Al Fakir - Keep On Walking","artist":"Salem Al Fakir","composer":"Salem Al Fakir","recordlabel":"","starttimeutc":"\/Date(1792637813000)\/","stoptimeutc":"\/Date(1792637993000)\/"},{"title":"Let Me Cry","description":"Cleo Sol - Let Me Cry","artist":"Cleo Sol","composer":"Cleopatra Nikolic  | Dean Josiah Cover","albumname":"Gentlewoman","recordlabel":"Forever Living Originals","starttimeutc":"\/Date(1792637548000)\/","stoptimeutc":"\/Date(1792637746000)\/"},{"title":"Ordinary World","description":"Duran Duran - Ordinary World","artist":"Duran Duran","composer":"Duran Duran","albumname":"Duran Duran","recordlabel":"EMI","starttimeutc":"\/Date(1792637042000)\/","stoptimeutc":"\/Date(1792637315000)\/"}]}
 == RF levels
 song 3 -12 -9 Olafur Arnalds - Week vii - doria
-song 3 -9 -5 Late Again - If you have a bridge (I'm buying)
-song 3 -5 -3 Thundercat - A fan's mail (Tron song suite II)
+song 3 -9 -6 Late Again - If you have a bridge (I'm buying)
+song 3 -6 -3 Thundercat - A fan's mail (Tron song suite II)
 song 3 -3 1 Paul Simon - Late in the evening
-song 3 1 5 Alemayehu Eshete - Feqer feqer
+song 3 1 4 Alemayehu Eshete - Feqer feqer
