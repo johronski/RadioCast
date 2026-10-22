@@ -31,6 +31,26 @@ public final class Radio {
     public volatile double speakerVolume = -1;
     /** What is playing or played last (also a station only tried out from the search). */
     public volatile Station nowPlaying;
+    /**
+     * The speaker let go of after a while without music (to save battery). Play reconnects to it,
+     * and the cast button still shows it. Cleared when another output is chosen.
+     */
+    public volatile CastDevice resting;
+
+    private static final long IDLE_MS = 15 * 60_000;
+    private final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable idle = () -> {
+        if (casting() && !speakerMusicActive()) {
+            resting = cast.getDevice();
+            cast.disconnectIdle();
+        }
+    };
+
+    /** Starts the idle countdown when the speaker is connected but silent, cancels it otherwise. */
+    private void watchIdle() {
+        main.removeCallbacks(idle);
+        if (casting() && !speakerMusicActive()) main.postDelayed(idle, IDLE_MS);
+    }
 
     private Radio(Context context) {
         app = context.getApplicationContext();
@@ -41,7 +61,9 @@ public final class Radio {
                     speakerPlayerState = "IDLE";
                     speakerVolume = -1;
                 }
+                if (state == CastController.State.CONNECTED) resting = null;
                 updateControls(state);
+                watchIdle();
                 for (CastController.Listener l : listeners) l.onStateChanged(state, device);
             }
             @Override public void onStatus(String message) {
@@ -51,6 +73,7 @@ public final class Radio {
                 speakerPlayerRunning = playerRunning;
                 speakerPlayerState = playerState;
                 CastControlService.refresh(app);
+                watchIdle();
                 if (songs != null) songs.poke();
                 for (CastController.Listener l : listeners) l.onSpeakerState(playerRunning, playerState);
             }
@@ -102,6 +125,7 @@ public final class Radio {
         String name = StationGroups.shortName(s.name);
         Timing.current.start(name + " på " + targetName());
         speakerPlayerState = "BUFFERING"; // until the speaker reports
+        watchIdle();
         cast.play(s.url, name);
         CastControlService.refresh(app);
     }
@@ -110,6 +134,7 @@ public final class Radio {
     public void stopOnSpeaker() {
         cast.stop();
         speakerPlayerState = "IDLE";
+        watchIdle();
         CastControlService.refresh(app);
     }
 
