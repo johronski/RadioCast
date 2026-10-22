@@ -1,30 +1,45 @@
-Radio Nova: [pattern] David Walters – Vini Jwen Mwen  cover=https://www.lesinrocks.com/wp-content/uploads/sites/2/2026/06/webservices_1000x1000-000000-80-0-0.jpg-23.jpeg
-Nouvo Nova: [pattern] Magi Merlin – Pixxxie  cover=https://www.lesinrocks.com/wp-content/uploads/sites/2/2026/07/webservices_1000x1000-000000-80-0-0.jpg-73.jpeg
-Mouv': [pattern] Thearti$T – Rain  cover=https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/09/98c3337c-6d52-4ffa-8310-5abef6a8d76b/400x400_sc_rf_omm_3fa735b8-4ef5-496e-a568-b1339c236da6.0163916236.jpg
-FIP: [pattern] Alemayehu Eshete – Feqer feqer  cover=https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/09/d55e56cc-e264-46a1-80b0-eaab7915fa5d/400x400_sc_rf_omm_35d07d0e-81b0-4ca2-859f-caf388c0a840.0163234794.jpg
-France Inter: [pattern] null  cover=null
-Sveriges Radio - P3: [pattern] Tomas Andersson Wij – Carla & John  cover=null
-P3 b: [pattern] Tomas Andersson Wij – Carla & John  cover=null
-P3 c: [pattern] Tomas Andersson Wij – Carla & John  cover=null
-P3 id: [pattern] Tomas Andersson Wij – Carla & John  cover=null
-SceneSat: [icecast] Bay Tremore – 808 overdrive  cover=null
-== historik https://live1.sr.se/p3-aac-320
-  05:13  Tomas Andersson Wij – Carla & John
-  05:07  Raye, Amma & Absolutely – Joy.
-  05:02  Richard Marx – Hazard
-  04:56  Salem Al Fakir – Keep On Walking
-  04:52  Cleo Sol – Let Me Cry
-  04:44  Duran Duran – Ordinary World
-  04:41  Esther – Savage Love
-  04:37  Felix Jaehn & Sandro Cavazza – All For Love
-  04:33  Fanny Avonne – Vad Gör Jag Nu?
-  04:25  Erasure – Love To Hate You
-  04:20  Ane Brun & Röyksopp – Eat The Fruit
-  04:17  Myles Smith – Stay (If You Wanna Dance)
-  04:12  Petra Marklund – Mitt Hjärta En Rebell
-  04:06  Kiss – I Was Made For Lovin' You
-  04:02  Sébastien Tellier, Slayyyter & Nile Rodgers – Thrill Of The Night
-== historik https://icecast.radiofrance.fr/fip-midfi.mp3
-  05:08  Paul Simon – Late in the evening
-  05:06  Thundercat – A fan's mail (Tron song suite II)
-  05:02  Late Again – If you have a bridge (I'm buying)
+/home/runner/work/RadioCast/RadioCast/app/src/main/java/se/radiocast/Radio.java:44: error: variable cast might not have been initialized
+1 error
+> Task :app:compileDebugJavaWithJavac FAILED
+> Compilation failed; see the compiler error output for details.
+BUILD FAILED in 15s
+> Task :app:desugarDebugFileDependencies
+> Task :app:compressDebugAssets
+> Task :app:processDebugJavaRes NO-SOURCE
+> Task :app:mergeDebugStartupProfile
+> Task :app:mergeDebugJniLibFolders
+> Task :app:processDebugManifestForPackage
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeLibDexDebug
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:mergeDebugJavaResource
+> Task :app:processDebugResources
+
+> Task :app:compileDebugJavaWithJavac
+/home/runner/work/RadioCast/RadioCast/app/src/main/java/se/radiocast/Radio.java:44: error: variable cast might not have been initialized
+            resting = this.cast.getDevice();
+                          ^
+Note: /home/runner/work/RadioCast/RadioCast/app/src/main/java/se/radiocast/MainActivity.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+1 error
+
+> Task :app:compileDebugJavaWithJavac FAILED
+> Task :app:mergeExtDexDebug
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1792639081453.json
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugJavaWithJavac'.
+> Compilation failed; see the compiler error output for details.
+
+* Try:
+> Run with --info option to get more log output.
+> Run with --scan to get full insights.
+
+BUILD FAILED in 15s
+28 actionable tasks: 28 executed
