@@ -41,8 +41,8 @@ public final class Radio {
     private final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable idle = () -> {
         if (casting() && !speakerMusicActive()) {
-            resting = cast.getDevice();
-            cast.disconnectIdle();
+            resting = this.cast.getDevice();
+            this.cast.disconnectIdle();
         }
     };
 

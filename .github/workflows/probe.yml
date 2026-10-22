@@ -10,7 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: bash .github/probe/run.sh > probe-result.txt 2>&1 || true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - run: gradle assembleDebug --no-daemon > build-log.txt 2>&1 || true; grep -E "error:|warning: \[|e: |FAILED|BUILD" build-log.txt | head -60 > probe-result.txt; tail -40 build-log.txt >> probe-result.txt
       - run: |
           git config user.name RadioCast; git config user.email radiocast@users.noreply.github.com
           git add probe-result.txt; git commit -m "probe result [skip ci]"; git push
