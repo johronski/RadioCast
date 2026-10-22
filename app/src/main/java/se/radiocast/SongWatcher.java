@@ -45,10 +45,13 @@ public final class SongWatcher {
 
     public static final class Song {
         public final String text, cover, stationUrl;
-        /** When the song was first seen (for "Senast: …" during talk). */
-        public final long at = System.currentTimeMillis();
+        /** When the song started (from the channel's list) or was first seen. */
+        public final long at;
         Song(String text, String cover, String stationUrl) {
-            this.text = text; this.cover = cover; this.stationUrl = stationUrl;
+            this(text, cover, stationUrl, System.currentTimeMillis());
+        }
+        Song(String text, String cover, String stationUrl, long at) {
+            this.text = text; this.cover = cover; this.stationUrl = stationUrl; this.at = at;
         }
         /** The artist, or "" when the source gave only a title. */
         public String artist() { return SongText.split(text)[0]; }
@@ -66,6 +69,10 @@ public final class SongWatcher {
 
     static final String PATTERNS_URL = "https://raw.githubusercontent.com/johronski/RadioCast/main/meta-sources.json";
     private static final long POLL_MS = 25_000;
+    /** With the screen off nobody sees the song; ask rarely, just enough to keep the history. */
+    private static final long POLL_SCREEN_OFF_MS = 150_000;
+    /** How often a channel's own history list is fetched at most (also when the screen turns on). */
+    private static final long BACKFILL_MS = 5 * 60_000;
     private static final long STUCK_MS = 20 * 60_000;
     private static final long BAD_FOR_MS = 24 * 3600_000L;
     private static final long NONE_RETRY_MS = 6 * 3600_000L;
@@ -105,12 +112,26 @@ public final class SongWatcher {
     private long lastChange;
     private JSONArray patterns;
     private long patternsCheckedAt;
+    private long backfilledAt;
 
     SongWatcher(Context context, Radio radio) {
         this.app = context.getApplicationContext();
         this.radio = radio;
         this.prefs = app.getSharedPreferences("radiocast", Context.MODE_PRIVATE);
         exec.scheduleWithFixedDelay(this::tickSafely, 2, 3, TimeUnit.SECONDS);
+        // When the screen comes on: fetch the song now and fill in what played meanwhile.
+        android.content.IntentFilter f = new android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_ON);
+        app.registerReceiver(new android.content.BroadcastReceiver() {
+            @Override public void onReceive(Context c, android.content.Intent i) {
+                exec.execute(() -> backfilledAt = 0);
+                poke();
+            }
+        }, f);
+    }
+
+    private boolean screenOn() {
+        android.os.PowerManager pm = (android.os.PowerManager) app.getSystemService(Context.POWER_SERVICE);
+        return pm == null || pm.isInteractive();
     }
 
     public Song current() { return song; }
@@ -124,7 +145,7 @@ public final class SongWatcher {
                 if (!s.stationUrl.equals(stationUrl)) continue;
                 if (now != null && s.text.equals(now.text)) continue;
                 out.add(s);
-                if (out.size() >= 8) break;
+                if (out.size() >= 15) break;
             }
         }
         return out;
@@ -175,10 +196,12 @@ public final class SongWatcher {
             nextFetch = 0;
             misses = 0;
             lastText = null;
+            backfilledAt = 0;
             if (!phone) { playerTitle = null; playerUrl = null; }
             stopShadow();
             publish(null);
         }
+        boolean screen = screenOn();
 
         // A channel with its own song list (Radio France, Nova, Sveriges Radio) uses only that:
         // the titles inside its stream are often the programme or adverts.
@@ -188,7 +211,7 @@ public final class SongWatcher {
 
         // While casting on wifi: follow the stream's own titles over one steady connection.
         long nowMs = System.currentTimeMillis();
-        boolean shadowOk = !known && !phone && (foreground || lockScreen()) && onWifi()
+        boolean shadowOk = !known && !phone && screen && (foreground || lockScreen()) && onWifi()
                 && !isBad(state(url), "shadow", nowMs);
         if (shadowOk) {
             startShadow(url, s.name);
@@ -206,8 +229,12 @@ public final class SongWatcher {
             }
         }
         long now = System.currentTimeMillis();
+        if (hasList && now - backfilledAt > BACKFILL_MS) {
+            backfilledAt = now;
+            backfill(url, s.name);
+        }
         if (now < nextFetch) return;
-        nextFetch = now + POLL_MS;
+        nextFetch = now + (screen ? POLL_MS : POLL_SCREEN_OFF_MS);
 
         Found f = lookup(url, s.name);
         if (f == null) {
@@ -304,7 +331,7 @@ public final class SongWatcher {
         try {
             Found raw;
             switch (source) {
-                case "pattern": raw = fromPattern(url); break;
+                case "pattern": raw = fromPattern(url, stationName); break;
                 case "icecast": raw = fromIcecast(url); break;
                 case "shoutcast": raw = fromShoutcast(url); break;
                 default: return null;
@@ -350,7 +377,7 @@ public final class SongWatcher {
                     if (!map.has(key)) continue;
                     key = map.get(key).toString();
                 }
-                return new String[]{String.valueOf(i), p.getString("url").replace("$1", key)};
+                return new String[]{String.valueOf(i), p.getString("url").replace("$1", key), key};
             } catch (Exception ignored) { }
         }
         return null;
@@ -360,13 +387,13 @@ public final class SongWatcher {
      * A known now-playing address for this stream's provider (meta-sources.json).
      * Returns a Found without text when the source answered but nothing with a title plays (talk).
      */
-    private Found fromPattern(String url) throws IOException, JSONException {
+    private Found fromPattern(String url, String stationName) throws IOException, JSONException {
         String[] hit = patternFor(url);
         if (hit == null) return null;
         JSONObject p = patterns().getJSONObject(Integer.parseInt(hit[0]));
         String body = get(hit[1], 1024 * 1024).trim();
         String type = p.optString("type", "json");
-        if (type.equals("radiofrance-livemeta")) return liveMeta(new JSONObject(body));
+        if (type.equals("radiofrance-livemeta")) return liveMeta(new JSONObject(body), url, stationName);
 
         JSONObject item;
         if (type.equals("list")) {
@@ -386,24 +413,73 @@ public final class SongWatcher {
         return new Found(text, cover, "pattern");
     }
 
-    /** Radio France: the step that is a song and plays right now. */
-    private static Found liveMeta(JSONObject json) throws JSONException {
+    /**
+     * Radio France: the step that is a song and plays right now. The answer also holds the last few
+     * songs, which go into the history (they fill the gap while the screen was off).
+     */
+    private Found liveMeta(JSONObject json, String url, String stationName) throws JSONException {
         JSONObject steps = json.getJSONObject("steps");
         long now = System.currentTimeMillis() / 1000;
         Iterator<String> keys = steps.keys();
+        Found current = null;
+        boolean added = false;
         while (keys.hasNext()) {
             JSONObject st = steps.optJSONObject(keys.next());
             if (st == null || !"song".equals(str(st, "embedType"))) continue;
-            if (st.optLong("start") > now || st.optLong("end") + 5 < now) continue;
+            if (st.optLong("start") > now) continue;
             String artist = str(st, "performers").trim();
             if (artist.isEmpty()) artist = str(st, "authors").trim();
             String title = str(st, "title").trim();
             if (title.isEmpty()) continue;
             String visual = str(st, "visual");
-            return new Found(artist.isEmpty() ? title : artist + " – " + title,
-                    visual.startsWith("http") ? visual : null, "pattern");
+            String text = artist.isEmpty() ? title : artist + " – " + title;
+            String cover = visual.startsWith("http") ? visual : null;
+            if (st.optLong("end") + 5 >= now) {
+                current = new Found(text, cover, "pattern");
+            } else {
+                String clean = SongText.clean(text, stationName);
+                if (clean != null) added |= addHistory(new Song(clean, cover, url, st.optLong("start") * 1000));
+            }
         }
-        return new Found(null, null, "pattern"); // talk or a programme without music
+        if (added) announceHistory();
+        return current != null ? current : new Found(null, null, "pattern"); // talk or no music
+    }
+
+    /** A channel's own list of the latest songs (Sveriges Radio): fills the history. */
+    private void backfill(String url, String stationName) {
+        try {
+            String[] hit = patternFor(url);
+            if (hit == null) return;
+            JSONObject p = patterns().getJSONObject(Integer.parseInt(hit[0]));
+            JSONObject h = p.optJSONObject("history");
+            if (h == null) return;
+            String key = hit[2];
+            JSONObject json = new JSONObject(get(h.getString("url").replace("$1", key), 512 * 1024));
+            JSONArray list = json.optJSONArray(h.optString("list"));
+            if (list == null) return;
+            boolean added = false;
+            for (int i = 0; i < list.length(); i++) {
+                JSONObject o = list.optJSONObject(i);
+                if (o == null) continue;
+                String text = SongText.clean(fill(h.getString("song"), o), stationName);
+                String time = stringAt(o, h.optString("time"));
+                long at = time != null ? parseTime(time) : -1;
+                if (text != null && at > 0 && at < System.currentTimeMillis()) {
+                    added |= addHistory(new Song(text, null, url, at));
+                }
+            }
+            if (added) announceHistory();
+        } catch (Exception ignored) {
+            // No history this time; the songs seen while watching are still kept.
+        }
+    }
+
+    /** "/Date(1792638457000)/" (Sveriges Radio), seconds or milliseconds since 1970. */
+    static long parseTime(String s) {
+        Matcher m = Pattern.compile("(\\d{9,13})").matcher(s);
+        if (!m.find()) return -1;
+        long v = Long.parseLong(m.group(1));
+        return v < 100_000_000_000L ? v * 1000 : v;
     }
 
     private static String str(JSONObject o, String key) {
@@ -721,17 +797,39 @@ public final class SongWatcher {
 
     // ---------------------------------------------------------------- publishing
 
+    /**
+     * Adds a song to the history, newest first, unless it is already there (same channel and song
+     * within 20 minutes). Returns whether it was added.
+     */
+    private boolean addHistory(Song s) {
+        synchronized (history) {
+            for (java.util.ListIterator<Song> it = history.listIterator(); it.hasNext(); ) {
+                Song o = it.next();
+                if (o.stationUrl.equals(s.stationUrl) && o.text.equals(s.text) && Math.abs(o.at - s.at) < 20 * 60_000) {
+                    // Keep the earlier (real) start time, but take a cover if the new one has it.
+                    if (o.cover == null && s.cover != null) it.set(new Song(o.text, s.cover, o.stationUrl, Math.min(o.at, s.at)));
+                    return false;
+                }
+            }
+            int i = 0;
+            while (i < history.size() && history.get(i).at > s.at) i++;
+            history.add(i, s);
+            while (history.size() > 80) history.removeLast();
+            return true;
+        }
+    }
+
+    /** Tells the screen the history grew (the song itself is unchanged). */
+    private void announceHistory() {
+        Song s = song;
+        for (Listener l : listeners) l.onSong(s);
+    }
+
     private void publish(Song s) {
         Song old = song;
         if (s == null ? old == null : s.same(old)) return;
         song = s;
-        if (s != null) {
-            synchronized (history) {
-                if (history.isEmpty() || !history.getFirst().text.equals(s.text)) history.addFirst(s);
-                else { history.removeFirst(); history.addFirst(s); } // same song, maybe now with a cover
-                while (history.size() > 40) history.removeLast();
-            }
-        }
+        if (s != null) addHistory(s);
         for (Listener l : listeners) l.onSong(s);
         CastControlService.refresh(app);
         PlaybackService.refreshSong();

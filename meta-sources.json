@@ -1,14 +1,24 @@
 {
-  "version": 2,
-  "comment": "Kända källor för 'vad spelas nu'. RadioCast hämtar filen en gång per dygn. match = reguljärt uttryck mot strömlänken; $1 = första gruppen, översatt via map om den finns; type = json (standard), list (välj posten vars select-fält är samma ström) eller radiofrance-livemeta; song = mall med {sökväg.i.json}; cover = sökväg till omslagsbild.",
+  "version": 3,
+  "comment": "Kända källor för 'vad spelas nu'. RadioCast hämtar filen en gång per dygn. match = reguljärt uttryck mot strömlänken; $1 = första gruppen, översatt via map om den finns; type = json (standard), list (välj posten vars select-fält är samma ström) eller radiofrance-livemeta; song = mall med {sökväg.i.json}; cover = sökväg till omslagsbild. history = kanalens lista över senaste låtar (url, list, song, time), fyller låthistoriken.",
   "sources": [
     {
       "id": "radiofrance",
       "match": "radiofrance\\.fr/([a-z_]+)-(?:midfi|hifi|lofi)",
       "map": {
-        "franceinter": 1, "francemusique": 4, "franceculture": 5, "mouv": 6, "fip": 7,
-        "fiprock": 64, "fipjazz": 65, "fipgroove": 66, "fipworld": 69, "fipnouveautes": 70,
-        "fipreggae": 71, "fipelectro": 74, "fipmetal": 77
+        "franceinter": 1,
+        "francemusique": 4,
+        "franceculture": 5,
+        "mouv": 6,
+        "fip": 7,
+        "fiprock": 64,
+        "fipjazz": 65,
+        "fipgroove": 66,
+        "fipworld": 69,
+        "fipnouveautes": 70,
+        "fipreggae": 71,
+        "fipelectro": 74,
+        "fipmetal": 77
       },
       "url": "https://api.radiofrance.fr/livemeta/pull/$1",
       "type": "radiofrance-livemeta"
@@ -25,15 +35,31 @@
     {
       "id": "sverigesradio-kanal",
       "match": "sr\\.se/(p1|p2|p3)-",
-      "map": { "p1": 132, "p2": 163, "p3": 164 },
+      "map": {
+        "p1": 132,
+        "p2": 163,
+        "p3": 164
+      },
       "url": "https://api.sr.se/api/v2/playlists/rightnow?channelid=$1&format=json",
-      "song": "{playlist.song.artist} – {playlist.song.title}"
+      "song": "{playlist.song.artist} – {playlist.song.title}",
+      "history": {
+        "url": "https://api.sr.se/api/v2/playlists/getplaylistbychannelid?id=$1&format=json&size=20",
+        "list": "song",
+        "song": "{artist} – {title}",
+        "time": "starttimeutc"
+      }
     },
     {
       "id": "sverigesradio-id",
       "match": "sverigesradio\\.se/topsy/direkt/(?:srapi/)?(\\d+)",
       "url": "https://api.sr.se/api/v2/playlists/rightnow?channelid=$1&format=json",
-      "song": "{playlist.song.artist} – {playlist.song.title}"
+      "song": "{playlist.song.artist} – {playlist.song.title}",
+      "history": {
+        "url": "https://api.sr.se/api/v2/playlists/getplaylistbychannelid?id=$1&format=json&size=20",
+        "list": "song",
+        "song": "{artist} – {title}",
+        "time": "starttimeutc"
+      }
     }
   ]
 }

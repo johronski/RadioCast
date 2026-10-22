@@ -114,6 +114,21 @@ public class CastController {
         });
     }
 
+    /**
+     * Lets go of a speaker that has been silent for a while, to save battery. Its player is left
+     * ready, so playing there again is quick. Returns the speaker (for reconnecting on Play).
+     */
+    public void disconnectIdle() {
+        worker.execute(() -> {
+            CastDevice d = device;
+            if (state != State.CONNECTED || d == null) return;
+            closeClient();
+            device = null;
+            setState(State.DISCONNECTED);
+            listener.onStatus("Vilar: kopplade från " + d.name + " efter en stund utan musik. Tryck Spela för att spela där igen.");
+        });
+    }
+
     public void play(String url, String title) {
         worker.execute(() -> {
             CastClient c = liveClient();

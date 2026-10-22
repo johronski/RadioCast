@@ -271,7 +271,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onStart() {
         super.onStart();
-        discovery.start();
+        searchForSpeakers();
+        if (reconnectInterrupted) { reconnectInterrupted = false; if (!casting()) startReconnect(); }
         radio.songs.setForeground(true);
         watchNetwork(true);
         syncNowPlaying();
@@ -287,6 +288,10 @@ public class MainActivity extends Activity {
     protected void onStop() {
         super.onStop();
         discovery.stop();
+        ui.removeCallbacks(stopSearch);
+        // The reconnect attempts would start the speaker search again in the background.
+        reconnectTimers.removeCallbacksAndMessages(null);
+        if (reconnect == Reconnect.TRYING) { reconnect = Reconnect.NONE; reconnectInterrupted = true; }
         radio.songs.setForeground(false);
         watchNetwork(false);
         PlaybackService.setListener(null);
@@ -437,13 +442,7 @@ public class MainActivity extends Activity {
     private void showSongSheet() {
         if (radio.nowPlaying == null) return;
         Dialog d = new Dialog(this, R.style.Sheet);
-        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        d.setContentView(R.layout.sheet_song);
-        Window w = d.getWindow();
-        if (w != null) {
-            w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            w.setGravity(Gravity.BOTTOM);
-        }
+        SheetFrame.install(d, R.layout.sheet_song); // close button, drag down, tap outside
         d.setOnDismissListener(x -> songSheet = null);
         songSheet = d;
         refreshSongSheet();
@@ -552,6 +551,15 @@ public class MainActivity extends Activity {
         CastController.State state = cast.getState();
         if (state == CastController.State.CONNECTING) {
             showSnack("Vänta, ansluter till " + targetName() + "…", null, null);
+            return;
+        }
+        CastDevice resting = radio.resting;
+        if (state == CastController.State.DISCONNECTED && resting != null) {
+            // The speaker was let go of after a while without music: wake it up and play there.
+            radio.resting = null;
+            radio.nowPlaying = s;
+            connectTo(resting, () -> playStation(s, saved));
+            updateNowPlaying();
             return;
         }
         playError = null;
@@ -747,6 +755,11 @@ public class MainActivity extends Activity {
             bg = R.drawable.bg_cast_warn; fg = R.color.live_fg; icon = R.drawable.ic_retry;
             text = "Når inte " + name;
             description = "Når inte " + name + ". Tryck för att försöka igen.";
+        } else if (radio.resting != null) {
+            CastDevice r = radio.resting;
+            icon = r.group ? R.drawable.ic_group : R.drawable.ic_speaker;
+            text = r.name;
+            description = r.name + " vilar för att spara batteri. Tryck Spela för att spela där.";
         } else {
             text = "Telefonen";
             description = "Ljudet går till telefonen. Tryck för att välja en högtalare.";
@@ -762,6 +775,7 @@ public class MainActivity extends Activity {
     }
 
     private void connectTo(CastDevice dev, Runnable after) {
+        radio.resting = null;
         reconnect = Reconnect.NONE;
         unreachable = null;
         lastAttempt = dev;
@@ -772,16 +786,10 @@ public class MainActivity extends Activity {
     /** The cast sheet: every speaker with what it is doing, this phone, and the two ways to let go. */
     private void showCastSheet(Runnable afterConnect) {
         castSheetAfterConnect = afterConnect;
-        discovery.start();
+        searchForSpeakers();
         probeSpeakers();
         Dialog d = new Dialog(this, R.style.Sheet);
-        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        d.setContentView(R.layout.sheet_cast);
-        Window w = d.getWindow();
-        if (w != null) {
-            w.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            w.setGravity(Gravity.BOTTOM);
-        }
+        SheetFrame.install(d, R.layout.sheet_cast); // close button, drag down, tap outside
         d.findViewById(R.id.enter_ip).setOnClickListener(v -> { d.dismiss(); askForIp(afterConnect); });
         d.findViewById(R.id.disconnect).setOnClickListener(v -> { d.dismiss(); cast.disconnect(false); });
         d.findViewById(R.id.stop_device).setOnClickListener(v -> { d.dismiss(); cast.disconnect(true); });
@@ -848,6 +856,8 @@ public class MainActivity extends Activity {
         phone.findViewById(R.id.check).setVisibility(onPhone ? View.VISIBLE : View.GONE);
         phone.setOnClickListener(v -> {
             d.dismiss();
+            radio.resting = null; // the phone is chosen: do not go back to a resting speaker
+            updateCastChip();
             if (!connected) return;
             Station s = radio.nowPlaying;
             boolean wasPlaying = musicActive();
@@ -938,6 +948,25 @@ public class MainActivity extends Activity {
         return "spelar " + t;
     }
 
+    // ================================================================ speaker search
+
+    private boolean reconnectInterrupted;
+    /** Ends the search for speakers after a while, unless the speaker list is open. */
+    private final Runnable stopSearch = new Runnable() {
+        @Override public void run() {
+            if (castSheet != null || reconnect == Reconnect.TRYING) ui.postDelayed(this, 15_000);
+            else discovery.stop();
+        }
+    };
+
+    /** Looks for speakers for half a minute (the search sends traffic on the wifi all the time). */
+    private void searchForSpeakers() {
+        if (discovery == null) return;
+        discovery.start();
+        ui.removeCallbacks(stopSearch);
+        ui.postDelayed(stopSearch, 30_000);
+    }
+
     // ================================================================ home network
 
     /** The network the phone is on now (null on mobile data); see {@link NetworkPlace}. */
@@ -1019,10 +1048,11 @@ public class MainActivity extends Activity {
         reconnect = Reconnect.NONE;
         unreachable = null;
         autoConnectTried = false;
+        radio.resting = null;
         devices.clear();
         applyPlace();
         discovery.stop();
-        discovery.start();
+        searchForSpeakers();
         for (String ip : prefs.getStringSet("ips", new HashSet<>())) {
             addDevice("Högtalare " + ip, ip, 8009, "", "", false);
         }
@@ -1042,12 +1072,12 @@ public class MainActivity extends Activity {
         autoConnectTried = false;
         updateCastChip();
         reconnectTimers.removeCallbacksAndMessages(null);
-        if (discovery != null) discovery.start();
+        searchForSpeakers();
         // Speakers sometimes answer the search slowly; ask again a couple of times.
         Runnable again = () -> {
             if (reconnect != Reconnect.TRYING || cast.getState() != CastController.State.DISCONNECTED) return;
             autoConnectTried = false;
-            if (discovery != null) discovery.start();
+            searchForSpeakers();
             String k = prefs.getString("device", null);
             for (CastDevice d : devices) {
                 boolean last = d.key().equals(k) || (!d.id.isEmpty() && d.id.equals(prefs.getString("device_id", "")));

@@ -24,6 +24,13 @@ public class SongProbe {
       Field so = f.getClass().getDeclaredField("source"); so.setAccessible(true);
       System.out.println(s[0] + ": [" + so.get(f) + "] " + t.get(f) + "  cover=" + cv.get(f));
     }
+    Method bf = SongWatcher.class.getDeclaredMethod("backfill", String.class, String.class); bf.setAccessible(true);
+    bf.invoke(w, "https://live1.sr.se/p3-aac-320", "Sveriges Radio - P3");
+    java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("HH:mm");
+    for (String u : new String[]{"https://live1.sr.se/p3-aac-320","https://icecast.radiofrance.fr/fip-midfi.mp3"}) {
+      System.out.println("== historik " + u);
+      for (SongWatcher.Song x : w.recent(u)) System.out.println("  " + f.format(new java.util.Date(x.at)) + "  " + x.text);
+    }
     System.exit(0);
   }
 }
