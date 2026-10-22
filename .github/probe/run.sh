@@ -1,8 +1,8 @@
-set -e
-mkdir -p /tmp/p/out && cd /tmp/p
-curl -sSL -o json.jar https://repo1.maven.org/maven2/org/json/json/20240303/json-20240303.jar
-cd $GITHUB_WORKSPACE
-S=app/src/main/java/se/radiocast
-javac -encoding UTF-8 -cp /tmp/p/json.jar -d /tmp/p/out $(find .github/probe/stubs -name '*.java') $S/SongWatcher.java $S/SongText.java $S/Station.java $S/StationGroups.java $S/SearchQuery.java
-java -cp /tmp/p/out:/tmp/p/json.jar se.radiocast.SongProbe
-echo "== SR raw"; curl -s "https://api.sr.se/api/v2/playlists/rightnow?channelid=164&format=json" | head -c 1500; echo
+D=$(date -u +%Y-%m-%d)
+for u in "https://api.sr.se/api/v2/playlists/getplaylistbychannelid?channelid=164&startdatetime=${D}T00:00:00&enddatetime=${D}T23:59:00&format=json&size=5" \
+         "https://api.sr.se/api/v2/playlists/getplaylistbychannelid?channelid=164&format=json&size=5"; do
+  echo "== $u"; curl -s "$u" | head -c 2500; echo; done
+echo "== RF levels"; curl -s https://api.radiofrance.fr/livemeta/pull/7 | python3 -c "
+import json,sys,time; d=json.load(sys.stdin); now=time.time()
+for k,s in sorted(d['steps'].items(), key=lambda x:x[1]['start']):
+  print(s['embedType'], s['depth'], round((s['start']-now)/60), round((s['end']-now)/60), s.get('authors'), '-', s['title'])"
