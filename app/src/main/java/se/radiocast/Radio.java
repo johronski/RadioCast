@@ -39,12 +39,14 @@ public final class Radio {
 
     private static final long IDLE_MS = 15 * 60_000;
     private final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
-    private final Runnable idle = () -> {
+    private final Runnable idle = this::goIdle;
+
+    private void goIdle() {
         if (casting() && !speakerMusicActive()) {
-            resting = this.cast.getDevice();
-            this.cast.disconnectIdle();
+            resting = cast.getDevice();
+            cast.disconnectIdle();
         }
-    };
+    }
 
     /** Starts the idle countdown when the speaker is connected but silent, cancels it otherwise. */
     private void watchIdle() {
