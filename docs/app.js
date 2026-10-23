@@ -1,7 +1,7 @@
 /* RadioCast web: web radio in the browser, song info, and casting to Chromecast from Chrome. */
 'use strict';
 
-const VERSION = 'Webb 1.1';
+const VERSION = 'Webb 1.2';
 
 // ============================================================ small helpers
 
@@ -1331,7 +1331,7 @@ vol.addEventListener('input', () => {
 vol.addEventListener('change', () => setVolume(+vol.value));
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {}));
 }
 
 loadPatterns().then(() => pokeSongs());
