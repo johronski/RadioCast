@@ -10,17 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-      - run: |
-          gradle assembleDebug --no-daemon > build-log.txt 2>&1 || true
-          grep -E "error|FAILED|BUILD" build-log.txt | head -60 > probe-result.txt || true
-          tail -40 build-log.txt >> probe-result.txt
+      - run: bash .github/probe/cors.sh > probe-result.txt 2>&1 || true
       - run: |
           git config user.name RadioCast; git config user.email radiocast@users.noreply.github.com
           git add probe-result.txt; git commit -m "probe result [skip ci]"; git push
