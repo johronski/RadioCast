@@ -1,7 +1,22 @@
-Radio Nova: {"text":"DISIZ – Maniac","cover":"https://www.lesinrocks.com/wp-content/uploads/sites/2/2026/08/webservices_1000x1000-000000-80-0-0.jpg-21.jpeg","url":"https://novazz.ice.infomaniak.ch/novazz-128.mp3","at":1792777449118} | historik 0
-Mouv': {"text":"Cherry Pie – Bir Hakeim","cover":"https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/10/144ae1de-9e82-4b13-892b-328f7dbd8486/400x400_sc_rf_omm_1b91c16d-1091-4570-949e-8be0edd07b93.0164577063.png.jpg","url":"https://icecast.radiofrance.fr/mouv-midfi.mp3","at":1792777456915} | historik 3
-FIP: null | historik 5
-Sveriges Radio P3: {"text":"The Future Sound Of London – Papua New Guinea","cover":"https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/8d/73/11/8d73115a-ead1-894d-c7cc-1dea7729cea1/dj.hkscnpxy.jpg/300x300bb.jpg","url":"https://live1.sr.se/p3-aac-320","at":1792777472327} | historik 3
-sök sverige p3: 6 Sveriges Radio - P3
-sök tehcno: 40 Visar träffar för ”techno”
-inga fel
+antal i svar: 20
+["Alunageorge, Riordan, Aluna, Caleb Laurenson, Danny P – Best Be Believing","Alunageorge, Riordan, Aluna, Caleb Laurenson, Danny P – Best Be Believing","/Date(1792781852000)/"]
+["Josh Baker, Rhys From The Sticks – Souvenir","Josh Baker, Rhys From The Sticks – Souvenir","/Date(1792781743000)/"]
+["Chris Stassy, Marz Fay – U Know Me","Chris Stassy, Marz Fay – U Know Me","/Date(1792781651000)/"]
+["Dj Carpenter – Backhanders","Dj Carpenter – Backhanders","/Date(1792781364000)/"]
+["Clouds – Messiah","Clouds – Messiah","/Date(1792781174000)/"]
+["P-Rallel, Megra – Bring It Back","P-Rallel, Megra – Bring It Back","/Date(1792781024000)/"]
+["Aasthma – Heart Burned","Aasthma – Heart Burned","/Date(1792780850000)/"]
+["Dj Carpenter – Tatiana","Dj Carpenter – Tatiana","/Date(1792780617000)/"]
+["Dj Carpenter – Id","Dj Carpenter – Id","/Date(1792780410000)/"]
+["Mph – Warlord","Mph – Warlord","/Date(1792780292000)/"]
+["Interplanetary Criminal, Silva Bumpa – Hold Da Phone","Interplanetary Criminal, Silva Bumpa – Hold Da Phone","/Date(1792780095000)/"]
+["Djedjotronic – Kaikō","Djedjotronic – Kaikō","/Date(1792779730000)/"]
+["Unit Boy – Pleasure","Unit Boy – Pleasure","/Date(1792779598000)/"]
+["Dj Carpenter, Kasbo, Izza Gara – Garragarra","Dj Carpenter, Kasbo, Izza Gara – Garragarra","/Date(1792779270000)/"]
+["Dj Carpenter – Cartridge","Dj Carpenter – Cartridge","/Date(1792778888000)/"]
+["Rohan Pinnock-Hamilton, Prospa, Kettama – Think Of You","Rohan Pinnock-Hamilton, Prospa, Kettama – Think Of You","/Date(1792778582000)/"]
+["The Future Sound Of London – Papua New Guinea","The Future Sound Of London – Papua New Guinea","/Date(1792777297000)/"]
+["Capricorn – 20 Hz","Capricorn – 20 Hz","/Date(1792777119000)/"]
+["Aphex Twin – Xtal","Aphex Twin – Xtal","/Date(1792776944000)/"]
+["Megalon – Spook","Megalon – Spook","/Date(1792776723000)/"]
+historik efter backfill: 4
