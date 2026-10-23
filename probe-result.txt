@@ -1,45 +1,9 @@
-/home/runner/work/RadioCast/RadioCast/app/src/main/java/se/radiocast/Radio.java:44: error: variable cast might not have been initialized
-1 error
-> Task :app:compileDebugJavaWithJavac FAILED
-> Compilation failed; see the compiler error output for details.
-BUILD FAILED in 15s
-> Task :app:desugarDebugFileDependencies
-> Task :app:compressDebugAssets
-> Task :app:processDebugJavaRes NO-SOURCE
-> Task :app:mergeDebugStartupProfile
-> Task :app:mergeDebugJniLibFolders
-> Task :app:processDebugManifestForPackage
-> Task :app:checkDebugDuplicateClasses
-> Task :app:mergeLibDexDebug
-> Task :app:mergeDebugNativeLibs NO-SOURCE
-> Task :app:stripDebugDebugSymbols NO-SOURCE
-> Task :app:validateSigningDebug
-> Task :app:writeDebugAppMetadata
-> Task :app:writeDebugSigningConfigVersions
-> Task :app:mergeDebugJavaResource
-> Task :app:processDebugResources
-
-> Task :app:compileDebugJavaWithJavac
-/home/runner/work/RadioCast/RadioCast/app/src/main/java/se/radiocast/Radio.java:44: error: variable cast might not have been initialized
-            resting = this.cast.getDevice();
-                          ^
-Note: /home/runner/work/RadioCast/RadioCast/app/src/main/java/se/radiocast/MainActivity.java uses or overrides a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
-1 error
-
-> Task :app:compileDebugJavaWithJavac FAILED
-> Task :app:mergeExtDexDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1792639081453.json
-
-FAILURE: Build failed with an exception.
-
-* What went wrong:
-Execution failed for task ':app:compileDebugJavaWithJavac'.
-> Compilation failed; see the compiler error output for details.
-
-* Try:
-> Run with --info option to get more log output.
-> Run with --scan to get full insights.
-
-BUILD FAILED in 15s
-28 actionable tasks: 28 executed
+https://de1.api.radio-browser.info/json/stations/search?name=nova&limit=1  =>  access-control-allow-origin: *
+https://api.sr.se/api/v2/playlists/rightnow?channelid=164&format=json  =>  access-control-allow-origin: *
+https://api.sr.se/api/v2/playlists/getplaylistbychannelid?id=164&format=json&size=2  =>  access-control-allow-origin: *
+https://api.radiofrance.fr/livemeta/pull/7  =>  access-control-allow-origin: *
+https://www.nova.fr/radios-data/www.nova.fr/all.json  =>  access-control-allow-origin: *
+https://itunes.apple.com/search?term=abba&entity=song&limit=1  =>  access-control-allow-origin: *
+https://novazz.ice.infomaniak.ch/novazz-128.mp3  =>  Access-Control-Allow-Origin: *
+https://icecast.radiofrance.fr/fip-midfi.mp3  =>  access-control-allow-origin: https://johronski.github.io
+https://live1.sr.se/p3-aac-320  =>  Access-Control-Allow-Origin: https://johronski.github.io
