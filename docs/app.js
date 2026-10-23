@@ -1,7 +1,7 @@
 /* RadioCast web: web radio in the browser, song info, and casting to Chromecast from Chrome. */
 'use strict';
 
-const VERSION = 'Webb 1.0';
+const VERSION = 'Webb 1.1';
 
 // ============================================================ small helpers
 
@@ -733,16 +733,24 @@ function castVolume(level) {
   caster.controller.setVolumeLevel();
 }
 function chooseOutput() {
-  if (caster.ctx && caster.available) {
-    // Chrome's own list of speakers and groups; while casting it also has "Sluta casta".
-    caster.ctx.requestSession().catch(() => { /* closed without choosing */ });
+  if (caster.ctx) {
+    // Chrome's own list of speakers and groups (it searches when opened); while casting it also has "Sluta casta".
+    caster.ctx.requestSession().catch((e) => {
+      const code = typeof e === 'string' ? e : (e && (e.code || e.message)) || '';
+      if (/cancel/i.test(code)) return; // closed without choosing
+      const body = sheet('Hittar ingen Chromecast');
+      body.append(el('p', 'muted', 'Chrome hittade inga högtalare. Kontrollera att:'));
+      const ul = el('ul', 'muted');
+      ['telefonen är på samma wifi som högtalarna (inte mobildata)',
+        'Chrome får hitta enheter i närheten: Inställningar → Appar → Chrome → Behörigheter → Enheter i närheten',
+        'du använder Chrome, inte Samsung Internet eller Firefox'].forEach((t) => ul.append(el('li', null, t)));
+      body.append(ul, el('p', 'muted', 'Felkod: ' + (code || 'okänd')));
+    });
     return;
   }
   const body = sheet('Var ska ljudet spelas?');
   const p = (t) => body.appendChild(el('p', 'muted', t));
-  if (caster.ctx) {
-    p('Hittar ingen Chromecast just nu. Är telefonen på samma wifi som högtalarna?');
-  } else if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
     p('På iPhone spelar webbappen i telefonen. Chromecast går inte från Safari, men AirPlay fungerar: öppna Kontrollcenter, tryck på ljudrutan och välj högtalare.');
   } else {
     p('Casta till Chromecast går i Chrome (på Android eller datorn). I den här webbläsaren spelar radion i enheten.');
