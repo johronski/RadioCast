@@ -1,9 +1,7 @@
-https://de1.api.radio-browser.info/json/stations/search?name=nova&limit=1  =>  access-control-allow-origin: *
-https://api.sr.se/api/v2/playlists/rightnow?channelid=164&format=json  =>  access-control-allow-origin: *
-https://api.sr.se/api/v2/playlists/getplaylistbychannelid?id=164&format=json&size=2  =>  access-control-allow-origin: *
-https://api.radiofrance.fr/livemeta/pull/7  =>  access-control-allow-origin: *
-https://www.nova.fr/radios-data/www.nova.fr/all.json  =>  access-control-allow-origin: *
-https://itunes.apple.com/search?term=abba&entity=song&limit=1  =>  access-control-allow-origin: *
-https://novazz.ice.infomaniak.ch/novazz-128.mp3  =>  Access-Control-Allow-Origin: *
-https://icecast.radiofrance.fr/fip-midfi.mp3  =>  access-control-allow-origin: https://johronski.github.io
-https://live1.sr.se/p3-aac-320  =>  Access-Control-Allow-Origin: https://johronski.github.io
+Radio Nova: {"text":"DISIZ – Maniac","cover":"https://www.lesinrocks.com/wp-content/uploads/sites/2/2026/08/webservices_1000x1000-000000-80-0-0.jpg-21.jpeg","url":"https://novazz.ice.infomaniak.ch/novazz-128.mp3","at":1792777449118} | historik 0
+Mouv': {"text":"Cherry Pie – Bir Hakeim","cover":"https://www.radiofrance.fr/s3/rf-cruiser-embed-production/2026/10/144ae1de-9e82-4b13-892b-328f7dbd8486/400x400_sc_rf_omm_1b91c16d-1091-4570-949e-8be0edd07b93.0164577063.png.jpg","url":"https://icecast.radiofrance.fr/mouv-midfi.mp3","at":1792777456915} | historik 3
+FIP: null | historik 5
+Sveriges Radio P3: {"text":"The Future Sound Of London – Papua New Guinea","cover":"https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/8d/73/11/8d73115a-ead1-894d-c7cc-1dea7729cea1/dj.hkscnpxy.jpg/300x300bb.jpg","url":"https://live1.sr.se/p3-aac-320","at":1792777472327} | historik 3
+sök sverige p3: 6 Sveriges Radio - P3
+sök tehcno: 40 Visar träffar för ”techno”
+inga fel
