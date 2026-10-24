@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 1.4';
+const VERSION = 'Webb 1.5';
 
 // ============================================================ stations
 
@@ -204,9 +204,14 @@ function onCastSession(state) {
       castLoad(nowPlaying); // what played (or should have played) moves to the speaker
     }
     syncRemote();
+    if (state === S.SESSION_RESUMED) {
+      // Rejoining a speaker that already plays: ask what it plays, so the card shows it.
+      askMediaStatus(session);
+      setTimeout(checkSpeaker, 1500);
+    }
   } else if (state === S.SESSION_ENDED || state === S.SESSION_START_FAILED) {
     if (state === S.SESSION_START_FAILED) snack('Kunde inte ansluta till högtalaren.');
-    else if (caster.connected) lostSpeaker();
+    else if (caster.connected && !caster.switching) lostSpeaker();
     caster.connected = false;
     caster.device = '';
     caster.state = 'IDLE';
@@ -238,7 +243,10 @@ function checkSpeaker() {
   }
   const media = session.getMediaSession && session.getMediaSession();
   if (!media) {
-    if (caster.state !== 'IDLE') { caster.state = 'IDLE'; renderAll(); }
+    // Not joined to what plays yet: use what the remote player knows, and ask the speaker.
+    syncRemote();
+    renderAll();
+    askMediaStatus(session);
     return;
   }
   media.getStatus(null, () => {
@@ -246,6 +254,14 @@ function checkSpeaker() {
     caster.state = media.playerState || 'IDLE'; // fresh from the speaker
     renderAll();
   }, () => { caster.state = 'IDLE'; renderAll(); });
+}
+
+/** Asks the speaker's player for its status; Chrome then joins what is playing. */
+function askMediaStatus(session) {
+  try {
+    const p = session.sendMessage('urn:x-cast:com.google.cast.media', { type: 'GET_STATUS', requestId: Math.floor(Math.random() * 1e6) });
+    if (p && p.catch) p.catch(() => {});
+  } catch (e) { /* older Chrome: the remote player updates by itself */ }
 }
 
 function syncRemote() {
@@ -299,7 +315,52 @@ function castVolume(level) {
   caster.player.volumeLevel = level;
   caster.controller.setVolumeLevel();
 }
+/** While casting: move the radio to another speaker or the phone, or stop. */
+function castingSheet() {
+  const body = sheet('Spelar på ' + caster.device, 'output');
+  const playing = musicActive();
+  const item = (label, ic, fn) => {
+    const b = el('button', 'menu-item');
+    b.type = 'button';
+    b.append(icon(ic), el('span', null, label));
+    b.onclick = fn;
+    body.append(b);
+  };
+  item('Flytta till en annan högtalare', 'cast', () => {
+    closeSheet();
+    caster.switching = true;
+    caster.wantPlay = playing;
+    caster.ctx.endCurrentSession(true); // stops it on this speaker
+    caster.connected = false; caster.device = ''; caster.state = 'IDLE';
+    renderAll();
+    // Chrome's list right away (still within the tap); the radio starts where you choose.
+    caster.ctx.requestSession().catch(() => { if (playing) snack('Ingen högtalare vald. Tryck Spela för att spela i telefonen.'); })
+      .finally(() => { caster.switching = false; });
+  });
+  item('Flytta till telefonen', 'phone', () => {
+    closeSheet();
+    caster.switching = true;
+    caster.wantPlay = false;
+    caster.ctx.endCurrentSession(true);
+    caster.connected = false; caster.device = ''; caster.state = 'IDLE';
+    setTimeout(() => { caster.switching = false; }, 1000);
+    if (playing && nowPlaying) playStation(nowPlaying, stations.some((x) => x.url === nowPlaying.url));
+    else renderAll();
+  });
+  item('Sluta casta', 'close', () => {
+    closeSheet();
+    caster.switching = true;
+    caster.wantPlay = false;
+    caster.ctx.endCurrentSession(true);
+    caster.connected = false; caster.device = ''; caster.state = 'IDLE';
+    setTimeout(() => { caster.switching = false; }, 1000);
+    renderAll();
+  });
+  body.append(el('p', 'muted', 'Volymen på högtalaren ändrar du med reglaget i spelarkortet.'));
+}
+
 function chooseOutput() {
+  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { castingSheet(); return; }
   if (caster.ctx) {
     // Chrome's own list of speakers and groups (it searches when opened); while casting it also has "Sluta casta".
     caster.ctx.requestSession().catch((e) => {
