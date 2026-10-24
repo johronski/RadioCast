@@ -36,3 +36,24 @@ Favoriter i ordning: A, B, C.
 - **F. Överraska mig.** Slumpa en okänd kanal i en genre du gillar, helst en som spelar musik just då. Liten insats.
 - **G. Snålläge på mobildata.** Välj samma kanal i lägre kvalitet där den finns. Liten insats.
 - **H. Dela låten.** "Just nu på FIP: …" med länk där mottagaren kan lyssna direkt. Mycket liten insats.
+
+## Inspiration från andra kategorier (24 okt, "tänk vilt")
+Favoriter i ordning: I, J, K.
+- **I. Låtprognos + låtlarm** (väder- och sportappar). Radio France publicerar kommande låtar: "Om 4 min på FIP: …". Bevaka artister/låtar från "Mina låtar" på alla kanaler (medan appen är öppen).
+- **J. Scanna** (bilradion). Spelar 8 s av varje kanal tills du trycker Stopp.
+- **K. RadioCast Wrapped** (Spotify Wrapped/Strava). Timmar per kanal, mest hörda artister, upptäckter – räknas lokalt ur historiken, lätt att dela.
+- **L. Kanaldejting** (Tinder). 15 s av en okänd kanal, svep höger = spara, vänster = nästa.
+- **M. Radioscener** (Philips Hue). "Morgon" = P1 i köket låg volym, "Middag" = FIP i vardagsrummet. Ett tryck.
+- **N. Radiopasset** (Pokémon Go). Stämpel per land du lyssnat på, världskarta som fylls i.
+- **O. Shazam utan mikrofon.** Visar vad alla kända kanaler spelar just nu, du pekar ut låten du hör på caféet.
+- **P. Pausa radion** (TV-box). Fortsätt där du var efter ett samtal; spelar in i bakgrunden.
+- **Q. Programguide** (tablåer). SR:s tablå, påminnelse när ett program börjar.
+- **R. Köksläge** (fotoram). Omslag och låt i helskärm på gammal platta/TV.
+- **S. Språkbadet** (Duolingo). Daglig lyssning på ett språk du lär dig, med svit.
+- **T. Röst-DJ.** Talsyntes presenterar mellan byten.
+- **U. Säg det.** Röststyrning: "Spela FIP i köket".
+- **V. Lyssna där vännen är / lokal radio utomlands.**
+- **W. Låtstafett.** Dela en låt, vännen svarar med en från sin kanal, en gemensam lista växer.
+- **X. Väderradio.** Föreslår kanal efter väder och tid; du bestämmer.
+
+Obs: idéer som ska hända vid en viss tid när appen är stängd (påminnelser, väckning, larm i bakgrunden) kräver Android-skalet (punkt 13).
