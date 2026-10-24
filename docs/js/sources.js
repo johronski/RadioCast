@@ -4,7 +4,7 @@
  * No screen code here; the app decides what to show.
  */
 import { getJson, simplify, enc } from './util.js';
-import { cleanSong, splitSong } from './songtext.js';
+import { cleanSong, splitSong, capitalise } from './songtext.js';
 
 let patterns = [];
 
@@ -78,13 +78,42 @@ export function liveMeta(json, url, stationName, nowSeconds = Date.now() / 1000)
   return { text: current ? current.text : null, cover: current ? current.cover : null, past };
 }
 
+/**
+ * Radio France's player feed ("Title - ARTIST" in secondLine), used when the main feed has no
+ * songs (Mouv' during "La Playlist"). Only entries with a song id are songs.
+ */
+export function playerMeta(json, url, stationName, nowSeconds = Date.now() / 1000) {
+  const song = (o) => {
+    if (!o || !o.secondLineSongUuid || typeof o.secondLine !== 'string') return null;
+    const line = o.secondLine.trim();
+    const i = line.lastIndexOf(' - ');
+    return i > 0 ? capitalise(line.slice(i + 3).trim()) + ' – ' + line.slice(0, i).trim() : line;
+  };
+  const n = json && json.now;
+  const live = n && (!n.endTime || n.endTime + 5 >= nowSeconds) && (!n.startTime || n.startTime <= nowSeconds + 5);
+  const past = [];
+  for (const o of (json && json.prev) || []) {
+    const c = cleanSong(song(o), stationName);
+    if (c && o.startTime) past.push({ text: c, cover: null, url, at: o.startTime * 1000 });
+  }
+  return { text: live ? song(n) : null, cover: null, past };
+}
+
 /** The current song from the channel's own list: { text, cover, past? }, null if not found. */
 export async function fromPattern(url, stationName) {
   const hit = patternFor(url);
   if (!hit) return null;
   const json = await getJson(hit.api);
   const type = hit.p.type || 'json';
-  if (type === 'radiofrance-livemeta') return liveMeta(json, url, stationName);
+  if (type === 'radiofrance-livemeta') {
+    const res = liveMeta(json, url, stationName);
+    const player = hit.p.player && hit.p.player[hit.key];
+    if (res.text || !player) return res;
+    try {
+      const alt = playerMeta(await getJson(player), url, stationName);
+      return { text: alt.text, cover: null, past: res.past.concat(alt.past) };
+    } catch (e) { return res; }
+  }
   let item = json;
   if (type === 'list') {
     const arr = Array.isArray(json) ? json : json[hit.p.list];
