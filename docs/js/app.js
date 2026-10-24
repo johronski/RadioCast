@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 3.1';
+const VERSION = 'Webb 3.2';
 
 // ============================================================ stations
 
@@ -149,6 +149,14 @@ function failLocal() {
   renderAll();
 }
 audio.addEventListener('playing', () => { localState = 'playing'; renderAll(); });
+// Some browsers (Safari) do not always send "playing" for a live stream: time moving on means it plays.
+let lastTime = 0;
+audio.addEventListener('timeupdate', () => {
+  const t = audio.currentTime;
+  if (localState === 'buffering' && !audio.paused && t > lastTime + 0.5) { localState = 'playing'; renderAll(); }
+  lastTime = t;
+});
+audio.addEventListener('loadstart', () => { lastTime = audio.currentTime; });
 audio.addEventListener('waiting', () => { if (audio.src) { localState = 'buffering'; renderAll(); } });
 audio.addEventListener('error', () => { if (audio.getAttribute('src')) failLocal(); });
 audio.addEventListener('pause', () => { if (audio.src && localState !== 'stopped') { localState = 'stopped'; renderAll(); } });
@@ -611,7 +619,7 @@ function openSpeakerList() {
   }
   const body = sheet('Var ska ljudet spelas?');
   const p = (t) => body.appendChild(el('p', 'muted', t));
-  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+  if (isIOS) {
     p('På iPhone spelar webbappen i telefonen. Chromecast går inte från Safari, men AirPlay fungerar: öppna Kontrollcenter, tryck på ljudrutan och välj högtalare.');
   } else {
     p('Casta till Chromecast går i Chrome (på Android eller datorn). I den här webbläsaren spelar radion i enheten.');
@@ -743,7 +751,7 @@ function statusText() {
     if (caster.wantPlay) return 'Tystnade på ' + caster.device + ' · tryck Spela';
     return 'Redo att spela på ' + caster.device;
   }
-  if (localState === 'playing') return 'Spelar' + (/iPhone|iPad/.test(navigator.userAgent) ? '' : ' i telefonen');
+  if (localState === 'playing') return 'Spelar' + (isIOS ? '' : ' i telefonen');
   if (localState === 'buffering') return 'Startar…';
   return 'Stoppad';
 }
@@ -781,6 +789,8 @@ function renderNowPlaying() {
     title.classList.toggle('past', !song);
     artist.classList.toggle('past', !song);
   }
+  // iPhone and iPad: web pages cannot set the volume (use the phone's buttons), so no slider there.
+  $('np').querySelector('.vol').hidden = isIOS && !caster.connected;
   const st = $('npStatus');
   st.textContent = status;
   st.classList.toggle('error', !!error);
@@ -896,7 +906,7 @@ const sheetState = { kind: null };
 
 let installPrompt = null; // Android Chrome: lets a button add the app to the home screen
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; });
-const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 const isAndroid = /Android/i.test(navigator.userAgent);
 const installed = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 

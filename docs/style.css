@@ -211,3 +211,4 @@ input { font: inherit; color: inherit; }
 .listhead[hidden] { display: none; }
 .install { margin: 8px auto 0; display: flex; color: var(--muted); font-weight: 500; font-size: 14px; }
 .np-more { transform: rotate(180deg); color: var(--muted); margin-left: 4px; flex: none; }
+.vol[hidden] { display: none; }
