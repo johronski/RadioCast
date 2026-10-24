@@ -1,7 +1,7 @@
 /* RadioCast web: web radio in the browser, song info, and casting to Chromecast from Chrome. */
 'use strict';
 
-const VERSION = 'Webb 1.2';
+const VERSION = 'Webb 1.3';
 
 // ============================================================ small helpers
 
@@ -564,8 +564,10 @@ async function songTick() {
 function pokeSongs() { songs.nextFetch = 0; songTick(); }
 setInterval(songTick, 3000);
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') { songs.backfilledAt = 0; pokeSongs(); renderAll(); }
+  if (document.visibilityState === 'visible') { checkSpeaker(); songs.backfilledAt = 0; pokeSongs(); renderAll(); }
 });
+// While the page is shown, check the speaker now and then too (Chrome can miss events).
+setInterval(() => { if (document.visibilityState === 'visible') checkSpeaker(); }, 15000);
 
 // ============================================================ playback
 
@@ -675,20 +677,56 @@ function onCastSession(state) {
   if (state === S.SESSION_STARTED || state === S.SESSION_RESUMED) {
     caster.connected = true;
     caster.device = session && session.getCastDevice() ? session.getCastDevice().friendlyName : 'högtalaren';
-    const wasPlaying = localState !== 'stopped';
+    const wasPlaying = localState !== 'stopped' || caster.wantPlay;
     if (state === S.SESSION_STARTED && wasPlaying && nowPlaying) {
       stopLocal();
-      castLoad(nowPlaying); // what played in the phone moves to the speaker
+      castLoad(nowPlaying); // what played (or should have played) moves to the speaker
     }
     syncRemote();
   } else if (state === S.SESSION_ENDED || state === S.SESSION_START_FAILED) {
     if (state === S.SESSION_START_FAILED) snack('Kunde inte ansluta till högtalaren.');
+    else if (caster.connected) lostSpeaker();
     caster.connected = false;
     caster.device = '';
     caster.state = 'IDLE';
   }
   renderAll();
 }
+/** The speaker was let go of (paused elsewhere, another app took over, or the connection broke). */
+function lostSpeaker() {
+  const name = caster.device || 'högtalaren';
+  if (caster.wantPlay && nowPlaying) {
+    snack('Kontakten med ' + name + ' bröts, kanske tog en annan app över. Tryck på knappen uppe till höger för att casta igen.');
+  }
+}
+
+/**
+ * Asks Chrome and the speaker what is going on now. Run when the page is shown again, since
+ * Chrome pauses the page in the background and it can miss what happened meanwhile.
+ */
+function checkSpeaker() {
+  if (!caster.ctx) return;
+  const session = caster.ctx.getCurrentSession();
+  if (!session) {
+    if (caster.connected) {
+      lostSpeaker();
+      caster.connected = false; caster.device = ''; caster.state = 'IDLE';
+      renderAll();
+    }
+    return;
+  }
+  const media = session.getMediaSession && session.getMediaSession();
+  if (!media) {
+    if (caster.state !== 'IDLE') { caster.state = 'IDLE'; renderAll(); }
+    return;
+  }
+  media.getStatus(null, () => {
+    syncRemote();
+    caster.state = media.playerState || 'IDLE'; // fresh from the speaker
+    renderAll();
+  }, () => { caster.state = 'IDLE'; renderAll(); });
+}
+
 function syncRemote() {
   const p = caster.player;
   if (!p) return;
@@ -708,7 +746,13 @@ function onRemoteChange() {
 }
 function castLoad(s) {
   const session = caster.ctx && caster.ctx.getCurrentSession();
-  if (!session) return;
+  if (!session) {
+    // Chrome is no longer connected (the page missed it): say so instead of doing nothing.
+    caster.connected = false; caster.device = ''; caster.state = 'IDLE'; caster.wantPlay = true;
+    renderAll();
+    snack('Inte längre ansluten till högtalaren. Tryck på knappen uppe till höger och välj den igen.');
+    return;
+  }
   const info = new chrome.cast.media.MediaInfo(s.url, contentType(s.url));
   info.streamType = chrome.cast.media.StreamType.LIVE;
   info.metadata = new chrome.cast.media.MusicTrackMediaMetadata();
@@ -717,6 +761,7 @@ function castLoad(s) {
   const req = new chrome.cast.media.LoadRequest(info);
   req.autoplay = true;
   caster.state = 'BUFFERING';
+  caster.wantPlay = true;
   session.loadMedia(req).then(() => syncRemote(), () => {
     caster.state = 'IDLE';
     playError = 'Högtalaren kunde inte spela strömmen. Kontrollera länken.';
@@ -726,6 +771,7 @@ function castLoad(s) {
 function castStop() {
   if (caster.controller && caster.player.isMediaLoaded) caster.controller.stop();
   caster.state = 'IDLE';
+  caster.wantPlay = false;
 }
 function castVolume(level) {
   if (!caster.player) return;
@@ -862,6 +908,7 @@ function statusText() {
     if (st === 'PLAYING') return 'Spelar på ' + caster.device;
     if (st === 'BUFFERING') return 'Startar på ' + caster.device + '…';
     if (st === 'PAUSED') return 'Pausad på ' + caster.device;
+    if (caster.wantPlay) return 'Tystnade på ' + caster.device + ' · tryck Spela';
     return 'Redo att spela på ' + caster.device;
   }
   if (localState === 'playing') return 'Spelar' + (/iPhone|iPad/.test(navigator.userAgent) ? '' : ' i telefonen');
