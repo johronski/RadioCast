@@ -1,16 +1,9 @@
-2026-10-24T11:56:20.436Z
-SR P1 | https://api.sr.se/api/v2/playlists/rightnow?channelid=132&format=json | null
-SR P2 | https://api.sr.se/api/v2/playlists/rightnow?channelid=163&format=json | null
-SR P3 | https://api.sr.se/api/v2/playlists/rightnow?channelid=164&format=json | "Robert Miles – Children"
-SR P4 Stockholm | https://api.sr.se/api/v2/playlists/rightnow?channelid=701&format=json | null
-FIP | https://api.radiofrance.fr/livemeta/pull/7 | "Mae Powell – Tangerine"
-Radio Nova | https://www.nova.fr/radios-data/www.nova.fr/all.json | "STEVIE WONDER – BOOGIE ON REGGAE WOMAN"
-Mouv' | https://api.radiofrance.fr/livemeta/pull/6 | null
-2026-10-24T11:56:41.809Z
-SR P1 | https://api.sr.se/api/v2/playlists/rightnow?channelid=132&format=json | null
-SR P2 | https://api.sr.se/api/v2/playlists/rightnow?channelid=163&format=json | null
-SR P3 | https://api.sr.se/api/v2/playlists/rightnow?channelid=164&format=json | null
-SR P4 Stockholm | https://api.sr.se/api/v2/playlists/rightnow?channelid=701&format=json | null
-FIP | https://api.radiofrance.fr/livemeta/pull/7 | "Mae Powell – Tangerine"
-Radio Nova | https://www.nova.fr/radios-data/www.nova.fr/all.json | "STEVIE WONDER – BOOGIE ON REGGAE WOMAN"
-Mouv' | https://api.radiofrance.fr/livemeta/pull/6 | null
+Webb 3.2
+SR P1 |  LIVE SR P1 Spelar  | volym synlig: false | t 6.2
+SR P2 |  LIVE SR P2 Mordminnen Finntroll Spelar  | volym synlig: false | t 6.6
+SR P3 |  LIVE SR P3 Joy. (feat. Amma & Absolutely) RAYE Spelar  | volym synlig: false | t 6.7
+SR P4 Stockholm |  LIVE SR P4 Stockholm Don't Stop The Music Robyn Spelar  | volym synlig: false | t 5.9
+FIP |  LIVE FIP Find me (underneath the sun) (feat. okcandice) Modha & Okcandice Spelar  | volym synlig: false | t 7.0
+Mouv' | MOUV LIVE Mouv' Spelar  | volym synlig: false | t 7.4
+Radio Nova |  LIVE Radio Nova Earrings Malcolm Todd Spelar  | volym synlig: false | t 6.3
+fel: inga
