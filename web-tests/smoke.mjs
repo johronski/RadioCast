@@ -25,6 +25,16 @@ await p.click('#sheetClose'); await p.waitForTimeout(300);
 check(await p.isHidden('#sheet'), 'låtvyn stängs med ✕');
 await p.click('#menuBtn');
 check((await p.textContent('#sheetBody')).includes('Dela min kanallista'), 'menyn öppnas');
+// Restarted while the radio played on a speaker: the app says where it probably plays.
+const p2 = await b.newPage();
+p2.on('pageerror', (e) => errors.push(e.message));
+await p2.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+await p2.addInitScript(() => localStorage.setItem('rc.castingOn',
+  JSON.stringify({ device: 'Kök', url: 'https://live1.sr.se/p3-aac-320', at: Date.now() })));
+await p2.goto(url);
+await p2.waitForTimeout(3500);
+check((await p2.textContent('#chipText')) === 'Kök', 'efter omstart visar knappen högtalaren');
+check((await p2.textContent('#npStatus')).includes('troligen på Kök'), 'efter omstart: "spelar troligen på Kök"');
 await b.close();
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 console.log('Allt gick bra.');

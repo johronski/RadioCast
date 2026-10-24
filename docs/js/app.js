@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 1.5';
+const VERSION = 'Webb 1.6';
 
 // ============================================================ stations
 
@@ -150,6 +150,12 @@ function stopMusic() {
 }
 function togglePlay() {
   if (musicActive()) { stopMusic(); return; }
+  if (!caster.connected && caster.guess && caster.ctx) {
+    // It probably still plays there: reconnect (and start it there if it does not).
+    caster.wantPlay = true;
+    chooseOutput();
+    return;
+  }
   if (!nowPlaying) { snack('Tryck på en kanal i listan för att spela den.'); return; }
   playStation(nowPlaying, stations.some((x) => x.url === nowPlaying.url));
 }
@@ -198,10 +204,19 @@ function onCastSession(state) {
   if (state === S.SESSION_STARTED || state === S.SESSION_RESUMED) {
     caster.connected = true;
     caster.device = session && session.getCastDevice() ? session.getCastDevice().friendlyName : 'högtalaren';
-    const wasPlaying = localState !== 'stopped' || caster.wantPlay;
-    if (state === S.SESSION_STARTED && wasPlaying && nowPlaying) {
+    caster.guess = null;
+    if (state === S.SESSION_STARTED && localState !== 'stopped' && nowPlaying) {
       stopLocal();
-      castLoad(nowPlaying); // what played (or should have played) moves to the speaker
+      castLoad(nowPlaying); // what played in the phone moves to the speaker
+    } else if (state === S.SESSION_STARTED) {
+      // The speaker may already play our radio (started earlier): join it instead of restarting.
+      askMediaStatus(session);
+      setTimeout(() => {
+        checkSpeaker();
+        setTimeout(() => {
+          if (caster.connected && caster.wantPlay && nowPlaying && !['PLAYING', 'BUFFERING'].includes(caster.state)) castLoad(nowPlaying);
+        }, 800);
+      }, 1200);
     }
     syncRemote();
     if (state === S.SESSION_RESUMED) {
@@ -276,9 +291,18 @@ function syncRemote() {
   }
   if (caster.connected && !dragging.volume) $('volume').value = Math.round((p.volumeLevel || 0) * 100);
 }
+/** Remembers what plays where, so a restarted app can say "probably still playing on Kök". */
+function rememberCasting() {
+  if (caster.connected && nowPlaying && ['PLAYING', 'BUFFERING'].includes(caster.state)) {
+    store.set('castingOn', { device: caster.device, url: nowPlaying.url, at: Date.now() });
+  }
+}
+function forgetCasting() { store.set('castingOn', null); caster.guess = null; }
+
 function onRemoteChange() {
   const before = caster.state;
   syncRemote();
+  rememberCasting();
   if (caster.state !== before) { pokeSongs(); renderAll(); }
 }
 function castLoad(s) {
@@ -306,6 +330,7 @@ function castLoad(s) {
   });
 }
 function castStop() {
+  forgetCasting();
   if (caster.controller && caster.player.isMediaLoaded) caster.controller.stop();
   caster.state = 'IDLE';
   caster.wantPlay = false;
@@ -339,6 +364,7 @@ function castingSheet() {
   });
   item('Flytta till telefonen', 'phone', () => {
     closeSheet();
+    forgetCasting();
     caster.switching = true;
     caster.wantPlay = false;
     caster.ctx.endCurrentSession(true);
@@ -349,6 +375,7 @@ function castingSheet() {
   });
   item('Sluta casta', 'close', () => {
     closeSheet();
+    forgetCasting();
     caster.switching = true;
     caster.wantPlay = false;
     caster.ctx.endCurrentSession(true);
@@ -402,12 +429,16 @@ function renderSongs() { renderNowPlaying(); renderSession(); if (sheetState.kin
 
 function renderChip() {
   const chip = $('castChip');
+  const guess = !caster.connected && caster.guess;
   chip.classList.toggle('connected', caster.connected);
-  const name = caster.connected ? caster.device : 'Telefonen';
+  chip.classList.toggle('guess', !!guess);
+  const name = caster.connected ? caster.device : guess ? guess.device : 'Telefonen';
   $('chipText').textContent = name;
-  $('chipIcon').querySelector('use').setAttribute('href', caster.connected ? '#i-speaker' : (caster.available ? '#i-caster' : '#i-phone'));
-  chip.setAttribute('aria-label', caster.connected ? 'Ljudet går till ' + name + '. Tryck för att byta eller sluta casta.'
-    : 'Ljudet går till telefonen. Tryck för att välja en högtalare.');
+  const ic = caster.connected || guess ? 'speaker' : (caster.available ? 'cast' : 'phone');
+  $('chipIcon').innerHTML = '<use href="#i-' + ic + '"></use>';
+  chip.setAttribute('aria-label', caster.connected ? 'Ljudet går till ' + name + '. Tryck för att flytta eller sluta casta.'
+    : guess ? 'Radion spelar troligen på ' + name + '. Tryck för att ansluta igen.'
+      : 'Ljudet går till telefonen. Tryck för att välja en högtalare.');
 }
 
 function renderList() {
@@ -485,6 +516,7 @@ function expandCountry(cc) {
 }
 
 function statusText() {
+  if (!caster.connected && caster.guess) return 'Spelar troligen på ' + caster.guess.device + ' · tryck på högtalaren uppe till höger';
   if (caster.connected) {
     const st = caster.state;
     if (st === 'PLAYING') return 'Spelar på ' + caster.device;
@@ -966,6 +998,15 @@ if ('serviceWorker' in navigator) {
 loadPatterns().then(() => pokeSongs());
 importFromLink();
 renderAll();
+// Restarted while the radio still plays on a speaker? Chrome does not always reconnect by itself:
+// after a moment, show where it probably plays, so one tap reconnects without restarting it.
+setTimeout(() => {
+  const last = store.get('castingOn', null);
+  if (caster.connected || !last || Date.now() - last.at > 12 * 3600000) return;
+  caster.guess = last;
+  nowPlaying = stations.find((s) => s.url === last.url) || nowPlaying;
+  renderAll();
+}, 3000);
 
 // For the automatic tests in GitHub (and for curious minds in the browser console).
 window.radiocast = {
