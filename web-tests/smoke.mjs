@@ -33,8 +33,16 @@ await p2.addInitScript(() => localStorage.setItem('rc.castingOn',
   JSON.stringify({ device: 'Kök', url: 'https://live1.sr.se/p3-aac-320', at: Date.now() })));
 await p2.goto(url);
 await p2.waitForTimeout(5500);
-check((await p2.textContent('#chipText')) === 'Kök', 'efter omstart visar knappen högtalaren');
+check((await p2.textContent('#outText')) === 'Kök', 'efter omstart visar högtalarknappen Kök');
 check((await p2.textContent('#npStatus')).includes('troligen på Kök'), 'efter omstart: "spelar troligen på Kök"');
+// A shared "listen" link offers the channel.
+const p3 = await b.newPage();
+p3.on('pageerror', (e) => errors.push(e.message));
+await p3.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+await p3.goto(url + '#lyssna=' + encodeURIComponent('https://icecast.radiofrance.fr/fip-midfi.mp3') + '&namn=FIP');
+await p3.waitForTimeout(500);
+check((await p3.textContent('#snackText')).includes('FIP'), 'delad kanallänk erbjuder kanalen');
+check((await p3.getAttribute('#outPhone', 'aria-pressed')) === 'true', 'Telefon är vald från början');
 await b.close();
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 console.log('Allt gick bra.');

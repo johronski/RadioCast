@@ -14,22 +14,27 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=1.7">
+<link rel="stylesheet" href="style.css?v=1.8">
 </head>
 <body>
 <div class="app">
 
   <header class="top">
     <h1>RadioCast</h1>
-    <button id="castChip" class="chip" type="button" aria-label="Ljudet går till telefonen. Tryck för att välja en högtalare.">
-      <span class="spinner" hidden></span>
-      <svg class="ico" id="chipIcon" viewBox="0 0 24 24"><use href="#i-phone"/></svg>
-      <span id="chipText">Telefonen</span>
-    </button>
     <button id="menuBtn" class="iconbtn" type="button" aria-label="Meny">
       <svg class="ico" viewBox="0 0 24 24"><use href="#i-more"/></svg>
     </button>
   </header>
+
+  <!-- Where the sound goes: the filled half is the current choice. -->
+  <div class="output" role="group" aria-label="Spela på">
+    <button id="outPhone" class="seg" type="button" aria-pressed="true">Telefon</button>
+    <button id="outSpeaker" class="seg" type="button" aria-pressed="false">
+      <span class="spinner" id="outSpin" hidden></span>
+      <span id="outText">Högtalare</span>
+      <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-chevron"/></svg>
+    </button>
+  </div>
 
   <button id="searchBar" class="searchbar" type="button">
     <svg class="ico" viewBox="0 0 24 24"><use href="#i-search"/></svg>
@@ -123,6 +128,6 @@
   </defs>
 </svg>
 
-<script type="module" src="js/app.js?v=1.7"></script>
+<script type="module" src="js/app.js?v=1.8"></script>
 </body>
 </html>

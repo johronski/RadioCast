@@ -198,3 +198,12 @@ input { font: inherit; color: inherit; }
 .field:focus { border-color: var(--accent); }
 .sheet .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 .chip.guess { border-style: dashed; background: transparent; }
+
+/* Output: [ Telefon ] [ Högtalare ▾ ] */
+.output { display: flex; gap: 0; margin: 4px 0 0; border: 1px solid var(--accent-line); border-radius: 24px; padding: 3px; background: var(--card); }
+.seg { flex: 1; min-width: 0; height: 42px; border-radius: 21px; font-weight: 600; font-size: 15px; color: var(--accent-text);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; }
+.seg span:not(.spinner) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seg[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.seg.guess { outline: 2px dashed var(--accent-line); outline-offset: -3px; }
+#outPhone { flex: 0 0 34%; }

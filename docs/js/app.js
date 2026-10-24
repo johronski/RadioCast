@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 1.7';
+const VERSION = 'Webb 1.8';
 
 // ============================================================ stations
 
@@ -183,12 +183,12 @@ window.__onGCastApiAvailable = (ok) => {
     const F = window.cast.framework;
     ctx.addEventListener(F.CastContextEventType.CAST_STATE_CHANGED, (e) => {
       caster.available = e.castState !== F.CastState.NO_DEVICES_AVAILABLE;
-      renderChip();
+      renderOutput();
     });
     ctx.addEventListener(F.CastContextEventType.SESSION_STATE_CHANGED, (e) => onCastSession(e.sessionState));
     controller.addEventListener(F.RemotePlayerEventType.ANY_CHANGE, onRemoteChange);
     caster.available = ctx.getCastState() !== F.CastState.NO_DEVICES_AVAILABLE;
-    renderChip();
+    renderOutput();
     rejoin();
   } catch (e) { /* casting stays unavailable */ }
 };
@@ -202,10 +202,12 @@ window.__onGCastApiAvailable = (ok) => {
 function onCastSession(state) {
   const S = window.cast.framework.SessionState;
   const session = caster.ctx.getCurrentSession();
+  caster.connecting = state === S.SESSION_STARTING;
   if (state === S.SESSION_STARTED || state === S.SESSION_RESUMED) {
     caster.connected = true;
     caster.device = session && session.getCastDevice() ? session.getCastDevice().friendlyName : 'högtalaren';
     caster.guess = null;
+    caster.joinId = null;
     if (state === S.SESSION_STARTED && localState !== 'stopped' && nowPlaying) {
       stopLocal();
       castLoad(nowPlaying); // what played in the phone moves to the speaker
@@ -305,6 +307,10 @@ function rememberCasting() {
  * playing. Choosing the speaker in Chrome's list instead would restart its player (the stream stops).
  */
 function rejoin() {
+  if (caster.joinId) {
+    try { if (!caster.ctx.getCurrentSession()) chrome.cast.requestSessionById(caster.joinId); } catch (e) { /* not supported */ }
+    return;
+  }
   const last = store.get('castingOn', null);
   if (!last || !last.sessionId || Date.now() - last.at > 12 * 3600000) return;
   try {
@@ -354,54 +360,43 @@ function castVolume(level) {
   caster.player.volumeLevel = level;
   caster.controller.setVolumeLevel();
 }
-/** While casting: move the radio to another speaker or the phone, or stop. */
-function castingSheet() {
-  const body = sheet('Spelar på ' + caster.device, 'output');
+/** Lets go of the speaker on purpose (no "connection lost" message). */
+function endCasting() {
+  caster.switching = true;
+  caster.ctx.endCurrentSession(true); // stops it on that speaker
+  caster.connected = false; caster.device = ''; caster.state = 'IDLE';
+  setTimeout(() => { caster.switching = false; }, 1500);
+}
+/** "Telefon": the radio moves to the phone. */
+function moveToPhone() {
+  if (!caster.connected) {
+    if (caster.guess) { forgetCasting(); renderAll(); }
+    return;
+  }
   const playing = musicActive();
-  const item = (label, ic, fn) => {
-    const b = el('button', 'menu-item');
-    b.type = 'button';
-    b.append(icon(ic), el('span', null, label));
-    b.onclick = fn;
-    body.append(b);
-  };
-  item('Flytta till en annan högtalare', 'cast', () => {
-    closeSheet();
-    caster.switching = true;
-    caster.wantPlay = playing;
-    caster.ctx.endCurrentSession(true); // stops it on this speaker
-    caster.connected = false; caster.device = ''; caster.state = 'IDLE';
-    renderAll();
-    // Chrome's list right away (still within the tap); the radio starts where you choose.
-    caster.ctx.requestSession().catch(() => { if (playing) snack('Ingen högtalare vald. Tryck Spela för att spela i telefonen.'); })
-      .finally(() => { caster.switching = false; });
-  });
-  item('Flytta till telefonen', 'phone', () => {
-    closeSheet();
-    forgetCasting();
-    caster.switching = true;
-    caster.wantPlay = false;
-    caster.ctx.endCurrentSession(true);
-    caster.connected = false; caster.device = ''; caster.state = 'IDLE';
-    setTimeout(() => { caster.switching = false; }, 1000);
-    if (playing && nowPlaying) playStation(nowPlaying, stations.some((x) => x.url === nowPlaying.url));
-    else renderAll();
-  });
-  item('Sluta casta', 'close', () => {
-    closeSheet();
-    forgetCasting();
-    caster.switching = true;
-    caster.wantPlay = false;
-    caster.ctx.endCurrentSession(true);
-    caster.connected = false; caster.device = ''; caster.state = 'IDLE';
-    setTimeout(() => { caster.switching = false; }, 1000);
-    renderAll();
-  });
-  body.append(el('p', 'muted', 'Volymen på högtalaren ändrar du med reglaget i spelarkortet.'));
+  forgetCasting();
+  caster.wantPlay = false;
+  endCasting();
+  if (playing && nowPlaying) playStation(nowPlaying, stations.some((x) => x.url === nowPlaying.url));
+  else renderAll();
+}
+/** The speaker half while casting: Chrome's list right away, and the radio starts where you choose. */
+function moveToOtherSpeaker() {
+  const playing = musicActive();
+  caster.wantPlay = playing;
+  endCasting();
+  renderAll();
+  caster.ctx.requestSession().catch(() => { if (playing) snack('Ingen högtalare vald. Tryck Spela för att spela i telefonen.'); });
+}
+function stopCasting() {
+  forgetCasting();
+  caster.wantPlay = false;
+  endCasting();
+  renderAll();
 }
 
 function chooseOutput() {
-  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { castingSheet(); return; }
+  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { moveToOtherSpeaker(); return; }
   // Reconnecting to where it probably played: Chrome restarts that speaker's player, so start the
   // radio there again right away instead of leaving it silent.
   if (caster.guess) caster.wantPlay = true;
@@ -438,24 +433,25 @@ const dragging = { volume: false };
 
 function renderAll() {
   renderList();
-  renderChip();
+  renderOutput();
   renderNowPlaying();
   renderSession();
 }
 function renderSongs() { renderNowPlaying(); renderSession(); if (sheetState.kind === 'song') renderSongSheet(); }
 
-function renderChip() {
-  const chip = $('castChip');
+function renderOutput() {
   const guess = !caster.connected && caster.guess;
-  chip.classList.toggle('connected', caster.connected);
-  chip.classList.toggle('guess', !!guess);
-  const name = caster.connected ? caster.device : guess ? guess.device : 'Telefonen';
-  $('chipText').textContent = name;
-  const ic = caster.connected || guess ? 'speaker' : (caster.available ? 'cast' : 'phone');
-  $('chipIcon').innerHTML = '<use href="#i-' + ic + '"></use>';
-  chip.setAttribute('aria-label', caster.connected ? 'Ljudet går till ' + name + '. Tryck för att flytta eller sluta casta.'
-    : guess ? 'Radion spelar troligen på ' + name + '. Tryck för att ansluta igen.'
-      : 'Ljudet går till telefonen. Tryck för att välja en högtalare.');
+  const onSpeaker = caster.connected;
+  const phone = $('outPhone'), spk = $('outSpeaker');
+  phone.setAttribute('aria-pressed', String(!onSpeaker && !guess));
+  spk.setAttribute('aria-pressed', String(onSpeaker));
+  spk.classList.toggle('guess', !!guess);
+  $('outSpin').hidden = !caster.connecting;
+  const name = caster.connecting ? 'Ansluter…' : onSpeaker ? caster.device : guess ? guess.device : 'Högtalare';
+  $('outText').textContent = name;
+  phone.setAttribute('aria-label', onSpeaker ? 'Flytta ljudet till telefonen' : 'Ljudet går till telefonen');
+  spk.setAttribute('aria-label', onSpeaker ? 'Ljudet går till ' + name + '. Tryck för att byta högtalare.'
+    : guess ? 'Radion spelar troligen på ' + name + '. Tryck för att ansluta igen.' : 'Välj en högtalare');
 }
 
 function renderList() {
@@ -804,6 +800,11 @@ function showMenu() {
     b.onclick = () => { closeSheet(); setTimeout(fn, 200); };
     body.append(b);
   };
+  if (caster.connected) {
+    item('Dela kontrollen över ' + caster.device, 'speaker', shareControl);
+    item('Sluta casta till ' + caster.device, 'close', stopCasting);
+  }
+  if (nowPlaying) item('Dela kanalen ' + shortName(nowPlaying.name), 'note', shareListen);
   item('Dela min kanallista', 'plus', shareList);
   item('Lägg till med egen länk', 'plus', askForStation);
   item('Om RadioCast', 'note', () => {
@@ -821,7 +822,60 @@ function shareList() {
   else if (navigator.clipboard) navigator.clipboard.writeText(link).then(done, () => prompt('Kopiera länken:', link));
   else prompt('Kopiera länken:', link);
 }
+function shareLink(title, link, done) {
+  if (navigator.share) navigator.share({ title, url: link }).catch(() => {});
+  else if (navigator.clipboard) navigator.clipboard.writeText(link).then(() => snack(done), () => prompt('Kopiera länken:', link));
+  else prompt('Kopiera länken:', link);
+}
+/**
+ * A link that lets another phone or computer at home take over the control of this cast:
+ * it joins by the cast's id, so the radio keeps playing.
+ */
+function shareControl() {
+  const session = caster.ctx && caster.ctx.getCurrentSession();
+  const id = session && session.getSessionId ? session.getSessionId() : null;
+  if (!id || !nowPlaying) { snack('Hittar ingen pågående castning att dela.'); return; }
+  const q = new URLSearchParams({ styr: id, url: nowPlaying.url, namn: nowPlaying.name, hogtalare: caster.device });
+  shareLink('Styr radion på ' + caster.device, location.origin + location.pathname + '#' + q,
+    'Länken är kopierad. Öppna den i Chrome på en annan enhet i samma wifi.');
+}
+/** A link that starts the same channel for anyone, anywhere (in their phone). */
+function shareListen() {
+  const q = new URLSearchParams({ lyssna: nowPlaying.url, namn: nowPlaying.name });
+  shareLink('Lyssna på ' + shortName(nowPlaying.name), location.origin + location.pathname + '#' + q, 'Länken till kanalen är kopierad.');
+}
+/** Opening a shared link: join a cast, or offer to listen to a channel. */
+function openSharedLink() {
+  const q = new URLSearchParams(location.hash.substring(1));
+  const name = q.get('namn') || 'Radio';
+  const find = (url) => stations.find((s) => s.url === url) || { name, url, cc: guessCountry(url), lang: '', br: 0, logo: '', genre: '' };
+  if (q.get('styr') && q.get('url')) {
+    history.replaceState(null, '', location.pathname);
+    nowPlaying = find(q.get('url'));
+    caster.joinId = q.get('styr');
+    caster.guess = { device: q.get('hogtalare') || 'högtalaren', url: nowPlaying.url, at: Date.now() };
+    renderAll();
+    snack('Ansluter till radion på ' + caster.guess.device + '…');
+    setTimeout(() => {
+      if (!caster.connected && caster.joinId) {
+        snack('Kunde inte ansluta. Öppna länken i Chrome på en enhet i samma wifi som högtalaren.');
+        caster.joinId = null;
+      }
+    }, 8000);
+    return true;
+  }
+  if (q.get('lyssna')) {
+    history.replaceState(null, '', location.pathname);
+    const s = find(q.get('lyssna'));
+    nowPlaying = s;
+    renderAll();
+    snack('Delad kanal: ' + shortName(s.name), 'Lyssna', () => playStation(s, stations.some((x) => x.url === s.url)));
+    return true;
+  }
+  return false;
+}
 function importFromLink() {
+  if (openSharedLink()) return;
   const m = /#lista=([A-Za-z0-9+/=]+)/.exec(location.hash);
   if (!m) return;
   history.replaceState(null, '', location.pathname);
@@ -989,7 +1043,8 @@ function snack(text, actionLabel, action) {
 
 // ============================================================ wiring
 
-$('castChip').onclick = chooseOutput;
+$('outSpeaker').onclick = chooseOutput;
+$('outPhone').onclick = moveToPhone;
 $('menuBtn').onclick = showMenu;
 $('searchBar').onclick = openSearch;
 $('emptySearch').onclick = openSearch;
@@ -1019,7 +1074,7 @@ renderAll();
 // after a moment, show where it probably plays, so one tap reconnects without restarting it.
 setTimeout(() => {
   const last = store.get('castingOn', null);
-  if (caster.connected || !last || Date.now() - last.at > 12 * 3600000) return; // rejoined, or nothing to say
+  if (caster.connected || caster.guess || !last || Date.now() - last.at > 12 * 3600000) return; // rejoined, or nothing to say
   caster.guess = last;
   nowPlaying = stations.find((s) => s.url === last.url) || nowPlaying;
   renderAll();
