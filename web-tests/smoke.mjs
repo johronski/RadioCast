@@ -18,9 +18,14 @@ await p.click('#searchBar');
 check(await p.isVisible('#search'), 'sökfönstret öppnas');
 check(await p.locator('#genres .gchip').count() === 12, 'genreknapparna finns');
 await p.click('#searchBack');
-await p.click('#orderOwn'); await p.click('#editBtn');
-check(await p.locator('.grip').count() === 6, 'redigeringsläget visar handtag');
+check(await p.isHidden('#listhead'), 'sortering och Klar är dolda utanför redigering');
+await p.click('#menuBtn'); await p.waitForTimeout(300);
+await p.click('text=Redigera listan'); await p.waitForTimeout(400);
+await p.click('#orderOwn');
+check(await p.locator('.grip').count() === 6, 'redigeringsläget (från menyn) visar handtag');
 await p.click('#editBtn');
+check(await p.isHidden('#listhead'), 'Klar avslutar redigeringen');
+check(await p.isVisible('#installBtn'), 'knappen för hemskärmen syns');
 await p.click('.row >> nth=0');
 check(await p.isVisible('#np'), 'spelarkortet visas efter tryck på en kanal');
 await p.click('#npText');
@@ -35,11 +40,14 @@ check((await p.textContent('#sheetBody')).includes('Med mina kanaler'), 'dela ap
 const p2 = await b.newPage();
 p2.on('pageerror', (e) => errors.push(e.message));
 await p2.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+await p2.addInitScript(() => localStorage.setItem('rc.welcomed', 'true'));
 await p2.addInitScript(() => localStorage.setItem('rc.castingOn',
   JSON.stringify({ device: 'Kök', url: 'https://live1.sr.se/p3-aac-320', at: Date.now() })));
 await p2.goto(url);
 await p2.waitForTimeout(5500);
 check((await p2.textContent('#outText')) === 'Kök', 'efter omstart visar högtalarknappen Kök');
+await p2.click('#outBtn'); await p2.waitForTimeout(400);
+check((await p2.textContent('#sheetBody')).includes('Använd telefonen'), 'högtalarknappen erbjuder anslut igen eller telefonen');
 check((await p2.textContent('#npStatus')).includes('troligen på Kök'), 'efter omstart: "spelar troligen på Kök"');
 // A shared "listen" link offers the channel.
 const p3 = await b.newPage();
@@ -48,7 +56,7 @@ await p3.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
 await p3.goto(url + '#lyssna=' + encodeURIComponent('https://icecast.radiofrance.fr/fip-midfi.mp3') + '&namn=FIP');
 await p3.waitForTimeout(500);
 check((await p3.textContent('#snackText')).includes('FIP'), 'delad kanallänk erbjuder kanalen');
-check((await p3.getAttribute('#outPhone', 'aria-pressed')) === 'true', 'Telefon är vald från början');
+check((await p3.textContent('#outText')) === 'Telefon', 'Telefon är vald från början');
 await b.close();
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 console.log('Allt gick bra.');

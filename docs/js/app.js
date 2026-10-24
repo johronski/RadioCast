@@ -6,15 +6,28 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 2.9';
+const VERSION = 'Webb 3.0';
 
 // ============================================================ stations
 
-const DEFAULT_STATIONS = [
+/** The phone's own country (from its language), shown first in the list. */
+const HOME_CC = /^sv/i.test(navigator.language || '') ? 'SE' : ((navigator.language || '').split('-')[1] || '').toUpperCase();
+const SR_LOGO = (id, img) => 'https://static-cdn.sr.se/images/' + id + '/' + img + '.jpg?preset=api-default-square';
+const INTERNATIONAL_STATIONS = [
+  { name: 'FIP', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Eklektiskt' },
   { name: 'Radio Nova', url: 'https://novazz.ice.infomaniak.ch/novazz-128.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Eklektiskt' },
+];
+/** The first list for a new user: Swedish channels on a Swedish phone, otherwise a French mix. */
+const DEFAULT_STATIONS = /^sv/i.test(navigator.language || '') ? [
+  { name: 'SR P1', url: 'https://live1.sr.se/p1-aac-320', cc: 'SE', lang: 'swedish', br: 320, logo: SR_LOGO(132, '4a5e66b7-c935-415d-a524-c060ea227de2'), genre: 'Nyheter och samhälle' },
+  { name: 'SR P2', url: 'https://live1.sr.se/p2-aac-320', cc: 'SE', lang: 'swedish', br: 320, logo: SR_LOGO(163, '684f7bac-3e2e-4a7a-969e-6892b70069d6'), genre: 'Klassiskt' },
+  { name: 'SR P3', url: 'https://live1.sr.se/p3-aac-320', cc: 'SE', lang: 'swedish', br: 320, logo: SR_LOGO(164, '1adb95c9-cc4e-452f-b1ed-0602b3e15c46'), genre: 'Pop' },
+  { name: 'SR P4 Stockholm', url: 'https://sverigesradio.se/topsy/direkt/srapi/701.mp3', cc: 'SE', lang: 'swedish', br: 96, logo: SR_LOGO(701, '7b2427e5-c4db-4bd9-8db2-5d2a76f1357e'), genre: 'Lokalt' },
+  ...INTERNATIONAL_STATIONS,
+] : [
+  ...INTERNATIONAL_STATIONS,
   { name: 'Nouvo Nova (ny musik)', url: 'https://nova-nouvo.ice.infomaniak.ch/nova-nouvo-128.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Ny musik' },
   { name: "Mouv'", url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Hiphop' },
-  { name: 'FIP', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Eklektiskt' },
   { name: 'France Inter', url: 'https://icecast.radiofrance.fr/franceinter-midfi.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Nyheter och kultur' },
   { name: 'Sveriges Radio P3', url: 'https://live1.sr.se/p3-aac-320', cc: 'SE', lang: 'swedish', br: 320, logo: '', genre: 'Pop' },
 ];
@@ -155,7 +168,7 @@ function togglePlay() {
   if (!caster.connected && caster.guess && caster.ctx) {
     // It probably still plays there: reconnect (and start it there if it does not).
     caster.wantPlay = true;
-    chooseOutput();
+    openSpeakerList();
     return;
   }
   if (!nowPlaying) { snack('Tryck på en kanal i listan för att spela den.'); return; }
@@ -544,6 +557,7 @@ function giveUpOn(device) {
   }
   renderAll();
 }
+/** Tapping the speaker chip while casting: move to the phone, switch speaker, or stop. */
 function speakerSheet() {
   const body = sheet('Spelar på ' + caster.device, 'output');
   const item = (label, ic, fn) => {
@@ -553,21 +567,34 @@ function speakerSheet() {
     b.onclick = () => { closeSheet(); fn(); };
     body.append(b);
   };
-  item('Byt högtalare', 'cast', moveToOtherSpeaker);
+  item('Spela i telefonen', 'phone', moveToPhone);
+  item('Byt högtalare', 'speaker', isAndroid ? moveToOtherSpeaker : pickWhileCasting);
   item('Sluta casta', 'close', stopCasting);
-  body.append(el('p', 'muted', caster.device + ' spelar vidare medan du väljer. När den nya högtalaren spelar försöker appen stänga av ' + caster.device + '.'));
+  body.append(el('p', 'muted', caster.device + ' spelar vidare medan du väljer en annan högtalare.'));
 }
-
+/** Tapping the chip when it probably still plays on a speaker: reconnect, or use the phone. */
+function guessSheet() {
+  const g = caster.guess;
+  const body = sheet('Spelar troligen på ' + g.device, 'output');
+  const item = (label, ic, fn) => {
+    const b = el('button', 'menu-item');
+    b.type = 'button';
+    b.append(icon(ic), el('span', null, label));
+    b.onclick = () => { closeSheet(); fn(); };
+    body.append(b);
+  };
+  item('Anslut till ' + g.device, 'speaker', () => { caster.wantPlay = true; openSpeakerList(); });
+  item('Använd telefonen', 'phone', () => { forgetCasting(); renderAll(); });
+  body.append(el('p', 'muted', 'Välj ' + g.device + ' i Chromes lista. Radion startar om där efter några sekunder.'));
+}
 function chooseOutput() {
   if (caster.handover && caster.handover.phase !== 'picking') { snack('Byter högtalare, ett ögonblick…'); return; }
-  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) {
-    // Desktop Chrome shows the full list while casting (the radio plays on until you choose).
-    if (/Android/i.test(navigator.userAgent)) speakerSheet(); else pickWhileCasting();
-    return;
-  }
-  // Reconnecting to where it probably played: Chrome restarts that speaker's player, so start the
-  // radio there again right away instead of leaving it silent.
-  if (caster.guess) caster.wantPlay = true;
+  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { speakerSheet(); return; }
+  if (caster.guess) { guessSheet(); return; }
+  openSpeakerList();
+}
+/** Chrome's own list of speakers and groups (it searches when opened). */
+function openSpeakerList() {
   if (caster.ctx) {
     // Chrome's own list of speakers and groups (it searches when opened); while casting it also has "Sluta casta".
     caster.ctx.requestSession().catch((e) => {
@@ -611,16 +638,18 @@ function renderOutput() {
   const h = caster.handover;
   const guess = !caster.connected && caster.guess;
   const onSpeaker = caster.connected || !!h;
-  const phone = $('outPhone'), spk = $('outSpeaker');
-  phone.setAttribute('aria-pressed', String(!onSpeaker && !guess));
-  spk.setAttribute('aria-pressed', String(onSpeaker));
-  spk.classList.toggle('guess', !!guess);
-  $('outSpin').hidden = !caster.connecting && !(h && h.phase !== 'picking');
-  const name = h ? (h.newDevice || h.oldDevice) : caster.connecting ? 'Ansluter…' : onSpeaker ? caster.device : guess ? guess.device : 'Högtalare';
+  const btn = $('outBtn');
+  btn.classList.toggle('on', onSpeaker);
+  btn.classList.toggle('guess', !!guess);
+  const busy = caster.connecting || (h && h.phase !== 'picking');
+  $('outSpin').hidden = !busy;
+  $('outIcon').hidden = !!busy;
+  $('outIcon').firstElementChild.setAttribute('href', onSpeaker || guess ? '#i-speaker' : '#i-phone');
+  const name = h ? (h.newDevice || h.oldDevice) : caster.connecting ? 'Ansluter…' : onSpeaker ? caster.device : guess ? guess.device : 'Telefon';
   $('outText').textContent = name;
-  phone.setAttribute('aria-label', onSpeaker ? 'Flytta ljudet till telefonen' : 'Ljudet går till telefonen');
-  spk.setAttribute('aria-label', onSpeaker ? 'Ljudet går till ' + name + '. Tryck för att byta högtalare.'
-    : guess ? 'Radion spelar troligen på ' + name + '. Tryck för att ansluta igen.' : 'Välj en högtalare');
+  btn.setAttribute('aria-label', onSpeaker ? 'Ljudet går till ' + name + '. Tryck för att byta.'
+    : guess ? 'Radion spelar troligen på ' + name + '. Tryck för att ansluta igen.'
+    : 'Ljudet går till telefonen. Tryck för att välja högtalare.');
 }
 
 function renderList() {
@@ -629,8 +658,8 @@ function renderList() {
   $('empty').hidden = stations.length > 0;
   $('orderCountry').setAttribute('aria-selected', String(grouped));
   $('orderOwn').setAttribute('aria-selected', String(!grouped));
-  $('editBtn').textContent = editing ? 'Klar' : 'Redigera';
-  $('editBtn').hidden = stations.length === 0;
+  $('listhead').hidden = !editing; // sorting and "Klar" only while editing (from the ⋯ menu)
+  $('installBtn').hidden = installed() || editing;
   const playingUrl = musicActive() && nowPlaying ? nowPlaying.url : null;
   const rowFor = (s, i) => {
     const row = el('div', 'row' + (editing ? '' : ' tap') + (s.url === playingUrl ? ' playing' : ''));
@@ -680,7 +709,9 @@ function renderList() {
     byCountry.get(cc).push([s, i]);
   });
   const coll = new Intl.Collator('sv');
-  const keys = [...byCountry.keys()].sort((a, b) => (a ? 0 : 1) - (b ? 0 : 1) || coll.compare(countryName(a), countryName(b)));
+  // Unknown country last, the phone's own country first, then by name.
+  const rank = (cc) => (!cc ? 2 : cc === HOME_CC ? 0 : 1);
+  const keys = [...byCountry.keys()].sort((a, b) => rank(a) - rank(b) || coll.compare(countryName(a), countryName(b)));
   for (const cc of keys) {
     const list = byCountry.get(cc).sort((a, b) => coll.compare(shortName(a[0].name), shortName(b[0].name)));
     const open = !collapsed.has(cc);
@@ -871,38 +902,34 @@ const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 const isAndroid = /Android/i.test(navigator.userAgent);
 const installed = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
-/** First visit: what the app is, how to put it on the home screen, and how casting works. */
+/** First visit: what the app is and how casting works (home screen: its own button under the list). */
 function welcome() {
   store.set('welcomed', true);
   const body = sheet('Välkommen till RadioCast', 'welcome');
-  body.append(el('p', null, 'Webbradio från hela världen, med vilken låt som spelas. Tryck på en kanal för att lyssna, och sök efter fler med sökrutan.'));
-  const steps = (title, list) => {
-    body.append(el('h3', 'welcome-h', title));
-    const ol = el('ol', 'muted welcome-steps');
-    list.forEach((t) => ol.append(el('li', null, t)));
-    body.append(ol);
-  };
-  if (!installed()) {
-    if (isIOS) steps('Lägg appen på hemskärmen', ['Öppna sidan i Safari.', 'Tryck på Dela-knappen (fyrkanten med pil uppåt).', 'Välj "Lägg till på hemskärmen".']);
-    else if (installPrompt) {
-      body.append(el('h3', 'welcome-h', 'Lägg appen på hemskärmen'));
-      const add = el('button', 'btn accent', 'Lägg till på hemskärmen');
-      add.onclick = () => { installPrompt.prompt(); installPrompt = null; add.disabled = true; };
-      body.append(add);
-    } else steps('Lägg appen på hemskärmen', ['Tryck på webbläsarens meny (⋮).', 'Välj "Lägg till på startskärmen" eller "Installera app".']);
-  }
-  if (isIOS) {
-    steps('Spela på högtalare', ['Chromecast går inte från iPhone, men AirPlay gör det.', 'Öppna Kontrollcenter, tryck på ljudrutan och välj högtalare.']);
-  } else {
-    steps('Casta till Chromecast', [
-      'Använd Chrome, i samma wifi som högtalarna.',
-      'Tryck på Högtalare uppe till höger och välj högtalare eller grupp.',
-      isAndroid ? 'Första gången: tillåt "Enheter i närheten" när Chrome frågar (annars hittas inga högtalare).' : 'Chrome visar sina högtalare i en lista.',
-    ]);
-  }
+  body.append(el('p', null, 'Webbradio med vilken låt som spelas. Tryck på en kanal för att lyssna, och sök efter fler med sökrutan.'));
+  body.append(el('h3', 'welcome-h', isIOS ? 'Spela på högtalare' : 'Casta till Chromecast'));
+  body.append(el('p', 'muted', isIOS
+    ? 'Använd AirPlay: öppna Kontrollcenter, tryck på ljudrutan och välj högtalare.'
+    : 'Tryck på Telefon uppe till höger och välj högtalare. Använd Chrome i samma wifi som högtalarna'
+      + (isAndroid ? ', och tillåt "Enheter i närheten" första gången.' : '.')));
   const go = el('button', 'btn accent welcome-go', 'Kom igång');
   go.onclick = closeSheet;
   body.append(go);
+}
+/** The button under the list: Chrome's own install prompt when it has one, else how to do it. */
+function addToHomeScreen() {
+  if (installPrompt) {
+    installPrompt.prompt();
+    installPrompt.userChoice.finally(() => { installPrompt = null; renderList(); });
+    return;
+  }
+  const body = sheet('Lägg på hemskärmen');
+  const ol = el('ol', 'muted welcome-steps');
+  (isIOS
+    ? ['Öppna sidan i Safari.', 'Tryck på Dela-knappen (fyrkanten med pil uppåt).', 'Välj "Lägg till på hemskärmen".']
+    : ['Tryck på webbläsarens meny (⋮).', 'Välj "Lägg till på startskärmen" eller "Installera app".']
+  ).forEach((t) => ol.append(el('li', null, t)));
+  body.append(ol, el('p', 'muted', 'Då öppnas RadioCast som en vanlig app, utan webbläsarens adressfält.'));
 }
 /** Shown once, on the first visit, after any question about a shared list. */
 function maybeWelcome() {
@@ -1033,6 +1060,7 @@ function showMenu() {
     item('Sluta casta till ' + caster.device, 'close', stopCasting);
   }
   if (nowPlaying) item('Dela kanalen ' + shortName(nowPlaying.name), 'note', shareListen);
+  if (stations.length) item('Redigera listan', 'grip', () => { editing = true; renderList(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   item('Dela appen med en vän', 'plus', shareApp);
   item('Lägg till med egen länk', 'plus', askForStation);
   item('Om RadioCast', 'note', () => {
@@ -1289,14 +1317,15 @@ function snack(text, actionLabel, action) {
 
 // ============================================================ wiring
 
-$('outSpeaker').onclick = chooseOutput;
-$('outPhone').onclick = moveToPhone;
+$('outBtn').onclick = chooseOutput;
 $('menuBtn').onclick = showMenu;
 $('searchBar').onclick = openSearch;
 $('emptySearch').onclick = openSearch;
 $('orderCountry').onclick = () => { grouped = true; store.set('grouped', true); renderList(); };
 $('orderOwn').onclick = () => { grouped = false; store.set('grouped', false); renderList(); };
-$('editBtn').onclick = () => { editing = !editing; renderList(); };
+$('editBtn').onclick = () => { editing = false; renderList(); };
+$('installBtn').onclick = addToHomeScreen;
+window.addEventListener('appinstalled', () => { installPrompt = null; renderList(); });
 $('npButton').onclick = togglePlay;
 $('npText').onclick = showSongSheet;
 const vol = $('volume');

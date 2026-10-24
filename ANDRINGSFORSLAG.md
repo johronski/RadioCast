@@ -4,11 +4,8 @@ Byggpaus till och med lördag 31 oktober 2026. Nya önskemål samlas här i stä
 
 Prioriterad lista (24 okt). Snarlika förslag är sammanslagna. Nytta = för nya användare (vänner) och dig, insats = ungefärlig storlek.
 
-## Steg 1: Första intrycket (stor nytta, liten–medel insats)
-1. **Grundlista efter telefonens språk.** Svensk telefon: P1–P4 m.fl. + några internationella, i stället för mest franska kanaler. Insats: liten.
-2. **Ny topp på startsidan.** Diskret högtalarknapp i sidhuvudet som i Android-appen (visar tydligt var det spelar, fylld när det castas) i stället för två knappar. Land/Egen ordning och Redigera flyttas till ⋯-menyn eller långtryck. Insats: medel.
-3. **Visa att spelarkortet öppnar låtvyn** (liten pil eller "Låtar"). Insats: liten.
-4. **Hemskärm som egen knapp** (syns tills appen är installerad) och **kortare välkomstruta** med bara casting-tipsen. Insats: liten.
+## Steg 1: Första intrycket — KLART i Webb 3.0 (24 okt)
+Grundlista efter språk, högtalarknapp i sidhuvudet (sortering/redigering i ⋯-menyn), pil på spelarkortet, hemskärmsknapp under listan och kortare välkomstruta.
 
 ## Steg 2: Putsa (medel nytta, liten insats)
 5. Dölj bithastighet i listan, utom där den skiljer två strömmar av samma kanal.

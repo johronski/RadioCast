@@ -47,6 +47,14 @@ input { font: inherit; color: inherit; }
 .top h1 { font-size: 26px; font-weight: 700; margin: 0; flex: 1; letter-spacing: -.01em; }
 .iconbtn { width: 44px; height: 44px; border-radius: 22px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
 .iconbtn:active { background: var(--line); }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 38px; max-width: 170px; padding: 0 10px 0 12px;
+  border-radius: 19px; background: var(--card); color: var(--accent-text); border: 1px solid var(--accent-line);
+  font-weight: 600; font-size: 14px; white-space: nowrap; flex: none;
+}
+.chip span:not(.spinner) { overflow: hidden; text-overflow: ellipsis; }
+.chip.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.chip.guess { border-style: dashed; }
 .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; flex: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -111,7 +119,7 @@ input { font: inherit; color: inherit; }
 .np-text:active { background: var(--bg); }
 .np-channel { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; min-width: 0; }
 .np-channel.small { font-size: 13px; color: var(--muted); }
-.np-channel span:last-child, .np-title span, .np-artist span, .np-status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np-channel span:last-child, #npName, .np-title span, .np-artist span, .np-status { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .np-title, .np-artist { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .np-title { font-weight: 600; font-size: 15px; }
 .np-artist { color: var(--soft); font-size: 14px; }
@@ -191,13 +199,7 @@ input { font: inherit; color: inherit; }
 .sheet .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 
 /* Output: [ Telefon ] [ Högtalare ▾ ] */
-.output { display: flex; gap: 0; margin: 4px 0 0; border: 1px solid var(--accent-line); border-radius: 24px; padding: 3px; background: var(--card); }
-.seg { flex: 1; min-width: 0; height: 42px; border-radius: 21px; font-weight: 600; font-size: 15px; color: var(--accent-text);
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; }
-.seg span:not(.spinner) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.seg[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
-.seg.guess { outline: 2px dashed var(--accent-line); outline-offset: -3px; }
-#outPhone { flex: 0 0 34%; }
+
 
 /* First visit */
 .welcome-h { font-size: 15px; font-weight: 700; margin: 18px 0 6px; }
@@ -205,3 +207,9 @@ input { font: inherit; color: inherit; }
 .welcome-steps li { margin: 2px 0; }
 .welcome-go { width: 100%; margin-top: 20px; }
 .sheet .menu-item small { font-size: 13px; }
+
+/* Header chip, list editing bar, install row, "open song view" hint */
+.top h1 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.listhead[hidden] { display: none; }
+.install { margin: 8px auto 0; display: flex; color: var(--muted); font-weight: 500; font-size: 14px; }
+.np-more { transform: rotate(180deg); color: var(--muted); margin-left: 4px; flex: none; }

@@ -14,39 +14,36 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=2.9">
+<link rel="stylesheet" href="style.css?v=3.0">
 </head>
 <body>
 <div class="app">
 
   <header class="top">
     <h1>RadioCast</h1>
+    <!-- Where the sound goes: the phone, or a speaker (filled while casting). Tap to choose. -->
+    <button id="outBtn" class="chip" type="button">
+      <span class="spinner" id="outSpin" hidden></span>
+      <svg class="ico sm" id="outIcon" viewBox="0 0 24 24"><use href="#i-phone"/></svg>
+      <span id="outText">Telefon</span>
+      <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-chevron"/></svg>
+    </button>
     <button id="menuBtn" class="iconbtn" type="button" aria-label="Meny">
       <svg class="ico" viewBox="0 0 24 24"><use href="#i-more"/></svg>
     </button>
   </header>
-
-  <!-- Where the sound goes: the filled half is the current choice. -->
-  <div class="output" role="group" aria-label="Spela på">
-    <button id="outPhone" class="seg" type="button" aria-pressed="true">Telefon</button>
-    <button id="outSpeaker" class="seg" type="button" aria-pressed="false">
-      <span class="spinner" id="outSpin" hidden></span>
-      <span id="outText">Högtalare</span>
-      <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-chevron"/></svg>
-    </button>
-  </div>
 
   <button id="searchBar" class="searchbar" type="button">
     <svg class="ico" viewBox="0 0 24 24"><use href="#i-search"/></svg>
     <span>Sök kanal, land eller genre</span>
   </button>
 
-  <div class="listhead">
+  <div class="listhead" id="listhead" hidden>
     <div class="pills" role="tablist" aria-label="Ordning">
       <button id="orderCountry" class="pill" role="tab" type="button">Land</button>
       <button id="orderOwn" class="pill" role="tab" type="button">Egen ordning</button>
     </div>
-    <button id="editBtn" class="textbtn" type="button">Redigera</button>
+    <button id="editBtn" class="textbtn" type="button">Klar</button>
   </div>
 
   <main id="stations" class="stations" aria-live="polite"></main>
@@ -57,6 +54,10 @@
     <button id="emptySearch" class="btn accent" type="button">Sök kanaler</button>
   </section>
 
+  <button id="installBtn" class="textbtn install" type="button" hidden>
+    <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-plus"/></svg> Lägg RadioCast på hemskärmen
+  </button>
+
   <div class="spacer"></div>
 </div>
 
@@ -65,7 +66,7 @@
   <div class="np-row">
     <div class="logo-wrap np-logo" id="npLogo"></div>
     <button id="npText" class="np-text" type="button">
-      <span class="np-channel"><span id="npLive" class="live" hidden><i></i>LIVE</span><span id="npName"></span></span>
+      <span class="np-channel"><span id="npLive" class="live" hidden><i></i>LIVE</span><span id="npName"></span><svg class="ico sm np-more" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></span>
       <span id="npTitle" class="np-title" hidden><svg class="ico sm accent" viewBox="0 0 24 24"><use href="#i-note"/></svg><span></span></span>
       <span id="npArtist" class="np-artist" hidden><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-person"/></svg><span></span></span>
       <span id="npStatus" class="np-status"></span>
@@ -128,6 +129,6 @@
   </defs>
 </svg>
 
-<script type="module" src="js/app.js?v=2.9"></script>
+<script type="module" src="js/app.js?v=3.0"></script>
 </body>
 </html>
