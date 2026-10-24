@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 2.3';
+const VERSION = 'Webb 2.4';
 
 // ============================================================ stations
 
@@ -142,9 +142,11 @@ audio.addEventListener('error', () => { if (audio.getAttribute('src')) failLocal
 audio.addEventListener('pause', () => { if (audio.src && localState !== 'stopped') { localState = 'stopped'; renderAll(); } });
 
 function musicActive() {
+  if (caster.handover) return true; // moving between speakers: it plays on
   return caster.connected ? ['PLAYING', 'BUFFERING', 'PAUSED'].includes(caster.state) : localState !== 'stopped';
 }
 function stopMusic() {
+  if (caster.handover && caster.handover.phase !== 'picking') { snack('Byter högtalare, ett ögonblick…'); return; }
   if (caster.connected) castStop(); else stopLocal();
   renderAll();
 }
@@ -167,7 +169,7 @@ function setVolume(v) {
 
 // ============================================================ Chromecast (Chrome on Android and computers)
 
-const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, mediaUrl: null, loadingUrl: null, replacedUrl: null, media: null, picking: null };
+const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, mediaUrl: null, loadingUrl: null, replacedUrl: null, media: null, picking: null, handover: null };
 
 window.__onGCastApiAvailable = (ok) => {
   if (!ok || !window.cast || !window.chrome || !chrome.cast) return;
@@ -208,6 +210,7 @@ function onCastSession(state) {
     caster.device = session && session.getCastDevice() ? session.getCastDevice().friendlyName : 'högtalaren';
     caster.guess = null;
     caster.joinId = null;
+    if (caster.handover && handoverSession(session)) { renderAll(); return; }
     if (state === S.SESSION_STARTED && caster.picking && caster.picking.ended && caster.picking.playing && nowPlaying) {
       castLoad(nowPlaying); // moved from the previous speaker
     } else if (state === S.SESSION_STARTED && localState !== 'stopped' && nowPlaying) {
@@ -231,6 +234,7 @@ function onCastSession(state) {
     }
   } else if (state === S.SESSION_ENDED || state === S.SESSION_START_FAILED) {
     if (state === S.SESSION_START_FAILED) snack('Kunde inte ansluta till högtalaren.');
+    else if (caster.handover) { /* letting go on purpose while moving speakers */ }
     else if (caster.picking) caster.picking.ended = true; // switching speaker in Chrome's list
     else if (caster.connected && !caster.switching) lostSpeaker();
     caster.connected = false;
@@ -372,6 +376,7 @@ function castLoad(s) {
   session.loadMedia(req).then(() => {
     if (caster.loadingUrl === mine) caster.loadingUrl = null;
     watchMedia(session);
+    if (caster.handover && caster.handover.phase === 'loading') setTimeout(stopOldSpeaker, 2500);
     renderAll();
   }, () => {
     if (caster.loadingUrl === mine) caster.loadingUrl = null;
@@ -457,16 +462,86 @@ function stopCasting() {
  * so switching means letting go first. One tap in our own short menu, which says so.
  */
 function moveToOtherSpeaker() {
+  const session = caster.ctx.getCurrentSession();
   const playing = musicActive();
-  caster.wantPlay = playing;
-  endCasting();
+  if (!playing || !session || !chrome.cast.requestSessionById) {
+    // Nothing to keep playing (or no way back): let go and pick.
+    caster.wantPlay = playing;
+    endCasting();
+    renderAll();
+    caster.ctx.requestSession().catch(() => {});
+    return;
+  }
+  // Let go WITHOUT stopping: the radio plays on while Chrome's list is open.
+  const h = caster.handover = { phase: 'picking', oldId: session.getSessionId(), oldDevice: caster.device, newId: null, newDevice: '' };
+  caster.wantPlay = true;
+  caster.ctx.endCurrentSession(false);
+  caster.connected = false; caster.device = ''; caster.media = null;
   renderAll();
   caster.ctx.requestSession().catch(() => {
-    if (playing && nowPlaying && !caster.connected) {
-      const s = nowPlaying;
-      snack('Ingen högtalare vald.', 'Spela i telefonen', () => playStation(s, stations.some((x) => x.url === s.url)));
-    }
+    if (caster.handover !== h || h.phase !== 'picking') return;
+    // Closed without choosing: go back to the speaker that still plays.
+    h.phase = 'rejoinOld';
+    joinById(h.oldId);
+    handoverTimeout(h, 'rejoinOld', () => giveUpOn(h.oldDevice));
   });
+}
+/** One step of a speaker move: true when the session event was part of it (and handled). */
+function handoverSession(session) {
+  const h = caster.handover;
+  const id = session && session.getSessionId();
+  if (h.phase === 'picking' && id !== h.oldId) {
+    h.phase = 'loading'; h.newId = id; h.newDevice = caster.device;
+    castLoad(nowPlaying); // then stopOldSpeaker()
+    return true;
+  }
+  if ((h.phase === 'picking' || h.phase === 'rejoinOld') && id === h.oldId) {
+    caster.handover = null; // back where we were, still playing
+    askMediaStatus(session); setTimeout(checkSpeaker, 1200);
+    return true;
+  }
+  if (h.phase === 'stopping' && id === h.oldId) {
+    h.phase = 'back';
+    const back = () => setTimeout(() => { joinById(h.newId); handoverTimeout(h, 'back', () => giveUpOn(h.newDevice)); }, 600);
+    caster.ctx.endCurrentSession(true); // stops the old speaker
+    back();
+    return true;
+  }
+  if (h.phase === 'back' && id === h.newId) {
+    caster.handover = null;
+    askMediaStatus(session); setTimeout(checkSpeaker, 1200);
+    return true;
+  }
+  return false;
+}
+/** The new speaker plays: briefly join the old one to stop it, then come back. */
+function stopOldSpeaker() {
+  const h = caster.handover;
+  if (!h || h.phase !== 'loading') return;
+  h.phase = 'stopping';
+  caster.ctx.endCurrentSession(false); // the new one plays on
+  setTimeout(() => joinById(h.oldId), 600);
+  handoverTimeout(h, 'stopping', () => {
+    snack('Kunde inte stänga av ' + h.oldDevice + ' härifrån. Stäng av den i Google Home-appen.');
+    h.phase = 'back';
+    joinById(h.newId);
+    handoverTimeout(h, 'back', () => giveUpOn(h.newDevice));
+  });
+}
+function joinById(id) {
+  try { chrome.cast.requestSessionById(id); } catch (e) { /* handled by the timeout */ }
+}
+function handoverTimeout(h, phase, fn) {
+  setTimeout(() => { if (caster.handover === h && h.phase === phase && !caster.connected) fn(); }, 8000);
+}
+/** Could not join again: it most likely plays there; say so (tapping the speaker reconnects). */
+function giveUpOn(device) {
+  caster.handover = null;
+  if (nowPlaying) {
+    caster.guess = { device, url: nowPlaying.url, at: Date.now() };
+    store.set('castingOn', { device, url: nowPlaying.url, at: Date.now(), sessionId: null });
+  }
+  renderAll();
 }
 function speakerSheet() {
   const body = sheet('Spelar på ' + caster.device, 'output');
@@ -479,10 +554,11 @@ function speakerSheet() {
   };
   item('Byt högtalare', 'cast', moveToOtherSpeaker);
   item('Sluta casta', 'close', stopCasting);
-  body.append(el('p', 'muted', 'Vid byte tystnar ' + caster.device + ' medan du väljer (Chrome på Android kan bara visa listan när ingen högtalare är ansluten). Radion startar sedan där du valt.'));
+  body.append(el('p', 'muted', caster.device + ' spelar vidare medan du väljer. När den nya högtalaren spelar försöker appen stänga av ' + caster.device + '.'));
 }
 
 function chooseOutput() {
+  if (caster.handover && caster.handover.phase !== 'picking') { snack('Byter högtalare, ett ögonblick…'); return; }
   if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) {
     // Desktop Chrome shows the full list while casting (the radio plays on until you choose).
     if (/Android/i.test(navigator.userAgent)) speakerSheet(); else pickWhileCasting();
@@ -531,14 +607,15 @@ function renderAll() {
 function renderSongs() { renderNowPlaying(); renderSession(); if (sheetState.kind === 'song') renderSongSheet(); }
 
 function renderOutput() {
+  const h = caster.handover;
   const guess = !caster.connected && caster.guess;
-  const onSpeaker = caster.connected;
+  const onSpeaker = caster.connected || !!h;
   const phone = $('outPhone'), spk = $('outSpeaker');
   phone.setAttribute('aria-pressed', String(!onSpeaker && !guess));
   spk.setAttribute('aria-pressed', String(onSpeaker));
   spk.classList.toggle('guess', !!guess);
-  $('outSpin').hidden = !caster.connecting;
-  const name = caster.connecting ? 'Ansluter…' : onSpeaker ? caster.device : guess ? guess.device : 'Högtalare';
+  $('outSpin').hidden = !caster.connecting && !(h && h.phase !== 'picking');
+  const name = h ? (h.newDevice || h.oldDevice) : caster.connecting ? 'Ansluter…' : onSpeaker ? caster.device : guess ? guess.device : 'Högtalare';
   $('outText').textContent = name;
   phone.setAttribute('aria-label', onSpeaker ? 'Flytta ljudet till telefonen' : 'Ljudet går till telefonen');
   spk.setAttribute('aria-label', onSpeaker ? 'Ljudet går till ' + name + '. Tryck för att byta högtalare.'
@@ -620,6 +697,11 @@ function expandCountry(cc) {
 }
 
 function statusText() {
+  const h = caster.handover;
+  if (h && h.phase === 'picking') return 'Spelar på ' + h.oldDevice + ' · välj högtalare';
+  if (h && h.phase === 'rejoinOld') return 'Spelar på ' + h.oldDevice;
+  if (h && h.phase === 'stopping') return 'Spelar på ' + h.newDevice + ' · stänger av ' + h.oldDevice + '…';
+  if (h && h.phase === 'back') return 'Spelar på ' + h.newDevice;
   if (!caster.connected && caster.guess) return 'Spelar troligen på ' + caster.guess.device + ' · tryck på högtalaren uppe till höger';
   if (caster.connected) {
     const st = caster.state;
@@ -709,6 +791,7 @@ if ('mediaSession' in navigator) {
 // ============================================================ list actions
 
 function stationTapped(s) {
+  if (caster.handover && caster.handover.phase !== 'picking') { snack('Byter högtalare, ett ögonblick…'); return; }
   if (nowPlaying && nowPlaying.url === s.url && musicActive()) { snack(shortName(s.name) + ' spelar redan.'); return; }
   playStation(s, true);
 }
