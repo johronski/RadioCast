@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 2.5';
+const VERSION = 'Webb 2.6';
 
 // ============================================================ stations
 
@@ -146,7 +146,7 @@ function musicActive() {
   return caster.connected ? ['PLAYING', 'BUFFERING', 'PAUSED'].includes(caster.state) : localState !== 'stopped';
 }
 function stopMusic() {
-  if (caster.handover && caster.handover.phase !== 'picking') { snack('Byter högtalare, ett ögonblick…'); return; }
+  if (caster.handover && caster.handover.phase !== 'picking' && caster.handover.phase !== 'leaving') { snack('Byter högtalare, ett ögonblick…'); return; }
   if (caster.connected) castStop(); else stopLocal();
   renderAll();
 }
@@ -234,7 +234,10 @@ function onCastSession(state) {
     }
   } else if (state === S.SESSION_ENDED || state === S.SESSION_START_FAILED) {
     if (state === S.SESSION_START_FAILED) snack('Kunde inte ansluta till högtalaren.');
-    else if (caster.handover) { /* letting go on purpose while moving speakers */ }
+    else if (caster.handover) { // letting go on purpose while moving speakers
+      const h = caster.handover;
+      if (h.phase === 'leaving') setTimeout(h.open, 600);
+    }
     else if (caster.picking) caster.picking.ended = true; // switching speaker in Chrome's list
     else if (caster.connected && !caster.switching) lostSpeaker();
     caster.connected = false;
@@ -473,24 +476,32 @@ function moveToOtherSpeaker() {
     caster.ctx.requestSession().catch(() => {});
     return;
   }
-  // Let go WITHOUT stopping: the radio plays on while Chrome's list is open.
-  const h = caster.handover = { phase: 'picking', oldId: session.getSessionId(), oldDevice: caster.device, newId: null, newDevice: '' };
+  // Let go WITHOUT stopping: the radio plays on while Chrome's list is open. Chrome on Android
+  // only shows the list once it has really let go, so wait for that before opening it.
+  const h = caster.handover = { phase: 'leaving', oldId: session.getSessionId(), oldDevice: caster.device, newId: null, newDevice: '' };
   caster.wantPlay = true;
   caster.ctx.endCurrentSession(false);
   caster.connected = false; caster.device = ''; caster.media = null;
   renderAll();
-  caster.ctx.requestSession().catch(() => {
-    if (caster.handover !== h || h.phase !== 'picking') return;
-    // Closed without choosing: go back to the speaker that still plays.
-    h.phase = 'rejoinOld';
-    joinById(h.oldId);
-    handoverTimeout(h, 'rejoinOld', () => giveUpOn(h.oldDevice));
-  });
+  h.open = () => {
+    if (caster.handover !== h || h.phase !== 'leaving') return;
+    h.phase = 'picking';
+    renderAll();
+    caster.ctx.requestSession().catch(() => {
+      if (caster.handover !== h || h.phase !== 'picking') return;
+      // Closed without choosing: go back to the speaker that still plays.
+      h.phase = 'rejoinOld';
+      joinById(h.oldId);
+      handoverTimeout(h, 'rejoinOld', () => giveUpOn(h.oldDevice));
+    });
+  };
+  setTimeout(h.open, 2000); // in case the "ended" event never comes
 }
 /** One step of a speaker move: true when the session event was part of it (and handled). */
 function handoverSession(session) {
   const h = caster.handover;
   const id = session && session.getSessionId();
+  if (h.phase === 'leaving') return true; // Chrome rejoining by itself: the list opens anyway
   if (h.phase === 'picking' && id !== h.oldId) {
     h.phase = 'loading'; h.newId = id; h.newDevice = caster.device;
     castLoad(nowPlaying); // Chrome stops the old speaker by itself
@@ -533,7 +544,7 @@ function speakerSheet() {
 }
 
 function chooseOutput() {
-  if (caster.handover && caster.handover.phase !== 'picking') { snack('Byter högtalare, ett ögonblick…'); return; }
+  if (caster.handover && caster.handover.phase !== 'picking' && caster.handover.phase !== 'leaving') { snack('Byter högtalare, ett ögonblick…'); return; }
   if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) {
     // Desktop Chrome shows the full list while casting (the radio plays on until you choose).
     if (/Android/i.test(navigator.userAgent)) speakerSheet(); else pickWhileCasting();
@@ -589,7 +600,7 @@ function renderOutput() {
   phone.setAttribute('aria-pressed', String(!onSpeaker && !guess));
   spk.setAttribute('aria-pressed', String(onSpeaker));
   spk.classList.toggle('guess', !!guess);
-  $('outSpin').hidden = !caster.connecting && !(h && h.phase !== 'picking');
+  $('outSpin').hidden = !caster.connecting && !(h && h.phase !== 'picking' && h.phase !== 'leaving');
   const name = h ? (h.newDevice || h.oldDevice) : caster.connecting ? 'Ansluter…' : onSpeaker ? caster.device : guess ? guess.device : 'Högtalare';
   $('outText').textContent = name;
   phone.setAttribute('aria-label', onSpeaker ? 'Flytta ljudet till telefonen' : 'Ljudet går till telefonen');
@@ -673,7 +684,7 @@ function expandCountry(cc) {
 
 function statusText() {
   const h = caster.handover;
-  if (h && h.phase === 'picking') return 'Spelar på ' + h.oldDevice + ' · välj högtalare';
+  if (h && (h.phase === 'picking' || h.phase === 'leaving')) return 'Spelar på ' + h.oldDevice + ' · välj högtalare';
   if (h && h.phase === 'rejoinOld') return 'Spelar på ' + h.oldDevice;
   if (h && h.phase === 'loading') return 'Startar på ' + h.newDevice + '…';
   if (!caster.connected && caster.guess) return 'Spelar troligen på ' + caster.guess.device + ' · tryck på högtalaren uppe till höger';
@@ -765,7 +776,7 @@ if ('mediaSession' in navigator) {
 // ============================================================ list actions
 
 function stationTapped(s) {
-  if (caster.handover && caster.handover.phase !== 'picking') { snack('Byter högtalare, ett ögonblick…'); return; }
+  if (caster.handover && caster.handover.phase !== 'picking' && caster.handover.phase !== 'leaving') { snack('Byter högtalare, ett ögonblick…'); return; }
   if (nowPlaying && nowPlaying.url === s.url && musicActive()) { snack(shortName(s.name) + ' spelar redan.'); return; }
   playStation(s, true);
 }
