@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 2.1';
+const VERSION = 'Webb 2.2';
 
 // ============================================================ stations
 
@@ -167,7 +167,7 @@ function setVolume(v) {
 
 // ============================================================ Chromecast (Chrome on Android and computers)
 
-const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, mediaUrl: null, loadingUrl: null, replacedUrl: null, media: null };
+const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, mediaUrl: null, loadingUrl: null, replacedUrl: null, media: null, picking: null };
 
 window.__onGCastApiAvailable = (ok) => {
   if (!ok || !window.cast || !window.chrome || !chrome.cast) return;
@@ -208,7 +208,9 @@ function onCastSession(state) {
     caster.device = session && session.getCastDevice() ? session.getCastDevice().friendlyName : 'högtalaren';
     caster.guess = null;
     caster.joinId = null;
-    if (state === S.SESSION_STARTED && localState !== 'stopped' && nowPlaying) {
+    if (state === S.SESSION_STARTED && caster.picking && caster.picking.ended && caster.picking.playing && nowPlaying) {
+      castLoad(nowPlaying); // moved from the previous speaker
+    } else if (state === S.SESSION_STARTED && localState !== 'stopped' && nowPlaying) {
       stopLocal();
       castLoad(nowPlaying); // what played in the phone moves to the speaker
     } else if (state === S.SESSION_STARTED) {
@@ -229,10 +231,12 @@ function onCastSession(state) {
     }
   } else if (state === S.SESSION_ENDED || state === S.SESSION_START_FAILED) {
     if (state === S.SESSION_START_FAILED) snack('Kunde inte ansluta till högtalaren.');
+    else if (caster.picking) caster.picking.ended = true; // switching speaker in Chrome's list
     else if (caster.connected && !caster.switching) lostSpeaker();
     caster.connected = false;
     caster.device = '';
     caster.state = 'IDLE';
+    caster.media = null;
   }
   renderAll();
 }
@@ -421,13 +425,25 @@ function moveToPhone() {
   if (playing && nowPlaying) playStation(nowPlaying, stations.some((x) => x.url === nowPlaying.url));
   else renderAll();
 }
-/** The speaker half while casting: Chrome's list right away, and the radio starts where you choose. */
-function moveToOtherSpeaker() {
+/**
+ * Tapping the speaker that plays: Chrome's list opens and the radio keeps playing meanwhile.
+ * Choose another speaker and the radio moves there; close the list and nothing changes;
+ * "Sluta casta" in Chrome's list stops it.
+ */
+function pickWhileCasting() {
   const playing = musicActive();
-  caster.wantPlay = playing;
-  endCasting();
-  renderAll();
-  caster.ctx.requestSession().catch(() => { if (playing) snack('Ingen högtalare vald. Tryck Spela för att spela i telefonen.'); });
+  caster.picking = { playing, url: nowPlaying && nowPlaying.url };
+  const done = () => {
+    const pick = caster.picking;
+    caster.picking = null;
+    if (pick && pick.ended && !caster.connected) {
+      // Stopped from Chrome's list ("Sluta casta"), no new speaker chosen.
+      forgetCasting();
+      caster.wantPlay = false;
+      renderAll();
+    }
+  };
+  caster.ctx.requestSession().then(done, done);
 }
 function stopCasting() {
   forgetCasting();
@@ -436,26 +452,8 @@ function stopCasting() {
   renderAll();
 }
 
-/**
- * Tapping the speaker that already plays: nothing stops by surprise. Switching speaker (which
- * restarts the radio there) or stopping is one more tap, and says so.
- */
-function speakerSheet() {
-  const body = sheet('Spelar på ' + caster.device, 'output');
-  const item = (label, ic, fn) => {
-    const b = el('button', 'menu-item');
-    b.type = 'button';
-    b.append(icon(ic), el('span', null, label));
-    b.onclick = () => { closeSheet(); fn(); };
-    body.append(b);
-  };
-  item('Byt till en annan högtalare', 'cast', moveToOtherSpeaker);
-  item('Sluta casta', 'close', stopCasting);
-  body.append(el('p', 'muted', 'Vid byte tystnar ' + caster.device + ' och radion startar om på högtalaren du väljer, efter några sekunder. Till telefonen flyttar du med knappen Telefon.'));
-}
-
 function chooseOutput() {
-  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { speakerSheet(); return; }
+  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { pickWhileCasting(); return; }
   // Reconnecting to where it probably played: Chrome restarts that speaker's player, so start the
   // radio there again right away instead of leaving it silent.
   if (caster.guess) caster.wantPlay = true;
