@@ -21,7 +21,8 @@
         "fipmetal": 77
       },
       "url": "https://api.radiofrance.fr/livemeta/pull/$1",
-      "type": "radiofrance-livemeta"
+      "type": "radiofrance-livemeta",
+      "player": { "6": "https://api.radiofrance.fr/livemeta/live/6/mouv_player" }
     },
     {
       "id": "nova",

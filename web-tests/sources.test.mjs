@@ -61,3 +61,15 @@ test('låtkällorna är samma för webbappen och Android-appen', () => {
   assert.equal(readFileSync(new URL('meta-sources.json', root), 'utf8'), docs);
   assert.equal(readFileSync(new URL('app/src/main/assets/meta-sources.json', root), 'utf8'), docs);
 });
+
+test('Radio France player feed (Mouv\' during "La Playlist")', async () => {
+  const { playerMeta } = await import('../docs/js/sources.js');
+  const json = {
+    prev: [{ firstLine: "Mouv'", secondLine: 'Le direct', startTime: null }],
+    now: { firstLine: "Mouv'", secondLine: "Itw - HEUSS L'ENFOIRE", secondLineSongUuid: 'x', startTime: 1000, endTime: 1100 },
+    next: [],
+  };
+  assert.equal(playerMeta(json, 'u', "Mouv'", 1050).text, "Heuss L'enfoire – Itw");
+  assert.equal(playerMeta(json, 'u', "Mouv'", 1200).text, null); // over
+  assert.equal(playerMeta({ now: { secondLine: 'Le direct' } }, 'u', "Mouv'", 1050).text, null); // not a song
+});
