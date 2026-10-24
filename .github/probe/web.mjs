@@ -1,18 +1,18 @@
-for (const id of [6, 7]) {
-  const r = await fetch('https://api.radiofrance.fr/livemeta/pull/' + id);
-  const t = await r.text();
-  console.log('ID', id, r.status, t.length);
+const urls = [
+  'https://www.radiofrance.fr/mouv/api/live',
+  'https://www.radiofrance.fr/mouv/api/live?webradio=mouv',
+  'https://www.radiofrance.fr/api/live/webradios/mouv',
+  'https://www.radiofrance.fr/mouv/api/songs',
+  'https://api.radiofrance.fr/livemeta/live/6/inter_player',
+  'https://api.radiofrance.fr/livemeta/live/6/mouv_player',
+  'https://api.radiofrance.fr/livemeta/live/6/webrf_mouv_player',
+  'https://api.radiofrance.fr/livemeta/live/7/fip_player',
+  'https://icecast.radiofrance.fr/status-json.xsl',
+];
+for (const u of urls) {
   try {
-    const j = JSON.parse(t);
-    console.log('keys', Object.keys(j));
-    const now = Date.now() / 1000;
-    const steps = Object.values(j.steps || {}).sort((a, b) => a.start - b.start);
-    for (const s of steps.filter((s) => s.end > now - 1800 && s.start < now + 600)) console.log(s.start - now | 0, s.end - now | 0, s.embedType, '|', s.title, '|', s.authors, '|', s.performers, '|', s.titreAlbum, '| level', s.depth || s.level);
-    console.log('levels', JSON.stringify(j.levels).slice(0, 600));
-  } catch (e) { console.log(t.slice(0, 500)); }
+    const r = await fetch(u, { headers: { Origin: 'https://johronski.github.io' } });
+    const t = await r.text();
+    console.log('==', r.status, 'cors:', r.headers.get('access-control-allow-origin'), u, '\n', t.replace(/\s+/g, ' ').slice(0, 700));
+  } catch (e) { console.log('ERR', u, e.message); }
 }
-// what the app makes of it
-const m = await import('../../docs/js/sources.js');
-const meta = JSON.parse((await import('fs')).readFileSync('docs/meta-sources.json', 'utf8'));
-m.setPatterns(meta.sources);
-for (const u of ['https://icecast.radiofrance.fr/mouv-midfi.mp3', 'https://icecast.radiofrance.fr/fip-midfi.mp3']) console.log(u, JSON.stringify(await m.fromPattern(u, 'x')));
