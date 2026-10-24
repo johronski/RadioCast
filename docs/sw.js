@@ -1,6 +1,7 @@
 /* Keeps the app itself available offline; radio streams and song lookups always go to the network. */
-const CACHE = 'radiocast-web-4';
-const SHELL = ['./', 'index.html', 'style.css?v=1.3', 'app.js?v=1.3', 'manifest.webmanifest', 'meta-sources.json',
+const CACHE = 'radiocast-web-5';
+const SHELL = ['./', 'index.html', 'style.css?v=1.4', 'js/app.js?v=1.4', 'js/util.js', 'js/names.js', 'js/query.js',
+  'js/catalogue.js', 'js/songtext.js', 'js/sources.js', 'js/history.js', 'manifest.webmanifest', 'meta-sources.json',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {

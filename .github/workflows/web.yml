@@ -1,0 +1,35 @@
+name: Testa webbappen
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**', 'web-tests/**', 'meta-sources.json', 'app/src/main/assets/meta-sources.json', '.github/workflows/web.yml']
+  schedule:
+    - cron: '17 5 * * 1'   # måndagar: kolla att kanalernas låtlistor fortfarande fungerar
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enhetstester (sökning, låttexter, låtkällor, namn)
+        run: node --test web-tests/*.test.mjs
+
+      - name: Installera webbläsare för klicktest
+        run: |
+          cd web-tests && npm init -y >/dev/null && npm i playwright@1.56.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Klicktest i riktig webbläsare (utan nät)
+        run: |
+          (cd docs && python3 -m http.server 8765 >/dev/null 2>&1 &)
+          sleep 1
+          node web-tests/smoke.mjs http://localhost:8765/index.html
+
+      - name: Kanalernas låtlistor (med nät)
+        run: node web-tests/live.mjs http://localhost:8765/index.html
