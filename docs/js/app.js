@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 1.9';
+const VERSION = 'Webb 2.0';
 
 // ============================================================ stations
 
@@ -167,7 +167,7 @@ function setVolume(v) {
 
 // ============================================================ Chromecast (Chrome on Android and computers)
 
-const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, mediaUrl: null };
+const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, mediaUrl: null, loadingUrl: null };
 
 window.__onGCastApiAvailable = (ok) => {
   if (!ok || !window.cast || !window.chrome || !chrome.cast) return;
@@ -267,8 +267,10 @@ function checkSpeaker() {
     askMediaStatus(session);
     return;
   }
+  if (caster.loadingUrl) return; // a channel change is under way
   media.getStatus(null, () => {
     syncRemote();
+    if (caster.loadingUrl) { renderAll(); return; }
     caster.state = media.playerState || 'IDLE'; // fresh from the speaker
     renderAll();
   }, () => { caster.state = 'IDLE'; renderAll(); });
@@ -287,11 +289,19 @@ function syncRemote() {
   if (!p) return;
   caster.state = p.isMediaLoaded ? (p.playerState || 'IDLE') : 'IDLE';
   const id = p.mediaInfo && p.mediaInfo.contentId;
+  if (caster.loadingUrl) {
+    // A channel change is on its way: the speaker still reports the old one for a moment.
+    if (id !== caster.loadingUrl || caster.state === 'IDLE') { caster.state = 'BUFFERING'; return volumeFrom(p); }
+    caster.loadingUrl = null;
+  }
   if (id && (!nowPlaying || nowPlaying.url !== id)) {
     // Started earlier (or from another phone): show it.
     nowPlaying = stations.find((s) => s.url === id) || { name: (p.mediaInfo.metadata && p.mediaInfo.metadata.title) || 'Radio', url: id, cc: '', logo: '' };
     pokeSongs();
   }
+  volumeFrom(p);
+}
+function volumeFrom(p) {
   if (caster.connected && !dragging.volume) $('volume').value = Math.round((p.volumeLevel || 0) * 100);
 }
 /** Remembers what plays where, so a restarted app can say "probably still playing on Kök". */
@@ -343,7 +353,12 @@ function castLoad(s) {
   req.autoplay = true;
   caster.state = 'BUFFERING';
   caster.wantPlay = true;
-  session.loadMedia(req).then(() => syncRemote(), () => {
+  caster.loadingUrl = s.url;
+  const mine = s.url;
+  // Never wait for ever: if the speaker does not report the new channel, show what it says.
+  setTimeout(() => { if (caster.loadingUrl === mine) { caster.loadingUrl = null; syncRemote(); renderAll(); } }, 20000);
+  session.loadMedia(req).then(() => { syncRemote(); renderAll(); }, () => {
+    if (caster.loadingUrl === mine) caster.loadingUrl = null;
     caster.state = 'IDLE';
     playError = 'Högtalaren kunde inte spela strömmen. Kontrollera länken.';
     renderAll();
@@ -351,6 +366,7 @@ function castLoad(s) {
 }
 function castStop() {
   forgetCasting();
+  caster.loadingUrl = null;
   if (caster.controller && caster.player.isMediaLoaded) caster.controller.stop();
   caster.state = 'IDLE';
   caster.wantPlay = false;
