@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 2.0';
+const VERSION = 'Webb 2.1';
 
 // ============================================================ stations
 
@@ -167,7 +167,7 @@ function setVolume(v) {
 
 // ============================================================ Chromecast (Chrome on Android and computers)
 
-const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, mediaUrl: null, loadingUrl: null };
+const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, mediaUrl: null, loadingUrl: null, replacedUrl: null, media: null };
 
 window.__onGCastApiAvailable = (ok) => {
   if (!ok || !window.cast || !window.chrome || !chrome.cast) return;
@@ -272,6 +272,7 @@ function checkSpeaker() {
     syncRemote();
     if (caster.loadingUrl) { renderAll(); return; }
     caster.state = media.playerState || 'IDLE'; // fresh from the speaker
+    watchMedia(session);
     renderAll();
   }, () => { caster.state = 'IDLE'; renderAll(); });
 }
@@ -287,13 +288,14 @@ function askMediaStatus(session) {
 function syncRemote() {
   const p = caster.player;
   if (!p) return;
-  caster.state = p.isMediaLoaded ? (p.playerState || 'IDLE') : 'IDLE';
   const id = p.mediaInfo && p.mediaInfo.contentId;
-  if (caster.loadingUrl) {
-    // A channel change is on its way: the speaker still reports the old one for a moment.
-    if (id !== caster.loadingUrl || caster.state === 'IDLE') { caster.state = 'BUFFERING'; return volumeFrom(p); }
-    caster.loadingUrl = null;
-  }
+  // Right after a channel change the remote player can still report the old channel: ignore it.
+  if (caster.loadingUrl || (caster.replacedUrl && id === caster.replacedUrl)) return volumeFrom(p);
+  caster.replacedUrl = null;
+  // The speaker's own media session (watched after a load) is fresher than the remote player.
+  const m = caster.media;
+  caster.state = m && id && m.media && m.media.contentId === id ? (m.playerState || 'IDLE')
+    : p.isMediaLoaded ? (p.playerState || 'IDLE') : 'IDLE';
   if (id && (!nowPlaying || nowPlaying.url !== id)) {
     // Started earlier (or from another phone): show it.
     nowPlaying = stations.find((s) => s.url === id) || { name: (p.mediaInfo.metadata && p.mediaInfo.metadata.title) || 'Radio', url: id, cc: '', logo: '' };
@@ -353,20 +355,43 @@ function castLoad(s) {
   req.autoplay = true;
   caster.state = 'BUFFERING';
   caster.wantPlay = true;
+  const before = caster.player && caster.player.mediaInfo && caster.player.mediaInfo.contentId;
+  caster.replacedUrl = before && before !== s.url ? before : null;
   caster.loadingUrl = s.url;
   const mine = s.url;
-  // Never wait for ever: if the speaker does not report the new channel, show what it says.
-  setTimeout(() => { if (caster.loadingUrl === mine) { caster.loadingUrl = null; syncRemote(); renderAll(); } }, 20000);
-  session.loadMedia(req).then(() => { syncRemote(); renderAll(); }, () => {
+  // Never wait for ever: after 20 s, believe what the speaker says again.
+  setTimeout(() => {
+    if (caster.loadingUrl === mine) caster.loadingUrl = null;
+    caster.replacedUrl = null;
+    syncRemote(); renderAll();
+  }, 20000);
+  session.loadMedia(req).then(() => {
+    if (caster.loadingUrl === mine) caster.loadingUrl = null;
+    watchMedia(session);
+    renderAll();
+  }, () => {
     if (caster.loadingUrl === mine) caster.loadingUrl = null;
     caster.state = 'IDLE';
     playError = 'Högtalaren kunde inte spela strömmen. Kontrollera länken.';
     renderAll();
   });
 }
+/** Follows the speaker's player directly after a load: buffering → playing, or stopped. */
+function watchMedia(session) {
+  const m = session.getMediaSession && session.getMediaSession();
+  if (!m || caster.media === m) return;
+  caster.media = m;
+  const update = () => {
+    if (caster.media !== m || caster.loadingUrl) return;
+    caster.state = m.playerState || 'IDLE';
+    rememberCasting(); pokeSongs(); renderAll();
+  };
+  m.addUpdateListener(update);
+  update();
+}
 function castStop() {
   forgetCasting();
-  caster.loadingUrl = null;
+  caster.loadingUrl = null; caster.replacedUrl = null;
   if (caster.controller && caster.player.isMediaLoaded) caster.controller.stop();
   caster.state = 'IDLE';
   caster.wantPlay = false;
