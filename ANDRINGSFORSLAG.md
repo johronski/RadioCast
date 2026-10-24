@@ -8,4 +8,4 @@ Byggpaus till och med lördag 31 oktober 2026. Nya önskemål samlas här i stä
 - Android: ett enkelt skal runt webbappen med Googles riktiga Cast-funktioner (sömlöst högtalarbyte, se alla högtalare).
 
 ## Under pausen
-(inga än)
+- 24 okt: "Lägg till på hemskärmen" som en egen knapp i stället för i välkomstrutan (t.ex. i ⋯-menyn eller som en diskret rad överst tills appen är installerad).
