@@ -1,0 +1,44 @@
+// iPhone (WebKit/Safari engine) check of the web app, with the real streams and song sources.
+import { webkit, devices } from 'playwright';
+const b = await webkit.launch();
+const c = await b.newContext({ ...devices['iPhone 13'], locale: 'sv-SE' });
+const p = await c.newPage();
+const errors = [];
+p.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+p.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+p.on('requestfailed', (r) => errors.push('failed: ' + r.url().slice(0, 90) + ' ' + (r.failure() || {}).errorText));
+const log = (...a) => console.log(...a);
+await p.goto('http://localhost:8765/index.html');
+await p.waitForTimeout(2500);
+log('UA', await p.evaluate(() => navigator.userAgent));
+log('version', await p.evaluate(() => window.radiocast && window.radiocast.version));
+log('sheet visible at start', await p.isVisible('#sheet'));
+log('rows', await p.locator('.row').count(), await p.$$eval('.row .name', (n) => n.map((x) => x.textContent).join(' | ')));
+log('logos', await p.$$eval('.row img', (n) => n.map((x) => x.naturalWidth + ':' + x.src.slice(0, 50)).join(' , ')));
+log('chip', await p.textContent('#outText'), 'install visible', await p.isVisible('#installBtn'));
+log('cast api', await p.evaluate(() => typeof window.chrome !== 'undefined' && !!(window.chrome.cast)));
+const names = await p.$$eval('.row .name', (n) => n.map((x) => x.textContent));
+for (let i = 0; i < names.length; i++) {
+  await p.locator('.row').nth(i).click();
+  await p.waitForTimeout(9000);
+  const st = await p.evaluate(() => { const a = document.getElementById('audio'); return { t: a.currentTime.toFixed(1), rs: a.readyState, paused: a.paused, err: a.error && a.error.code, src: a.currentSrc.slice(0, 60) }; });
+  const card = (await p.textContent('#np')).replace(/\s+/g, ' ').trim().slice(0, 140);
+  log('PLAY', names[i], JSON.stringify(st), '| card:', card);
+}
+await p.click('#outBtn'); await p.waitForTimeout(600);
+log('speaker sheet:', (await p.textContent('#sheetBody')).replace(/\s+/g, ' ').slice(0, 200));
+await p.click('#sheetClose'); await p.waitForTimeout(400);
+await p.click('#npText'); await p.waitForTimeout(1500);
+log('song sheet:', (await p.textContent('#sheetBody')).replace(/\s+/g, ' ').slice(0, 300));
+await p.click('#sheetClose'); await p.waitForTimeout(400);
+await p.click('#installBtn'); await p.waitForTimeout(600);
+log('install sheet:', (await p.textContent('#sheetBody')).replace(/\s+/g, ' ').slice(0, 200));
+await p.click('#sheetClose'); await p.waitForTimeout(400);
+await p.click('#searchBar'); await p.fill('#query', 'sverige p3'); await p.keyboard.press('Enter'); await p.waitForTimeout(5000);
+log('search results', await p.locator('#results li').count(), (await p.textContent('#results')).replace(/\s+/g, ' ').slice(0, 160));
+await p.click('#searchBack');
+await p.click('#menuBtn'); await p.waitForTimeout(500);
+log('menu:', (await p.textContent('#sheetBody')).replace(/\s+/g, ' '));
+await p.screenshot({ path: 'probe-shot.png' });
+log('ERRORS', errors.length ? '\n' + errors.join('\n') : 'none');
+await b.close();

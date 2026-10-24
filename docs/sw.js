@@ -1,6 +1,7 @@
 /* Keeps the app itself available offline; radio streams and song lookups always go to the network. */
-const CACHE = 'radiocast-web-1';
-const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'meta-sources.json',
+const CACHE = 'radiocast-web-22';
+const SHELL = ['./', 'index.html', 'style.css?v=3.1', 'js/app.js?v=3.1', 'js/util.js', 'js/names.js', 'js/query.js',
+  'js/catalogue.js', 'js/songtext.js', 'js/sources.js', 'js/history.js', 'manifest.webmanifest', 'meta-sources.json',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
@@ -14,7 +15,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return; // streams, APIs: untouched
   // Network first, so a new version shows up at once; the saved copy when offline.
-  e.respondWith(fetch(e.request).then((r) => {
+  e.respondWith(fetch(e.request, { cache: 'no-cache' }).then((r) => {
     if (r.ok) { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
     return r;
   }).catch(() => caches.match(e.request).then((r) => r || caches.match('index.html'))));

@@ -14,17 +14,19 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3.1">
 </head>
 <body>
 <div class="app">
 
   <header class="top">
     <h1>RadioCast</h1>
-    <button id="castChip" class="chip" type="button" aria-label="Ljudet går till telefonen. Tryck för att välja en högtalare.">
-      <span class="spinner" hidden></span>
-      <svg class="ico" id="chipIcon" viewBox="0 0 24 24"><use href="#i-phone"/></svg>
-      <span id="chipText">Telefonen</span>
+    <!-- Where the sound goes: the phone, or a speaker (filled while casting). Tap to choose. -->
+    <button id="outBtn" class="chip" type="button">
+      <span class="spinner" id="outSpin" hidden></span>
+      <svg class="ico sm" id="outIcon" viewBox="0 0 24 24"><use href="#i-phone"/></svg>
+      <span id="outText">Telefon</span>
+      <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-chevron"/></svg>
     </button>
     <button id="menuBtn" class="iconbtn" type="button" aria-label="Meny">
       <svg class="ico" viewBox="0 0 24 24"><use href="#i-more"/></svg>
@@ -36,12 +38,12 @@
     <span>Sök kanal, land eller genre</span>
   </button>
 
-  <div class="listhead">
+  <div class="listhead" id="listhead" hidden>
     <div class="pills" role="tablist" aria-label="Ordning">
       <button id="orderCountry" class="pill" role="tab" type="button">Land</button>
       <button id="orderOwn" class="pill" role="tab" type="button">Egen ordning</button>
     </div>
-    <button id="editBtn" class="textbtn" type="button">Redigera</button>
+    <button id="editBtn" class="textbtn" type="button">Klar</button>
   </div>
 
   <main id="stations" class="stations" aria-live="polite"></main>
@@ -52,6 +54,10 @@
     <button id="emptySearch" class="btn accent" type="button">Sök kanaler</button>
   </section>
 
+  <button id="installBtn" class="textbtn install" type="button" hidden>
+    <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-plus"/></svg> Lägg RadioCast på hemskärmen
+  </button>
+
   <div class="spacer"></div>
 </div>
 
@@ -60,7 +66,7 @@
   <div class="np-row">
     <div class="logo-wrap np-logo" id="npLogo"></div>
     <button id="npText" class="np-text" type="button">
-      <span class="np-channel"><span id="npLive" class="live" hidden><i></i>LIVE</span><span id="npName"></span></span>
+      <span class="np-channel"><span id="npLive" class="live" hidden><i></i>LIVE</span><span id="npName"></span><svg class="ico sm np-more" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></span>
       <span id="npTitle" class="np-title" hidden><svg class="ico sm accent" viewBox="0 0 24 24"><use href="#i-note"/></svg><span></span></span>
       <span id="npArtist" class="np-artist" hidden><svg class="ico sm" viewBox="0 0 24 24"><use href="#i-person"/></svg><span></span></span>
       <span id="npStatus" class="np-status"></span>
@@ -123,7 +129,6 @@
   </defs>
 </svg>
 
-<script src="app.js"></script>
-<script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1" async></script>
+<script type="module" src="js/app.js?v=3.1"></script>
 </body>
 </html>

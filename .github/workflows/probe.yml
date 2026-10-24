@@ -11,10 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          npm i playwright@1.56.0 >/dev/null 2>&1 && npx playwright install chromium >/dev/null 2>&1
+          npm i playwright@1.56.0 >/dev/null 2>&1 && npx playwright install --with-deps webkit >/dev/null 2>&1
           (cd docs && python3 -m http.server 8765 >/dev/null 2>&1 &)
           sleep 1
-          TZ=Europe/Stockholm node .github/probe/web.js > probe-result.txt 2>&1 || true
+          TZ=Europe/Stockholm node .github/probe/web.mjs > probe-result.txt 2>&1 || true
       - run: |
           git config user.name RadioCast; git config user.email radiocast@users.noreply.github.com
           git add probe-result.txt; git commit -m "probe result [skip ci]"; git push
