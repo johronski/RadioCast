@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 1.8';
+const VERSION = 'Webb 1.9';
 
 // ============================================================ stations
 
@@ -395,8 +395,26 @@ function stopCasting() {
   renderAll();
 }
 
+/**
+ * Tapping the speaker that already plays: nothing stops by surprise. Switching speaker (which
+ * restarts the radio there) or stopping is one more tap, and says so.
+ */
+function speakerSheet() {
+  const body = sheet('Spelar på ' + caster.device, 'output');
+  const item = (label, ic, fn) => {
+    const b = el('button', 'menu-item');
+    b.type = 'button';
+    b.append(icon(ic), el('span', null, label));
+    b.onclick = () => { closeSheet(); fn(); };
+    body.append(b);
+  };
+  item('Byt till en annan högtalare', 'cast', moveToOtherSpeaker);
+  item('Sluta casta', 'close', stopCasting);
+  body.append(el('p', 'muted', 'Vid byte tystnar ' + caster.device + ' och radion startar om på högtalaren du väljer, efter några sekunder. Till telefonen flyttar du med knappen Telefon.'));
+}
+
 function chooseOutput() {
-  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { moveToOtherSpeaker(); return; }
+  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { speakerSheet(); return; }
   // Reconnecting to where it probably played: Chrome restarts that speaker's player, so start the
   // radio there again right away instead of leaving it silent.
   if (caster.guess) caster.wantPlay = true;
