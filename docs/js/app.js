@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 2.2';
+const VERSION = 'Webb 2.3';
 
 // ============================================================ stations
 
@@ -452,8 +452,42 @@ function stopCasting() {
   renderAll();
 }
 
+/**
+ * Android Chrome: while casting, Chrome's dialog only controls the current speaker (no list),
+ * so switching means letting go first. One tap in our own short menu, which says so.
+ */
+function moveToOtherSpeaker() {
+  const playing = musicActive();
+  caster.wantPlay = playing;
+  endCasting();
+  renderAll();
+  caster.ctx.requestSession().catch(() => {
+    if (playing && nowPlaying && !caster.connected) {
+      const s = nowPlaying;
+      snack('Ingen högtalare vald.', 'Spela i telefonen', () => playStation(s, stations.some((x) => x.url === s.url)));
+    }
+  });
+}
+function speakerSheet() {
+  const body = sheet('Spelar på ' + caster.device, 'output');
+  const item = (label, ic, fn) => {
+    const b = el('button', 'menu-item');
+    b.type = 'button';
+    b.append(icon(ic), el('span', null, label));
+    b.onclick = () => { closeSheet(); fn(); };
+    body.append(b);
+  };
+  item('Byt högtalare', 'cast', moveToOtherSpeaker);
+  item('Sluta casta', 'close', stopCasting);
+  body.append(el('p', 'muted', 'Vid byte tystnar ' + caster.device + ' medan du väljer (Chrome på Android kan bara visa listan när ingen högtalare är ansluten). Radion startar sedan där du valt.'));
+}
+
 function chooseOutput() {
-  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { pickWhileCasting(); return; }
+  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) {
+    // Desktop Chrome shows the full list while casting (the radio plays on until you choose).
+    if (/Android/i.test(navigator.userAgent)) speakerSheet(); else pickWhileCasting();
+    return;
+  }
   // Reconnecting to where it probably played: Chrome restarts that speaker's player, so start the
   // radio there again right away instead of leaving it silent.
   if (caster.guess) caster.wantPlay = true;
