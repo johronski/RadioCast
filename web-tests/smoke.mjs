@@ -10,9 +10,7 @@ await p.goto(url);
 await p.waitForFunction(() => window.radiocast && document.querySelectorAll('.row').length > 0, null, { timeout: 10000 });
 const check = (ok, what) => { if (!ok) { errors.push('Misslyckades: ' + what); } else console.log('ok  ' + what); };
 await p.waitForTimeout(900);
-check((await p.textContent('#sheetBody')).includes('Välkommen'), 'välkomstguiden visas första gången');
-await p.click('.welcome-go'); await p.waitForTimeout(300);
-check(await p.isHidden('#sheet'), 'välkomstguiden stängs med Kom igång');
+check(await p.isHidden('#sheet'), 'ingen ruta i vägen vid första besöket');
 check(await p.locator('.row').count() === 6, 'listan visar 6 kanaler');
 await p.click('#searchBar');
 check(await p.isVisible('#search'), 'sökfönstret öppnas');
@@ -40,7 +38,6 @@ check((await p.textContent('#sheetBody')).includes('Med mina kanaler'), 'dela ap
 const p2 = await b.newPage();
 p2.on('pageerror', (e) => errors.push(e.message));
 await p2.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
-await p2.addInitScript(() => localStorage.setItem('rc.welcomed', 'true'));
 await p2.addInitScript(() => localStorage.setItem('rc.castingOn',
   JSON.stringify({ device: 'Kök', url: 'https://live1.sr.se/p3-aac-320', at: Date.now() })));
 await p2.goto(url);

@@ -201,11 +201,9 @@ input { font: inherit; color: inherit; }
 /* Output: [ Telefon ] [ Högtalare ▾ ] */
 
 
-/* First visit */
-.welcome-h { font-size: 15px; font-weight: 700; margin: 18px 0 6px; }
+/* Home screen instructions */
 .welcome-steps { margin: 0; padding-left: 22px; line-height: 1.5; }
 .welcome-steps li { margin: 2px 0; }
-.welcome-go { width: 100%; margin-top: 20px; }
 .sheet .menu-item small { font-size: 13px; }
 
 /* Header chip, list editing bar, install row, "open song view" hint */

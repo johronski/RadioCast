@@ -5,7 +5,7 @@ Byggpaus till och med lördag 31 oktober 2026. Nya önskemål samlas här i stä
 Prioriterad lista (24 okt). Snarlika förslag är sammanslagna. Nytta = för nya användare (vänner) och dig, insats = ungefärlig storlek.
 
 ## Steg 1: Första intrycket — KLART i Webb 3.0 (24 okt)
-Grundlista efter språk, högtalarknapp i sidhuvudet (sortering/redigering i ⋯-menyn), pil på spelarkortet, hemskärmsknapp under listan och kortare välkomstruta.
+Grundlista efter språk, högtalarknapp i sidhuvudet (sortering/redigering i ⋯-menyn), pil på spelarkortet, hemskärmsknapp under listan. Webb 3.1: välkomstrutan borttagen, Mouv' i startlistan.
 
 ## Steg 2: Putsa (medel nytta, liten insats)
 5. Dölj bithastighet i listan, utom där den skiljer två strömmar av samma kanal.

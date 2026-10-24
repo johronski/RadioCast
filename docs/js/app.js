@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 3.0';
+const VERSION = 'Webb 3.1';
 
 // ============================================================ stations
 
@@ -15,7 +15,7 @@ const HOME_CC = /^sv/i.test(navigator.language || '') ? 'SE' : ((navigator.langu
 const SR_LOGO = (id, img) => 'https://static-cdn.sr.se/images/' + id + '/' + img + '.jpg?preset=api-default-square';
 const INTERNATIONAL_STATIONS = [
   { name: 'FIP', url: 'https://icecast.radiofrance.fr/fip-midfi.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Eklektiskt' },
-  { name: 'Radio Nova', url: 'https://novazz.ice.infomaniak.ch/novazz-128.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Eklektiskt' },
+  { name: 'Radio Nova', url: 'https://novazz.ice.infomaniak.ch/novazz-128.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Eklektiskt' },  { name: "Mouv'", url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Hiphop' },
 ];
 /** The first list for a new user: Swedish channels on a Swedish phone, otherwise a French mix. */
 const DEFAULT_STATIONS = /^sv/i.test(navigator.language || '') ? [
@@ -27,7 +27,6 @@ const DEFAULT_STATIONS = /^sv/i.test(navigator.language || '') ? [
 ] : [
   ...INTERNATIONAL_STATIONS,
   { name: 'Nouvo Nova (ny musik)', url: 'https://nova-nouvo.ice.infomaniak.ch/nova-nouvo-128.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Ny musik' },
-  { name: "Mouv'", url: 'https://icecast.radiofrance.fr/mouv-midfi.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Hiphop' },
   { name: 'France Inter', url: 'https://icecast.radiofrance.fr/franceinter-midfi.mp3', cc: 'FR', lang: 'french', br: 128, logo: '', genre: 'Nyheter och kultur' },
   { name: 'Sveriges Radio P3', url: 'https://live1.sr.se/p3-aac-320', cc: 'SE', lang: 'swedish', br: 320, logo: '', genre: 'Pop' },
 ];
@@ -893,29 +892,14 @@ function startDrag(e, row) {
 // ============================================================ sheets (song view, menu, forms)
 
 const sheetState = { kind: null };
-// ============================================================ first visit
+// ============================================================ home screen
 
 let installPrompt = null; // Android Chrome: lets a button add the app to the home screen
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; });
-let welcomePending = false;
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 const isAndroid = /Android/i.test(navigator.userAgent);
 const installed = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
-/** First visit: what the app is and how casting works (home screen: its own button under the list). */
-function welcome() {
-  store.set('welcomed', true);
-  const body = sheet('Välkommen till RadioCast', 'welcome');
-  body.append(el('p', null, 'Webbradio med vilken låt som spelas. Tryck på en kanal för att lyssna, och sök efter fler med sökrutan.'));
-  body.append(el('h3', 'welcome-h', isIOS ? 'Spela på högtalare' : 'Casta till Chromecast'));
-  body.append(el('p', 'muted', isIOS
-    ? 'Använd AirPlay: öppna Kontrollcenter, tryck på ljudrutan och välj högtalare.'
-    : 'Tryck på Telefon uppe till höger och välj högtalare. Använd Chrome i samma wifi som högtalarna'
-      + (isAndroid ? ', och tillåt "Enheter i närheten" första gången.' : '.')));
-  const go = el('button', 'btn accent welcome-go', 'Kom igång');
-  go.onclick = closeSheet;
-  body.append(go);
-}
 /** The button under the list: Chrome's own install prompt when it has one, else how to do it. */
 function addToHomeScreen() {
   if (installPrompt) {
@@ -930,12 +914,6 @@ function addToHomeScreen() {
     : ['Tryck på webbläsarens meny (⋮).', 'Välj "Lägg till på startskärmen" eller "Installera app".']
   ).forEach((t) => ol.append(el('li', null, t)));
   body.append(ol, el('p', 'muted', 'Då öppnas RadioCast som en vanlig app, utan webbläsarens adressfält.'));
-}
-/** Shown once, on the first visit, after any question about a shared list. */
-function maybeWelcome() {
-  if (store.get('welcomed', false)) return;
-  if (!$('sheet').hidden) { welcomePending = true; return; }
-  welcome();
 }
 
 function sheet(title, kind) {
@@ -956,7 +934,6 @@ function closeSheet() {
   sh.style.transform = 'translateX(-50%) translateY(100%)';
   setTimeout(() => {
     sh.hidden = true; sh.style.transform = ''; $('scrim').hidden = true; sheetState.kind = null;
-    if (welcomePending) { welcomePending = false; setTimeout(welcome, 250); }
   }, 180);
 }
 $('scrim').onclick = closeSheet;
@@ -1068,9 +1045,6 @@ function showMenu() {
     b.append(el('p', null, VERSION + '. Webbradio i telefonen, med låtinformation.'));
     b.append(el('p', 'muted', 'I Chrome (Android och dator) kan du casta till Chromecast. På iPhone: lägg till på hemskärmen via Dela-knappen i Safari, och använd AirPlay för högtalare.'));
     b.append(el('p', 'muted', 'Kanaler och logotyper från radio-browser.info. Låtinformation från kanalernas egna listor.'));
-    const again = el('button', 'btn outline', 'Visa välkomstguiden');
-    again.onclick = () => { closeSheet(); setTimeout(welcome, 250); };
-    b.append(again);
   });
 }
 /** The app's address, for friends: with my channels, or just the app (they start with the basic list). */
@@ -1345,7 +1319,6 @@ if ('serviceWorker' in navigator) {
 loadPatterns().then(() => pokeSongs());
 importFromLink();
 renderAll();
-setTimeout(maybeWelcome, 600);
 // Restarted while the radio still plays on a speaker? Chrome does not always reconnect by itself:
 // after a moment, show where it probably plays, so one tap reconnects without restarting it.
 setTimeout(() => {
