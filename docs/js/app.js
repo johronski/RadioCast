@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 1.6';
+const VERSION = 'Webb 1.7';
 
 // ============================================================ stations
 
@@ -189,6 +189,7 @@ window.__onGCastApiAvailable = (ok) => {
     controller.addEventListener(F.RemotePlayerEventType.ANY_CHANGE, onRemoteChange);
     caster.available = ctx.getCastState() !== F.CastState.NO_DEVICES_AVAILABLE;
     renderChip();
+    rejoin();
   } catch (e) { /* casting stays unavailable */ }
 };
 (() => {
@@ -294,8 +295,21 @@ function syncRemote() {
 /** Remembers what plays where, so a restarted app can say "probably still playing on Kök". */
 function rememberCasting() {
   if (caster.connected && nowPlaying && ['PLAYING', 'BUFFERING'].includes(caster.state)) {
-    store.set('castingOn', { device: caster.device, url: nowPlaying.url, at: Date.now() });
+    const session = caster.ctx && caster.ctx.getCurrentSession();
+    const sessionId = session && session.getSessionId ? session.getSessionId() : null;
+    store.set('castingOn', { device: caster.device, url: nowPlaying.url, at: Date.now(), sessionId });
   }
+}
+/**
+ * After a restart: join the speaker session this app started (by its id), so the radio keeps
+ * playing. Choosing the speaker in Chrome's list instead would restart its player (the stream stops).
+ */
+function rejoin() {
+  const last = store.get('castingOn', null);
+  if (!last || !last.sessionId || Date.now() - last.at > 12 * 3600000) return;
+  try {
+    if (!caster.ctx.getCurrentSession() && chrome.cast.requestSessionById) chrome.cast.requestSessionById(last.sessionId);
+  } catch (e) { /* not supported: the hint below is shown instead */ }
 }
 function forgetCasting() { store.set('castingOn', null); caster.guess = null; }
 
@@ -388,6 +402,9 @@ function castingSheet() {
 
 function chooseOutput() {
   if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { castingSheet(); return; }
+  // Reconnecting to where it probably played: Chrome restarts that speaker's player, so start the
+  // radio there again right away instead of leaving it silent.
+  if (caster.guess) caster.wantPlay = true;
   if (caster.ctx) {
     // Chrome's own list of speakers and groups (it searches when opened); while casting it also has "Sluta casta".
     caster.ctx.requestSession().catch((e) => {
@@ -1002,11 +1019,11 @@ renderAll();
 // after a moment, show where it probably plays, so one tap reconnects without restarting it.
 setTimeout(() => {
   const last = store.get('castingOn', null);
-  if (caster.connected || !last || Date.now() - last.at > 12 * 3600000) return;
+  if (caster.connected || !last || Date.now() - last.at > 12 * 3600000) return; // rejoined, or nothing to say
   caster.guess = last;
   nowPlaying = stations.find((s) => s.url === last.url) || nowPlaying;
   renderAll();
-}, 3000);
+}, 5000);
 
 // For the automatic tests in GitHub (and for curious minds in the browser console).
 window.radiocast = {

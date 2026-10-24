@@ -32,7 +32,7 @@ await p2.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
 await p2.addInitScript(() => localStorage.setItem('rc.castingOn',
   JSON.stringify({ device: 'Kök', url: 'https://live1.sr.se/p3-aac-320', at: Date.now() })));
 await p2.goto(url);
-await p2.waitForTimeout(3500);
+await p2.waitForTimeout(5500);
 check((await p2.textContent('#chipText')) === 'Kök', 'efter omstart visar knappen högtalaren');
 check((await p2.textContent('#npStatus')).includes('troligen på Kök'), 'efter omstart: "spelar troligen på Kök"');
 await b.close();
