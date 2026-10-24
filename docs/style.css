@@ -2,7 +2,7 @@
 :root {
   --bg: #F5F4F0; --card: #FFFFFF; --line: #E4E0D8; --fg: #2B3036; --muted: #5D6670; --soft: #4A535C;
   --accent: #3E6A8A; --accent-text: #2F5470; --accent-soft: #E6EEF3; --accent-line: #C9D7E1; --on-accent: #FFFFFF;
-  --live-bg: #F6E6E1; --live-fg: #8E3522; --live-dot: #B5452F; --warn-bg: #FBF1EE; --warn-line: #E4C9C1; --danger: #B5452F;
+  --live-bg: #F6E6E1; --live-fg: #8E3522; --live-dot: #B5452F; --danger: #B5452F;
   --snack-bg: #2B3036; --snack-fg: #FFFFFF; --snack-action: #A9CBE3; --plate: #FFFFFF; --scrim: rgba(0,0,0,.4);
   --pill-dark-bg: #2B3036; --pill-dark-fg: #FFFFFF;
   --sage-bg: #D9E6DC; --sage-fg: #2F5A41; --sand-bg: #E9E2D3; --sand-fg: #5A4A2E; --sky-bg: #D6E5EE; --sky-fg: #234F6B;
@@ -14,7 +14,7 @@
   :root {
     --bg: #1B1E22; --card: #262B31; --line: #343A41; --fg: #ECEAE5; --muted: #A3ABB3; --soft: #C4CAD0;
     --accent: #8DB4D1; --accent-text: #A9CBE3; --accent-soft: #24323D; --accent-line: #3A4C5A; --on-accent: #14202A;
-    --live-bg: #3A2622; --live-fg: #F0B4A6; --live-dot: #E07A62; --warn-bg: #3A2622; --warn-line: #5A3A33; --danger: #C2533B;
+    --live-bg: #3A2622; --live-fg: #F0B4A6; --live-dot: #E07A62; --danger: #C2533B;
     --snack-bg: #ECEAE5; --snack-fg: #1B1E22; --snack-action: #2F5470; --plate: #F1EFEA; --scrim: rgba(0,0,0,.6);
     --pill-dark-bg: #ECEAE5; --pill-dark-fg: #1B1E22;
     --sage-bg: #2C3B31; --sage-fg: #BFD6C5; --sand-bg: #3B3427; --sand-fg: #E3D5B8; --sky-bg: #24323D; --sky-fg: #B9D3E6;
@@ -47,14 +47,6 @@ input { font: inherit; color: inherit; }
 .top h1 { font-size: 26px; font-weight: 700; margin: 0; flex: 1; letter-spacing: -.01em; }
 .iconbtn { width: 44px; height: 44px; border-radius: 22px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
 .iconbtn:active { background: var(--line); }
-.chip {
-  display: inline-flex; align-items: center; gap: 7px; height: 40px; max-width: 220px; padding: 0 14px;
-  border-radius: 20px; background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-line);
-  font-weight: 600; font-size: 15px; white-space: nowrap;
-}
-.chip span:not(.spinner) { overflow: hidden; text-overflow: ellipsis; }
-.chip.connected { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-.chip.warn { background: var(--warn-bg); color: var(--live-fg); border-color: var(--warn-line); }
 .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; flex: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -197,7 +189,6 @@ input { font: inherit; color: inherit; }
 .field { width: 100%; height: 48px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); padding: 0 14px; margin: 6px 0; outline: none; }
 .field:focus { border-color: var(--accent); }
 .sheet .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
-.chip.guess { border-style: dashed; background: transparent; }
 
 /* Output: [ Telefon ] [ Högtalare ▾ ] */
 .output { display: flex; gap: 0; margin: 4px 0 0; border: 1px solid var(--accent-line); border-radius: 24px; padding: 3px; background: var(--card); }

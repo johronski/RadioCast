@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 2.8';
+const VERSION = 'Webb 2.9';
 
 // ============================================================ stations
 
@@ -169,7 +169,7 @@ function setVolume(v) {
 
 // ============================================================ Chromecast (Chrome on Android and computers)
 
-const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, mediaUrl: null, loadingUrl: null, replacedUrl: null, media: null, picking: null, handover: null };
+const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, loadingUrl: null, replacedUrl: null, media: null, picking: null, handover: null };
 
 window.__onGCastApiAvailable = (ok) => {
   if (!ok || !window.cast || !window.chrome || !chrome.cast) return;
@@ -460,7 +460,7 @@ function stopCasting() {
 
 /**
  * Android Chrome: while casting, Chrome's dialog only controls the current speaker (no list),
- * so switching means letting go first. One tap in our own short menu, which says so.
+ * so switching means letting go first, without stopping it: the radio plays on while you choose.
  */
 function moveToOtherSpeaker() {
   const session = caster.ctx.getCurrentSession();
@@ -1057,20 +1057,16 @@ function shareApp() {
     b.onclick = () => { closeSheet(); setTimeout(fn, 200); };
     body.append(b);
   };
-  item('Med mina kanaler', stations.length + ' kanaler följer med', () => shareList(true));
+  item('Med mina kanaler', stations.length + ' kanaler följer med', shareList);
   item('Bara appen', 'De börjar med grundlistan', () => shareLink('RadioCast', appLink(),
     'Länken till appen är kopierad.', SHARE_TEXT));
 }
 const SHARE_TEXT = 'RadioCast: webbradio i telefonen, och casting till Chromecast från Chrome. Öppna länken, inget behöver installeras.';
 function appLink() { return location.origin + location.pathname; }
-function shareList(forFriend) {
+/** The app with my channel list in the link (it opens with a question before anything is replaced). */
+function shareList() {
   const data = btoa(unescape(encodeURIComponent(JSON.stringify(stations.map((s) => [s.name, s.url, s.cc, s.br, s.logo, s.genre])))));
-  const link = location.origin + location.pathname + '#lista=' + data;
-  const done = () => snack('Länken med din lista är kopierad. Öppna den på en annan enhet.');
-  if (forFriend) { shareLink('RadioCast', link, 'Länken med appen och din lista är kopierad.', SHARE_TEXT); return; }
-  if (navigator.share) navigator.share({ title: 'Min RadioCast-lista', url: link }).catch(() => {});
-  else if (navigator.clipboard) navigator.clipboard.writeText(link).then(done, () => prompt('Kopiera länken:', link));
-  else prompt('Kopiera länken:', link);
+  shareLink('RadioCast', appLink() + '#lista=' + data, 'Länken med appen och din lista är kopierad.', SHARE_TEXT);
 }
 function shareLink(title, link, done, text) {
   if (navigator.share) navigator.share(text ? { title, text, url: link } : { title, url: link }).catch(() => {});
