@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 2.4';
+const VERSION = 'Webb 2.5';
 
 // ============================================================ stations
 
@@ -376,10 +376,11 @@ function castLoad(s) {
   session.loadMedia(req).then(() => {
     if (caster.loadingUrl === mine) caster.loadingUrl = null;
     watchMedia(session);
-    if (caster.handover && caster.handover.phase === 'loading') setTimeout(stopOldSpeaker, 2500);
+    if (caster.handover && caster.handover.phase === 'loading') caster.handover = null; // moved (Chrome stops the old one)
     renderAll();
   }, () => {
     if (caster.loadingUrl === mine) caster.loadingUrl = null;
+    caster.handover = null;
     caster.state = 'IDLE';
     playError = 'Högtalaren kunde inte spela strömmen. Kontrollera länken.';
     renderAll();
@@ -492,7 +493,7 @@ function handoverSession(session) {
   const id = session && session.getSessionId();
   if (h.phase === 'picking' && id !== h.oldId) {
     h.phase = 'loading'; h.newId = id; h.newDevice = caster.device;
-    castLoad(nowPlaying); // then stopOldSpeaker()
+    castLoad(nowPlaying); // Chrome stops the old speaker by itself
     return true;
   }
   if ((h.phase === 'picking' || h.phase === 'rejoinOld') && id === h.oldId) {
@@ -500,33 +501,7 @@ function handoverSession(session) {
     askMediaStatus(session); setTimeout(checkSpeaker, 1200);
     return true;
   }
-  if (h.phase === 'stopping' && id === h.oldId) {
-    h.phase = 'back';
-    const back = () => setTimeout(() => { joinById(h.newId); handoverTimeout(h, 'back', () => giveUpOn(h.newDevice)); }, 600);
-    caster.ctx.endCurrentSession(true); // stops the old speaker
-    back();
-    return true;
-  }
-  if (h.phase === 'back' && id === h.newId) {
-    caster.handover = null;
-    askMediaStatus(session); setTimeout(checkSpeaker, 1200);
-    return true;
-  }
   return false;
-}
-/** The new speaker plays: briefly join the old one to stop it, then come back. */
-function stopOldSpeaker() {
-  const h = caster.handover;
-  if (!h || h.phase !== 'loading') return;
-  h.phase = 'stopping';
-  caster.ctx.endCurrentSession(false); // the new one plays on
-  setTimeout(() => joinById(h.oldId), 600);
-  handoverTimeout(h, 'stopping', () => {
-    snack('Kunde inte stänga av ' + h.oldDevice + ' härifrån. Stäng av den i Google Home-appen.');
-    h.phase = 'back';
-    joinById(h.newId);
-    handoverTimeout(h, 'back', () => giveUpOn(h.newDevice));
-  });
 }
 function joinById(id) {
   try { chrome.cast.requestSessionById(id); } catch (e) { /* handled by the timeout */ }
@@ -554,7 +529,7 @@ function speakerSheet() {
   };
   item('Byt högtalare', 'cast', moveToOtherSpeaker);
   item('Sluta casta', 'close', stopCasting);
-  body.append(el('p', 'muted', caster.device + ' spelar vidare medan du väljer. När den nya högtalaren spelar försöker appen stänga av ' + caster.device + '.'));
+  body.append(el('p', 'muted', caster.device + ' spelar vidare medan du väljer, och tystnar när den nya högtalaren tar över.'));
 }
 
 function chooseOutput() {
@@ -700,8 +675,7 @@ function statusText() {
   const h = caster.handover;
   if (h && h.phase === 'picking') return 'Spelar på ' + h.oldDevice + ' · välj högtalare';
   if (h && h.phase === 'rejoinOld') return 'Spelar på ' + h.oldDevice;
-  if (h && h.phase === 'stopping') return 'Spelar på ' + h.newDevice + ' · stänger av ' + h.oldDevice + '…';
-  if (h && h.phase === 'back') return 'Spelar på ' + h.newDevice;
+  if (h && h.phase === 'loading') return 'Startar på ' + h.newDevice + '…';
   if (!caster.connected && caster.guess) return 'Spelar troligen på ' + caster.guess.device + ' · tryck på högtalaren uppe till höger';
   if (caster.connected) {
     const st = caster.state;
