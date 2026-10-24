@@ -3,7 +3,7 @@ name: Bygg APK
 on:
   push:
     branches: [main]
-    paths-ignore: ['docs/**', '*.md']
+    paths-ignore: ['docs/**', 'web-tests/**', '*.md', '.github/workflows/web.yml']
   workflow_dispatch:
 
 permissions:
