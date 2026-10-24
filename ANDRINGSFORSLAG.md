@@ -76,3 +76,41 @@ Favoriter i ordning: Y1, Y2, Y3.
 - **Y13. Antialgoritm-identitet.** "Här väljer människor, inte maskiner" – lyft fram att en programledare valde låten.
 - **Y14. Jordens puls.** Hur många kanaler spelar samma låt just nu.
 - **Y15. Tystnadens radio.** Bara instrumentalt, eller tystnar när någon pratar i rummet (mikrofon).
+
+## Y1 i detalj: Kompassradion (24 okt)
+**Känsla:** som en gammal kortvågsradio, fast man vrider jorden i stället för en ratt.
+
+**Användning**
+1. Öppna kompassläget (⋯-menyn eller egen knapp). Stor kompassros, du i mitten.
+2. Vrid dig. Mellan kanalerna hörs svagt brus.
+3. Håll stilla ca 1,5 s → låser på kanalen: kort vibration, bruset tonar bort, kanalen tonar in.
+4. Skärmen visar stad och land, avstånd ("Dakar · 5 400 km"), lokal tid där ("21:40, mörkt"), kanalnamn och låt om den finns.
+5. Avstånd med lutning: platt = närmast i riktningen, luta uppåt = längre bort (Göteborg → Lissabon → Brasilien).
+
+**Magiska detaljer**
+- Jorden är rund: rakt västerut från Stockholm hamnar man i Kanada, inte New York. Visa linjen på en liten jordglob.
+- Hav i riktningen: bara brus och "Atlanten · nästa land om 4 800 km".
+- Peka mot golvet: radio från andra sidan klotet (runt Nya Zeeland).
+- Fyrläget: telefonen på bordet, appen vrider sig en grad i taget – världsresa på ca en timme.
+- Mot en vän: välj en väns stad, kompassen pekar dit och spelar radio därifrån.
+- Till högtalaren: telefonen är fjärrkontroll, låst kanal startar i vardagsrummet.
+
+**Teknik**
+- Din position stannar i telefonen; alternativt välj stad manuellt.
+- radio-browser har koordinater: hämta ett par tusen populära, nyligen fungerande kanaler, sortera på riktning (storcirkel) och avstånd.
+- Kompassen läses från webbsidan: Android direkt, iPhone efter knapptryck och tillåtelse.
+- Utan kompass (dator): dra kompassrosen med finger/mus – fungerar för alla.
+- Bruset skapas i appen; fyller också laddtiden när en ström startar.
+
+**Risker**
+- Kompassen kan visa 10–20° fel nära metall → breda sektorer (~10°), ibland kalibrering (rör telefonen i en åtta).
+- Trasiga strömmar → hoppa tyst till nästa i samma riktning.
+- 1–3 s starttid → döljs av bruset.
+
+**Första versionen**
+1. Kompassros att dra med fingret, kompassen som bonus där den finns.
+2. Ett par tusen kanaler med koordinater, sektorer om 10°.
+3. Brus mellan kanaler, låsning vid stillhet, stad/avstånd/lokal tid.
+4. Avstånd med skjutreglage först, lutning senare.
+
+Insats: medel (ungefär som sökfunktionen).
