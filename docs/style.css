@@ -207,3 +207,10 @@ input { font: inherit; color: inherit; }
 .seg[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .seg.guess { outline: 2px dashed var(--accent-line); outline-offset: -3px; }
 #outPhone { flex: 0 0 34%; }
+
+/* First visit */
+.welcome-h { font-size: 15px; font-weight: 700; margin: 18px 0 6px; }
+.welcome-steps { margin: 0; padding-left: 22px; line-height: 1.5; }
+.welcome-steps li { margin: 2px 0; }
+.welcome-go { width: 100%; margin-top: 20px; }
+.sheet .menu-item small { font-size: 13px; }

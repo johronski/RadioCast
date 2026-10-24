@@ -9,6 +9,10 @@ await p.route(/^https?:\/\/(?!localhost)/, (r) => r.abort()); // offline: only t
 await p.goto(url);
 await p.waitForFunction(() => window.radiocast && document.querySelectorAll('.row').length > 0, null, { timeout: 10000 });
 const check = (ok, what) => { if (!ok) { errors.push('Misslyckades: ' + what); } else console.log('ok  ' + what); };
+await p.waitForTimeout(900);
+check((await p.textContent('#sheetBody')).includes('Välkommen'), 'välkomstguiden visas första gången');
+await p.click('.welcome-go'); await p.waitForTimeout(300);
+check(await p.isHidden('#sheet'), 'välkomstguiden stängs med Kom igång');
 check(await p.locator('.row').count() === 6, 'listan visar 6 kanaler');
 await p.click('#searchBar');
 check(await p.isVisible('#search'), 'sökfönstret öppnas');
@@ -24,7 +28,9 @@ check(await p.isVisible('#sheet'), 'låtvyn öppnas');
 await p.click('#sheetClose'); await p.waitForTimeout(300);
 check(await p.isHidden('#sheet'), 'låtvyn stängs med ✕');
 await p.click('#menuBtn');
-check((await p.textContent('#sheetBody')).includes('Dela min kanallista'), 'menyn öppnas');
+check((await p.textContent('#sheetBody')).includes('Dela appen med en vän'), 'menyn öppnas');
+await p.click('text=Dela appen med en vän'); await p.waitForTimeout(500);
+check((await p.textContent('#sheetBody')).includes('Med mina kanaler'), 'dela appen erbjuder med eller utan kanaler');
 // Restarted while the radio played on a speaker: the app says where it probably plays.
 const p2 = await b.newPage();
 p2.on('pageerror', (e) => errors.push(e.message));

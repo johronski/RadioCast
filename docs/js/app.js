@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 2.7';
+const VERSION = 'Webb 2.8';
 
 // ============================================================ stations
 
@@ -862,6 +862,55 @@ function startDrag(e, row) {
 // ============================================================ sheets (song view, menu, forms)
 
 const sheetState = { kind: null };
+// ============================================================ first visit
+
+let installPrompt = null; // Android Chrome: lets a button add the app to the home screen
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; });
+let welcomePending = false;
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const isAndroid = /Android/i.test(navigator.userAgent);
+const installed = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+/** First visit: what the app is, how to put it on the home screen, and how casting works. */
+function welcome() {
+  store.set('welcomed', true);
+  const body = sheet('Välkommen till RadioCast', 'welcome');
+  body.append(el('p', null, 'Webbradio från hela världen, med vilken låt som spelas. Tryck på en kanal för att lyssna, och sök efter fler med sökrutan.'));
+  const steps = (title, list) => {
+    body.append(el('h3', 'welcome-h', title));
+    const ol = el('ol', 'muted welcome-steps');
+    list.forEach((t) => ol.append(el('li', null, t)));
+    body.append(ol);
+  };
+  if (!installed()) {
+    if (isIOS) steps('Lägg appen på hemskärmen', ['Öppna sidan i Safari.', 'Tryck på Dela-knappen (fyrkanten med pil uppåt).', 'Välj "Lägg till på hemskärmen".']);
+    else if (installPrompt) {
+      body.append(el('h3', 'welcome-h', 'Lägg appen på hemskärmen'));
+      const add = el('button', 'btn accent', 'Lägg till på hemskärmen');
+      add.onclick = () => { installPrompt.prompt(); installPrompt = null; add.disabled = true; };
+      body.append(add);
+    } else steps('Lägg appen på hemskärmen', ['Tryck på webbläsarens meny (⋮).', 'Välj "Lägg till på startskärmen" eller "Installera app".']);
+  }
+  if (isIOS) {
+    steps('Spela på högtalare', ['Chromecast går inte från iPhone, men AirPlay gör det.', 'Öppna Kontrollcenter, tryck på ljudrutan och välj högtalare.']);
+  } else {
+    steps('Casta till Chromecast', [
+      'Använd Chrome, i samma wifi som högtalarna.',
+      'Tryck på Högtalare uppe till höger och välj högtalare eller grupp.',
+      isAndroid ? 'Första gången: tillåt "Enheter i närheten" när Chrome frågar (annars hittas inga högtalare).' : 'Chrome visar sina högtalare i en lista.',
+    ]);
+  }
+  const go = el('button', 'btn accent welcome-go', 'Kom igång');
+  go.onclick = closeSheet;
+  body.append(go);
+}
+/** Shown once, on the first visit, after any question about a shared list. */
+function maybeWelcome() {
+  if (store.get('welcomed', false)) return;
+  if (!$('sheet').hidden) { welcomePending = true; return; }
+  welcome();
+}
+
 function sheet(title, kind) {
   sheetState.kind = kind || 'info';
   const body = $('sheetBody');
@@ -878,7 +927,10 @@ function closeSheet() {
   const sh = $('sheet');
   if (sh.hidden) return;
   sh.style.transform = 'translateX(-50%) translateY(100%)';
-  setTimeout(() => { sh.hidden = true; sh.style.transform = ''; $('scrim').hidden = true; sheetState.kind = null; }, 180);
+  setTimeout(() => {
+    sh.hidden = true; sh.style.transform = ''; $('scrim').hidden = true; sheetState.kind = null;
+    if (welcomePending) { welcomePending = false; setTimeout(welcome, 250); }
+  }, 180);
 }
 $('scrim').onclick = closeSheet;
 $('sheetClose').onclick = closeSheet;
@@ -981,25 +1033,47 @@ function showMenu() {
     item('Sluta casta till ' + caster.device, 'close', stopCasting);
   }
   if (nowPlaying) item('Dela kanalen ' + shortName(nowPlaying.name), 'note', shareListen);
-  item('Dela min kanallista', 'plus', shareList);
+  item('Dela appen med en vän', 'plus', shareApp);
   item('Lägg till med egen länk', 'plus', askForStation);
   item('Om RadioCast', 'note', () => {
     const b = sheet('Om RadioCast');
     b.append(el('p', null, VERSION + '. Webbradio i telefonen, med låtinformation.'));
     b.append(el('p', 'muted', 'I Chrome (Android och dator) kan du casta till Chromecast. På iPhone: lägg till på hemskärmen via Dela-knappen i Safari, och använd AirPlay för högtalare.'));
     b.append(el('p', 'muted', 'Kanaler och logotyper från radio-browser.info. Låtinformation från kanalernas egna listor.'));
+    const again = el('button', 'btn outline', 'Visa välkomstguiden');
+    again.onclick = () => { closeSheet(); setTimeout(welcome, 250); };
+    b.append(again);
   });
 }
-function shareList() {
+/** The app's address, for friends: with my channels, or just the app (they start with the basic list). */
+function shareApp() {
+  const body = sheet('Dela appen');
+  body.append(el('p', 'muted', 'Din vän öppnar länken i webbläsaren, inget behöver installeras. Kanallistan sparas sedan i deras telefon, och de kan ändra den fritt.'));
+  const item = (label, sub, fn) => {
+    const b = el('button', 'menu-item');
+    b.type = 'button';
+    const t = el('span'); t.append(el('span', null, label), el('br'), el('small', 'muted', sub));
+    b.append(icon('plus'), t);
+    b.onclick = () => { closeSheet(); setTimeout(fn, 200); };
+    body.append(b);
+  };
+  item('Med mina kanaler', stations.length + ' kanaler följer med', () => shareList(true));
+  item('Bara appen', 'De börjar med grundlistan', () => shareLink('RadioCast', appLink(),
+    'Länken till appen är kopierad.', SHARE_TEXT));
+}
+const SHARE_TEXT = 'RadioCast: webbradio i telefonen, och casting till Chromecast från Chrome. Öppna länken, inget behöver installeras.';
+function appLink() { return location.origin + location.pathname; }
+function shareList(forFriend) {
   const data = btoa(unescape(encodeURIComponent(JSON.stringify(stations.map((s) => [s.name, s.url, s.cc, s.br, s.logo, s.genre])))));
   const link = location.origin + location.pathname + '#lista=' + data;
   const done = () => snack('Länken med din lista är kopierad. Öppna den på en annan enhet.');
+  if (forFriend) { shareLink('RadioCast', link, 'Länken med appen och din lista är kopierad.', SHARE_TEXT); return; }
   if (navigator.share) navigator.share({ title: 'Min RadioCast-lista', url: link }).catch(() => {});
   else if (navigator.clipboard) navigator.clipboard.writeText(link).then(done, () => prompt('Kopiera länken:', link));
   else prompt('Kopiera länken:', link);
 }
-function shareLink(title, link, done) {
-  if (navigator.share) navigator.share({ title, url: link }).catch(() => {});
+function shareLink(title, link, done, text) {
+  if (navigator.share) navigator.share(text ? { title, text, url: link } : { title, url: link }).catch(() => {});
   else if (navigator.clipboard) navigator.clipboard.writeText(link).then(() => snack(done), () => prompt('Kopiera länken:', link));
   else prompt('Kopiera länken:', link);
 }
@@ -1246,6 +1320,7 @@ if ('serviceWorker' in navigator) {
 loadPatterns().then(() => pokeSongs());
 importFromLink();
 renderAll();
+setTimeout(maybeWelcome, 600);
 // Restarted while the radio still plays on a speaker? Chrome does not always reconnect by itself:
 // after a moment, show where it probably plays, so one tap reconnects without restarting it.
 setTimeout(() => {
