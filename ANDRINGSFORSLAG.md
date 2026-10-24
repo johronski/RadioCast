@@ -57,3 +57,22 @@ Favoriter i ordning: I, J, K.
 - **X. Väderradio.** Föreslår kanal efter väder och tid; du bestämmer.
 
 Obs: idéer som ska hända vid en viss tid när appen är stängd (påminnelser, väckning, larm i bakgrunden) kräver Android-skalet (punkt 13).
+
+## Ännu vildare: radions grundidéer (24 okt)
+Grundidéer: ett fönster mot någon annans nu · att lämna över valet till en människa · sällskap i bakgrunden · gemensam tid · ljud som formar ett rum.
+Favoriter i ordning: Y1, Y2, Y3.
+- **Y1. Kompassradion** (kompassen). Rikta telefonen åt ett håll och hör radio därifrån (telefonens kompass + kanalernas koordinater).
+- **Y2. Solnedgångsradion** (astronomi). Spelar alltid en kanal där solen går ner just nu, följer skymningen runt jorden.
+- **Y3. Lägereld** (gemensam tid). Bjud in en vän att lyssna samtidigt, t.ex. FIP fredag 18:00, via kalenderinbjudan med länk. Ingen server.
+- **Y4. Radiotåget** (fönsterplatsen). Välj en rutt; var 20:e min byter appen till en kanal längre fram längs vägen, med karta.
+- **Y5. Flyttfågelläget.** På vintern spelar kanaler där det är sommar.
+- **Y6. Fiskelyckan.** Lägg ut ett drag (artist/låt/genre); appen bevakar alla kanaler den kan läsa och nappar när något passar spelas.
+- **Y7. Låtminnen.** Välj ett foto och se vad som spelades på t.ex. P3 när det togs.
+- **Y8. Kanalträdgården.** Kanaler du aldrig spelar tonas ner, nya förslag spirar.
+- **Y9. DX-jakten** (amatörradio). Poäng för avstånd: "Längsta hittills: Nya Zeeland, 17 300 km."
+- **Y10. Dygnsringning.** Kanalförslag i dygnets rytm, från din egen historik.
+- **Y11. Radiodagboken.** En rad per dag skrivs av sig själv.
+- **Y12. Vänners vänner.** Kanaler två steg bort via delade listor.
+- **Y13. Antialgoritm-identitet.** "Här väljer människor, inte maskiner" – lyft fram att en programledare valde låten.
+- **Y14. Jordens puls.** Hur många kanaler spelar samma låt just nu.
+- **Y15. Tystnadens radio.** Bara instrumentalt, eller tystnar när någon pratar i rummet (mikrofon).
