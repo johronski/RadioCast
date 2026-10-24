@@ -9,3 +9,4 @@ Byggpaus till och med lördag 31 oktober 2026. Nya önskemål samlas här i stä
 
 ## Under pausen
 - 24 okt: "Lägg till på hemskärmen" som en egen knapp i stället för i välkomstrutan (t.ex. i ⋯-menyn eller som en diskret rad överst tills appen är installerad).
+- 24 okt: Ersätt de två knapparna Telefon/Högtalare med en diskret högtalarknapp som i Android-appen (liten knapp i sidhuvudet som visar var ljudet spelas; tryck för att välja).
