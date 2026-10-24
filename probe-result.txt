@@ -1,22 +1,18 @@
-antal i svar: 20
-["Alunageorge, Riordan, Aluna, Caleb Laurenson, Danny P – Best Be Believing","Alunageorge, Riordan, Aluna, Caleb Laurenson, Danny P – Best Be Believing","/Date(1792781852000)/"]
-["Josh Baker, Rhys From The Sticks – Souvenir","Josh Baker, Rhys From The Sticks – Souvenir","/Date(1792781743000)/"]
-["Chris Stassy, Marz Fay – U Know Me","Chris Stassy, Marz Fay – U Know Me","/Date(1792781651000)/"]
-["Dj Carpenter – Backhanders","Dj Carpenter – Backhanders","/Date(1792781364000)/"]
-["Clouds – Messiah","Clouds – Messiah","/Date(1792781174000)/"]
-["P-Rallel, Megra – Bring It Back","P-Rallel, Megra – Bring It Back","/Date(1792781024000)/"]
-["Aasthma – Heart Burned","Aasthma – Heart Burned","/Date(1792780850000)/"]
-["Dj Carpenter – Tatiana","Dj Carpenter – Tatiana","/Date(1792780617000)/"]
-["Dj Carpenter – Id","Dj Carpenter – Id","/Date(1792780410000)/"]
-["Mph – Warlord","Mph – Warlord","/Date(1792780292000)/"]
-["Interplanetary Criminal, Silva Bumpa – Hold Da Phone","Interplanetary Criminal, Silva Bumpa – Hold Da Phone","/Date(1792780095000)/"]
-["Djedjotronic – Kaikō","Djedjotronic – Kaikō","/Date(1792779730000)/"]
-["Unit Boy – Pleasure","Unit Boy – Pleasure","/Date(1792779598000)/"]
-["Dj Carpenter, Kasbo, Izza Gara – Garragarra","Dj Carpenter, Kasbo, Izza Gara – Garragarra","/Date(1792779270000)/"]
-["Dj Carpenter – Cartridge","Dj Carpenter – Cartridge","/Date(1792778888000)/"]
-["Rohan Pinnock-Hamilton, Prospa, Kettama – Think Of You","Rohan Pinnock-Hamilton, Prospa, Kettama – Think Of You","/Date(1792778582000)/"]
-["The Future Sound Of London – Papua New Guinea","The Future Sound Of London – Papua New Guinea","/Date(1792777297000)/"]
-["Capricorn – 20 Hz","Capricorn – 20 Hz","/Date(1792777119000)/"]
-["Aphex Twin – Xtal","Aphex Twin – Xtal","/Date(1792776944000)/"]
-["Megalon – Spook","Megalon – Spook","/Date(1792776723000)/"]
-historik efter backfill: 4
+(node:2486) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/RadioCast/RadioCast/.github/probe/web.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /home/runner/work/RadioCast/RadioCast/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+200 audio/mpeg 16384 https://edge2.sr.se/p1-mp3-96 <= https://sverigesradio.se/topsy/direkt/srapi/132.mp3
+200 audio/mpeg 12432 https://edge1.sr.se/p2-mp3-96 <= https://sverigesradio.se/topsy/direkt/srapi/163.mp3
+200 audio/mpeg 16384 https://edge2.sr.se/p3-mp3-96 <= https://sverigesradio.se/topsy/direkt/srapi/164.mp3
+200 audio/mpeg 16384 https://edge1.sr.se/p4sth-mp3-96 <= https://sverigesradio.se/topsy/direkt/srapi/701.mp3
+200 audio/aac 4401 https://edge2.sr.se/p1-aac-128 <= https://live1.sr.se/p1-aac-192
+200 audio/aac 16384 https://edge1.sr.se/p2-aac-128 <= https://live1.sr.se/p2-aac-192
+200 audio/aac 16384 https://edge2.sr.se/p3-aac-128 <= https://live1.sr.se/p3-aac-192
+404 text/html; charset=UTF-8 31 https://live1.sr.se/p4sthlm-aac-192 <= https://live1.sr.se/p4sthlm-aac-192
+200 audio/aac 16384 https://edge2.sr.se/p1-aac-320 <= https://live1.sr.se/p1-aac-320
+200 audio/aac 10749 https://edge1.sr.se/p2-aac-320 <= https://live1.sr.se/p2-aac-320
+132 P1 https://www.sverigesradio.se/topsy/direkt/srapi/132.mp3 https://static-cdn.sr.se/images/132/4a5e66b7-c935-415d-a524-c060ea227de2.jpg?preset=api-default-square
+163 P2 https://www.sverigesradio.se/topsy/direkt/srapi/163.mp3 https://static-cdn.sr.se/images/163/684f7bac-3e2e-4a7a-969e-6892b70069d6.jpg?preset=api-default-square
+164 P3 https://www.sverigesradio.se/topsy/direkt/srapi/164.mp3 https://static-cdn.sr.se/images/164/1adb95c9-cc4e-452f-b1ed-0602b3e15c46.jpg?preset=api-default-square
+701 P4 Stockholm https://www.sverigesradio.se/topsy/direkt/srapi/701.mp3 https://static-cdn.sr.se/images/701/7b2427e5-c4db-4bd9-8db2-5d2a76f1357e.jpg?preset=api-default-square
