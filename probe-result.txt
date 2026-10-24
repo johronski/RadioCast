@@ -1,18 +1,26 @@
-(node:2486) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///home/runner/work/RadioCast/RadioCast/.github/probe/web.js is not specified and it doesn't parse as CommonJS.
-Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
-To eliminate this warning, add "type": "module" to /home/runner/work/RadioCast/RadioCast/package.json.
-(Use `node --trace-warnings ...` to show where the warning was created)
-200 audio/mpeg 16384 https://edge2.sr.se/p1-mp3-96 <= https://sverigesradio.se/topsy/direkt/srapi/132.mp3
-200 audio/mpeg 12432 https://edge1.sr.se/p2-mp3-96 <= https://sverigesradio.se/topsy/direkt/srapi/163.mp3
-200 audio/mpeg 16384 https://edge2.sr.se/p3-mp3-96 <= https://sverigesradio.se/topsy/direkt/srapi/164.mp3
-200 audio/mpeg 16384 https://edge1.sr.se/p4sth-mp3-96 <= https://sverigesradio.se/topsy/direkt/srapi/701.mp3
-200 audio/aac 4401 https://edge2.sr.se/p1-aac-128 <= https://live1.sr.se/p1-aac-192
-200 audio/aac 16384 https://edge1.sr.se/p2-aac-128 <= https://live1.sr.se/p2-aac-192
-200 audio/aac 16384 https://edge2.sr.se/p3-aac-128 <= https://live1.sr.se/p3-aac-192
-404 text/html; charset=UTF-8 31 https://live1.sr.se/p4sthlm-aac-192 <= https://live1.sr.se/p4sthlm-aac-192
-200 audio/aac 16384 https://edge2.sr.se/p1-aac-320 <= https://live1.sr.se/p1-aac-320
-200 audio/aac 10749 https://edge1.sr.se/p2-aac-320 <= https://live1.sr.se/p2-aac-320
-132 P1 https://www.sverigesradio.se/topsy/direkt/srapi/132.mp3 https://static-cdn.sr.se/images/132/4a5e66b7-c935-415d-a524-c060ea227de2.jpg?preset=api-default-square
-163 P2 https://www.sverigesradio.se/topsy/direkt/srapi/163.mp3 https://static-cdn.sr.se/images/163/684f7bac-3e2e-4a7a-969e-6892b70069d6.jpg?preset=api-default-square
-164 P3 https://www.sverigesradio.se/topsy/direkt/srapi/164.mp3 https://static-cdn.sr.se/images/164/1adb95c9-cc4e-452f-b1ed-0602b3e15c46.jpg?preset=api-default-square
-701 P4 Stockholm https://www.sverigesradio.se/topsy/direkt/srapi/701.mp3 https://static-cdn.sr.se/images/701/7b2427e5-c4db-4bd9-8db2-5d2a76f1357e.jpg?preset=api-default-square
+UA Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1
+version Webb 3.1
+sheet visible at start false
+rows 7 SR P1 | SR P2 | SR P3 | SR P4 Stockholm | FIP | Mouv' | Radio Nova
+logos 512:https://static-cdn.sr.se/images/132/4a5e66b7-c935- , 512:https://static-cdn.sr.se/images/163/684f7bac-3e2e- , 512:https://static-cdn.sr.se/images/164/1adb95c9-cc4e- , 512:https://static-cdn.sr.se/images/701/7b2427e5-c4db-
+chip Telefon install visible true
+cast api false
+PLAY SR P1 {"t":"7.4","rs":2,"paused":false,"err":null,"src":"https://live1.sr.se/p1-aac-320"} | card: LIVESR P1 Startar…
+PLAY SR P2 {"t":"7.6","rs":3,"paused":false,"err":null,"src":"https://live1.sr.se/p2-aac-320"} | card: LIVESR P2 Spelar
+PLAY SR P3 {"t":"7.6","rs":3,"paused":false,"err":null,"src":"https://live1.sr.se/p3-aac-320"} | card: LIVESR P3 Children Robert Miles Spelar
+PLAY SR P4 Stockholm {"t":"6.5","rs":4,"paused":false,"err":null,"src":"https://sverigesradio.se/topsy/direkt/srapi/701.mp3"} | card: LIVESR P4 Stockholm Children Robert Miles Spelar
+PLAY FIP {"t":"8.1","rs":4,"paused":false,"err":null,"src":"https://icecast.radiofrance.fr/fip-midfi.mp3"} | card: LIVEFIP Benko Rocket Juice And The Moon & Fatou Diawara Spelar
+PLAY Mouv' {"t":"8.5","rs":4,"paused":false,"err":null,"src":"https://icecast.radiofrance.fr/mouv-midfi.mp3"} | card: MOUV LIVEMouv' Benko Rocket Juice And The Moon & Fatou Diawara Spelar
+PLAY Radio Nova {"t":"7.4","rs":4,"paused":false,"err":null,"src":"https://novazz.ice.infomaniak.ch/novazz-128.mp3"} | card: LIVERadio Nova Boogie On Reggae Woman Stevie Wonder Spelar
+speaker sheet: Var ska ljudet spelas?På iPhone spelar webbappen i telefonen. Chromecast går inte från Safari, men AirPlay fungerar: öppna Kontrollcenter, tryck på ljudrutan och välj högtalare.
+song sheet: Radio NovaLÅTBoogie On Reggae WomanARTISTStevie WonderSpelar i telefonenSök i Spotify
+install sheet: Lägg på hemskärmenÖppna sidan i Safari.Tryck på Dela-knappen (fyrkanten med pil uppåt).Välj "Lägg till på hemskärmen".Då öppnas RadioCast som en vanlig app, utan webbläsarens adressfält.
+search results 6 Sveriges Radio - P3SE · 148 kbpsSverige · svenska · 148 kbpsProvlyssnaLägg tillSveriges Radio P3SE · 328 kbpsSverige · svenska · 328 kbps music, youthProvlyssna
+menu: RadioCastDela kanalen Radio NovaRedigera listanDela appen med en vänLägg till med egen länkOm RadioCast
+ERRORS 
+failed: https://edge2.sr.se/p1-aac-320 Load request cancelled
+failed: https://edge1.sr.se/p2-aac-320 Load request cancelled
+failed: https://edge1.sr.se/p3-aac-320 Load request cancelled
+failed: https://edge1.sr.se/p4sth-mp3-96 Load request cancelled
+failed: https://icecast.radiofrance.fr/fip-midfi.mp3 Load request cancelled
+failed: https://icecast.radiofrance.fr/mouv-midfi.mp3 Load request cancelled
