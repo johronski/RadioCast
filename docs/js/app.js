@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 4.2';
+const VERSION = 'Webb 4.3';
 
 // ============================================================ stations
 
@@ -733,9 +733,9 @@ function guessSheet() {
     b.onclick = () => { closeSheet(); fn(); };
     body.append(b);
   };
-  item('Anslut till ' + g.device, 'speaker', () => { caster.wantPlay = true; openSpeakerList(); });
+  item('Välj högtalare', 'speaker', () => { caster.wantPlay = true; openSpeakerList(); });
   item('Använd telefonen', 'phone', () => { forgetCasting(); renderAll(); });
-  body.append(el('p', 'muted', 'Välj ' + g.device + ' i Chromes lista. Radion startar om där efter några sekunder.'));
+  body.append(el('p', 'muted', 'Radion startar om på högtalaren du väljer.'));
 }
 function chooseOutput() {
   if (busyMoving()) return;
