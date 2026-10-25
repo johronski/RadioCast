@@ -816,9 +816,12 @@ function renderSession() {
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: song ? shortTitle(songTitle(song)) : shortName(s.name),
-      artist: song ? (songArtist(song) || shortName(s.name)) : statusText(),
+      // Android shows only title + artist and cuts the end, so the station goes first.
+      artist: song
+        ? (songArtist(song) ? shortName(s.name) + ' · ' + songArtist(song) : shortName(s.name))
+        : shortName(s.name) + ' · ' + statusText(),
       album: shortName(s.name),
-      artwork: [{ src: art, sizes: '300x300' }],
+      artwork: [{ src: art }],
     });
     navigator.mediaSession.playbackState = musicActive() ? 'playing' : 'paused';
   } catch (e) { /* not supported */ }
