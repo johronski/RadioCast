@@ -5,9 +5,8 @@ import { LANGUAGE_SV, VOCABULARY, parseQuery, correct, score } from './query.js'
 
 export const HOSTS = ['de1.api.radio-browser.info', 'nl1.api.radio-browser.info', 'at1.api.radio-browser.info', 'all.api.radio-browser.info'];
 export async function catalogue(path) {
-  let last;
   for (const h of HOSTS) {
-    try { return await getJson('https://' + h + path, 10000); } catch (e) { last = e; }
+    try { return await getJson('https://' + h + path, 10000); } catch (e) { /* next server */ }
   }
   throw new Error('Radiokatalogen svarar inte. Kontrollera internet och försök igen.');
 }

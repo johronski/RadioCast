@@ -1,5 +1,4 @@
 /* Names and logos: country names, short station names, initials tiles. */
-import { simplify } from './util.js';
 
 export const COUNTRY_NAMES = (() => {
   try { return new Intl.DisplayNames(['sv'], { type: 'region' }); } catch (e) { return null; }

@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 3.3';
+const VERSION = 'Webb 3.4';
 
 // ============================================================ stations
 
@@ -32,6 +32,22 @@ const DEFAULT_STATIONS = /^sv/i.test(navigator.language || '') ? [
 ];
 
 let stations = store.get('stations', null) || DEFAULT_STATIONS.slice();
+
+// Shared state and what kind of device this is (defined first: used all over below).
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/i.test(navigator.userAgent);
+const installed = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const SHARE_TEXT = 'RadioCast: webbradio i telefonen, och casting till Chromecast från Chrome. Öppna länken, inget behöver installeras.';
+const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, loadingUrl: null, replacedUrl: null, media: null, picking: null, handover: null };
+const dragging = { volume: false };
+const sheetState = { kind: null };
+let nowPlaying = (() => {
+  const last = store.get('lastPlayed', null);
+  return stations.find((s) => s.url === last) || null;
+})();
+const RETRY_DELAYS = [1000, 2000, 4000, 8000, 15000, 30000];
+const retry = { count: 0, timer: 0, stall: 0, startedAt: 0 };
+
 const saveStations = () => store.set('stations', stations);
 
 // ============================================================ song watcher
@@ -99,10 +115,6 @@ setInterval(() => { if (document.visibilityState === 'visible') checkSpeaker(); 
 // ============================================================ playback
 
 const audio = $('audio');
-let nowPlaying = (() => {
-  const last = store.get('lastPlayed', null);
-  return stations.find((s) => s.url === last) || null;
-})();
 let localState = 'stopped';   // stopped | buffering | playing
 let playError = null;
 let volume = store.get('volume', 100);
@@ -123,20 +135,28 @@ function playStation(s, saved) {
     stopLocal();
     castLoad(s);
   } else {
-    localState = 'buffering';
-    audio.src = s.url.startsWith('http://') && location.protocol === 'https:' ? s.url.replace('http://', 'https://') : s.url;
-    audio.volume = volume / 100;
-    audio.play().catch((e) => {
-      if (e && e.name === 'NotAllowedError') { localState = 'stopped'; renderAll(); return; }
-      failLocal();
-    });
+    clearRetry();
+    startLocal(s);
   }
   if (!saved) snack('Provlyssnar ' + shortName(s.name) + '. Den är inte sparad.', 'Lägg till', () => addStation(s, false));
   expandCountry(s.cc);
   pokeSongs();
   renderAll();
 }
+/** Starts (or restarts) the stream in the phone. */
+function startLocal(s) {
+  localState = 'buffering';
+  retry.startedAt = Date.now();
+  audio.src = s.url.startsWith('http://') && location.protocol === 'https:' ? s.url.replace('http://', 'https://') : s.url;
+  audio.volume = volume / 100;
+  audio.play().catch((e) => {
+    if (e && e.name === 'NotAllowedError') { clearRetry(); localState = 'stopped'; renderAll(); return; }
+    if (e && e.name === 'AbortError') return; // replaced by a newer start
+    lostStream();
+  });
+}
 function stopLocal() {
+  clearRetry();
   if (!audio.src) return;
   audio.pause();
   audio.removeAttribute('src');
@@ -148,18 +168,53 @@ function failLocal() {
   playError = 'Strömmen gick inte att spela. Kontrollera länken eller nätet.';
   renderAll();
 }
-audio.addEventListener('playing', () => { localState = 'playing'; renderAll(); });
+
+/*
+ * Reconnecting: when the network drops (wifi <-> mobile data, a tunnel) the stream errors out or
+ * hangs. Try again by itself for about a minute, and at once when the phone is online again.
+ * The error is shown only when nothing helped.
+ */
+function clearRetry() {
+  clearTimeout(retry.timer); clearTimeout(retry.stall);
+  retry.count = 0; retry.timer = 0; retry.stall = 0;
+}
+function lostStream() {
+  if (localState === 'stopped' || !nowPlaying || retry.timer) return;
+  clearTimeout(retry.stall); retry.stall = 0;
+  if (retry.count >= RETRY_DELAYS.length) { failLocal(); return; }
+  const delay = RETRY_DELAYS[retry.count++];
+  localState = 'buffering';
+  renderAll();
+  retry.timer = setTimeout(() => { retry.timer = 0; if (localState !== 'stopped' && nowPlaying) startLocal(nowPlaying); }, delay);
+}
+/** Buffering for long (the network hangs): treat it as lost. */
+function watchStall() {
+  clearTimeout(retry.stall);
+  retry.stall = setTimeout(() => { retry.stall = 0; if (localState === 'buffering') lostStream(); }, 12000);
+}
+window.addEventListener('online', () => {
+  if (retry.timer) { clearTimeout(retry.timer); retry.timer = 0; if (nowPlaying) startLocal(nowPlaying); }
+});
+
+audio.addEventListener('playing', () => { localState = 'playing'; clearRetry(); renderAll(); });
 // Some browsers (Safari) do not always send "playing" for a live stream: time moving on means it plays.
 let lastTime = 0;
 audio.addEventListener('timeupdate', () => {
   const t = audio.currentTime;
-  if (localState === 'buffering' && !audio.paused && t > lastTime + 0.5) { localState = 'playing'; renderAll(); }
+  if (localState === 'buffering' && !audio.paused && t > lastTime + 0.5) { localState = 'playing'; clearRetry(); renderAll(); }
   lastTime = t;
 });
-audio.addEventListener('loadstart', () => { lastTime = audio.currentTime; });
-audio.addEventListener('waiting', () => { if (audio.src) { localState = 'buffering'; renderAll(); } });
-audio.addEventListener('error', () => { if (audio.getAttribute('src')) failLocal(); });
-audio.addEventListener('pause', () => { if (audio.src && localState !== 'stopped') { localState = 'stopped'; renderAll(); } });
+audio.addEventListener('loadstart', () => { lastTime = audio.currentTime; watchStall(); });
+audio.addEventListener('waiting', () => { if (audio.src && localState !== 'stopped') { localState = 'buffering'; watchStall(); renderAll(); } });
+audio.addEventListener('stalled', () => { if (audio.src && localState !== 'stopped') watchStall(); });
+audio.addEventListener('error', () => { if (audio.getAttribute('src')) lostStream(); });
+// Paused from outside (headphones, a phone call): stop, unless it is our own restart.
+audio.addEventListener('pause', () => {
+  // A new src pauses the element by itself for a moment: only a pause from outside stops.
+  if (!audio.src || audio.ended || localState === 'stopped' || retry.timer || Date.now() - retry.startedAt < 1500) return;
+  localState = 'stopped'; clearRetry(); renderAll();
+});
+audio.addEventListener('ended', () => { if (localState !== 'stopped') lostStream(); }); // a live stream never ends on purpose
 
 function musicActive() {
   if (caster.handover) return true; // moving between speakers: it plays on
@@ -189,7 +244,6 @@ function setVolume(v) {
 
 // ============================================================ Chromecast (Chrome on Android and computers)
 
-const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, loadingUrl: null, replacedUrl: null, media: null, picking: null, handover: null };
 
 window.__onGCastApiAvailable = (ok) => {
   if (!ok || !window.cast || !window.chrome || !chrome.cast) return;
@@ -388,7 +442,8 @@ function castLoad(s) {
   caster.loadingUrl = s.url;
   const mine = s.url;
   // Never wait for ever: after 20 s, believe what the speaker says again.
-  setTimeout(() => {
+  clearTimeout(caster.loadTimer); // an earlier change is replaced by this one
+  caster.loadTimer = setTimeout(() => {
     if (caster.loadingUrl === mine) caster.loadingUrl = null;
     caster.replacedUrl = null;
     syncRemote(); renderAll();
@@ -631,7 +686,6 @@ function openSpeakerList() {
 let grouped = store.get('grouped', true);
 let collapsed = new Set(store.get('collapsed', []));
 let editing = false;
-const dragging = { volume: false };
 
 function renderAll() {
   renderList();
@@ -752,7 +806,7 @@ function statusText() {
     return 'Redo att spela på ' + caster.device;
   }
   if (localState === 'playing') return 'Spelar' + (isIOS ? '' : ' i telefonen');
-  if (localState === 'buffering') return 'Startar…';
+  if (localState === 'buffering') return retry.count ? 'Återansluter…' : 'Startar…';
   return 'Stoppad';
 }
 
@@ -904,14 +958,10 @@ function startDrag(e, row) {
 
 // ============================================================ sheets (song view, menu, forms)
 
-const sheetState = { kind: null };
 // ============================================================ home screen
 
 let installPrompt = null; // Android Chrome: lets a button add the app to the home screen
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; });
-const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
-const isAndroid = /Android/i.test(navigator.userAgent);
-const installed = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
 /** The button under the list: Chrome's own install prompt when it has one, else how to do it. */
 function addToHomeScreen() {
@@ -1076,7 +1126,6 @@ function shareApp() {
   item('Bara appen', 'De börjar med grundlistan', () => shareLink('RadioCast', appLink(),
     'Länken till appen är kopierad.', SHARE_TEXT));
 }
-const SHARE_TEXT = 'RadioCast: webbradio i telefonen, och casting till Chromecast från Chrome. Öppna länken, inget behöver installeras.';
 function appLink() { return location.origin + location.pathname; }
 /** The app with my channel list in the link (it opens with a question before anything is replaced). */
 function shareList() {

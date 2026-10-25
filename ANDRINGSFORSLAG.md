@@ -8,7 +8,7 @@ Prioriterad lista (24 okt). Snarlika förslag är sammanslagna. Nytta = för nya
 Grundlista efter språk, högtalarknapp i sidhuvudet (sortering/redigering i ⋯-menyn), pil på spelarkortet, hemskärmsknapp under listan. Webb 3.1: välkomstrutan borttagen, Mouv' i startlistan.
 
 ## Först efter pausen: baskrav (Kano)
-0. Kontrollera och säkra automatisk återanslutning när nätet hackar (wifi ↔ mobildata, kort tapp i bilen eller på promenad). Måste fungera innan nya överraskningar.
+0. KLART i Webb 3.4: automatisk återanslutning (upp till ca 1 min, direkt när nätet är tillbaka). Ursprungligen: kontrollera och säkra automatisk återanslutning när nätet hackar (wifi ↔ mobildata, kort tapp i bilen eller på promenad). Måste fungera innan nya överraskningar.
 
 ## Steg 2: Putsa (medel nytta, liten insats)
 5. Dölj bithastighet i listan, utom där den skiljer två strömmar av samma kanal.
