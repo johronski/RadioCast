@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 3.5';
+const VERSION = 'Webb 3.6';
 
 // ============================================================ stations
 
@@ -115,6 +115,20 @@ setInterval(() => { if (document.visibilityState === 'visible') checkSpeaker(); 
 // ============================================================ playback
 
 const audio = $('audio');
+
+/*
+ * AirPlay (Safari): the page can open Apple's list of speakers, and is told when the sound
+ * goes to one, so the chip can say so.
+ */
+const airplay = { supported: !!window.WebKitPlaybackTargetAvailabilityEvent && typeof audio.webkitShowPlaybackTargetPicker === 'function', wireless: false };
+if (airplay.supported) {
+  audio.setAttribute('x-webkit-airplay', 'allow');
+  audio.addEventListener('webkitcurrentplaybacktargetiswirelesschanged', () => {
+    airplay.wireless = !!audio.webkitCurrentPlaybackTargetIsWireless;
+    renderAll();
+  });
+}
+
 let localState = 'stopped';   // stopped | buffering | playing
 let playError = null;
 let volume = store.get('volume', 100);
@@ -675,14 +689,26 @@ function openSpeakerList() {
     });
     return;
   }
-  const body = sheet('Var ska ljudet spelas?');
-  const p = (t) => body.appendChild(el('p', 'muted', t));
-  if (isIOS) {
-    p('På iPhone spelar webbappen i telefonen. Chromecast går inte från Safari, men AirPlay fungerar: öppna Kontrollcenter, tryck på ljudrutan och välj högtalare.');
-  } else {
-    p('Casta till Chromecast går i Chrome (på Android eller datorn). I den här webbläsaren spelar radion i enheten.');
+  // iPhone, iPad and Safari on a Mac: Apple's own AirPlay list, right away.
+  // (It needs something loaded to send, so only while a channel plays.)
+  if (airplay.supported && audio.getAttribute('src')) {
+    try { audio.webkitShowPlaybackTargetPicker(); return; } catch (e) { /* shown below instead */ }
   }
+  if (isIOS || airplay.supported) {
+    const body = sheet('Spela på en högtalare');
+    const first = airplay.supported && !audio.getAttribute('src');
+    if (first) body.append(el('p', null, 'Starta en kanal först och tryck sedan här igen, så öppnas listan med AirPlay-högtalare.'));
+    body.append(el('p', 'muted', first ? 'Eller använd Kontrollcenter:' : 'Använd AirPlay i Kontrollcenter:'));
+    const ol = el('ol', 'muted welcome-steps');
+    ['Svep ner från övre högra hörnet av skärmen.', 'Tryck på AirPlay-symbolen i ljudrutan.', 'Välj högtalare eller Apple TV.']
+      .forEach((t) => ol.append(el('li', null, t)));
+    body.append(ol);
+    return;
+  }
+  const body = sheet('Spela på en högtalare');
+  body.append(el('p', 'muted', 'Casta till Chromecast går i Chrome, på Android eller datorn. I den här webbläsaren spelar radion i enheten.'));
 }
+
 
 // ============================================================ rendering
 
@@ -709,9 +735,12 @@ function renderOutput() {
   $('outSpin').hidden = !busy;
   $('outIcon').hidden = !!busy;
   $('outIcon').firstElementChild.setAttribute('href', onSpeaker || guess ? '#i-speaker' : '#i-phone');
-  const name = h ? (h.newDevice || h.oldDevice) : caster.connecting ? 'Ansluter…' : onSpeaker ? caster.device : guess ? guess.device : 'Telefon';
+  const air = !onSpeaker && !guess && airplay.wireless; // AirPlay does not tell the speaker's name
+  btn.classList.toggle('on', onSpeaker || air);
+  if (air) $('outIcon').firstElementChild.setAttribute('href', '#i-speaker');
+  const name = h ? (h.newDevice || h.oldDevice) : caster.connecting ? 'Ansluter…' : onSpeaker ? caster.device : guess ? guess.device : air ? 'AirPlay' : 'Telefon';
   $('outText').textContent = name;
-  btn.setAttribute('aria-label', onSpeaker ? 'Ljudet går till ' + name + '. Tryck för att byta.'
+  btn.setAttribute('aria-label', onSpeaker || air ? 'Ljudet går till ' + name + '. Tryck för att byta.'
     : guess ? 'Radion spelar troligen på ' + name + '. Tryck för att ansluta igen.'
     : 'Ljudet går till telefonen. Tryck för att välja högtalare.');
 }
@@ -808,7 +837,7 @@ function statusText() {
     if (caster.wantPlay) return 'Tystnade på ' + caster.device + ' · tryck Spela';
     return 'Redo att spela på ' + caster.device;
   }
-  if (localState === 'playing') return 'Spelar' + (isIOS ? '' : ' i telefonen');
+  if (localState === 'playing') return airplay.wireless ? 'Spelar via AirPlay' : 'Spelar' + (isIOS ? '' : ' i telefonen');
   if (localState === 'buffering') return retry.count || audio.currentTime > 0 ? 'Återansluter…' : 'Startar…';
   return 'Stoppad';
 }
