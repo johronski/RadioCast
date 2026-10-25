@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 4.1';
+const VERSION = 'Webb 4.2';
 
 // ============================================================ stations
 
@@ -119,7 +119,8 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') { checkSpeaker(); songs.backfilledAt = 0; pokeSongs(); renderAll(); }
 });
 // While the page is shown, check the speaker now and then too (Chrome can miss events).
-setInterval(() => { if (document.visibilityState === 'visible') checkSpeaker(); }, 15000);
+// (and keep the note of what plays where fresh, for the hint after a restart).
+setInterval(() => { if (document.visibilityState === 'visible') { checkSpeaker(); rememberCasting(); } }, 15000);
 
 // ============================================================ playback
 
@@ -355,6 +356,10 @@ function onCastSession(state) {
 /** The speaker was let go of (paused elsewhere, another app took over, or the connection broke). */
 function lostSpeaker() {
   const name = caster.device || 'högtalaren';
+  log('lost speaker', name);
+  // It no longer plays our radio (another app took over, or it was stopped): do not say
+  // "probably still playing" there after a restart.
+  store.set('castingOn', null);
   if (caster.wantPlay && nowPlaying) {
     snack('Kontakten med ' + name + ' bröts, kanske tog en annan app över. Tryck på knappen uppe till höger för att casta igen.');
   }
@@ -440,7 +445,7 @@ function rejoin() {
     return;
   }
   const last = store.get('castingOn', null);
-  if (!last || !last.sessionId || Date.now() - last.at > 12 * 3600000) return;
+  if (!last || !last.sessionId || Date.now() - last.at > 3 * 3600000) return;
   try {
     if (!caster.ctx.getCurrentSession() && chrome.cast.requestSessionById) chrome.cast.requestSessionById(last.sessionId);
   } catch (e) { /* not supported: the hint below is shown instead */ }
@@ -1528,7 +1533,7 @@ renderAll();
 // after a moment, show where it probably plays, so one tap reconnects without restarting it.
 setTimeout(() => {
   const last = store.get('castingOn', null);
-  if (caster.connected || caster.guess || !last || Date.now() - last.at > 12 * 3600000) return; // rejoined, or nothing to say
+  if (caster.connected || caster.guess || !last || Date.now() - last.at > 3 * 3600000) return; // rejoined, or nothing to say
   caster.guess = last;
   nowPlaying = stations.find((s) => s.url === last.url) || nowPlaying;
   renderAll();
