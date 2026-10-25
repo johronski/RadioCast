@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 3.8';
+const VERSION = 'Webb 3.9';
 
 // ============================================================ stations
 
@@ -578,13 +578,23 @@ function moveToOtherSpeaker() {
   caster.ctx.endCurrentSession(false);
   caster.connected = false; caster.device = ''; caster.media = null;
   renderAll();
-  caster.ctx.requestSession().catch(() => {
-    if (caster.handover !== h || h.phase !== 'picking') return;
-    // Closed without choosing: go back to the speaker that still plays.
-    h.phase = 'rejoinOld';
-    joinById(h.oldId);
-    handoverTimeout(h, 'rejoinOld', () => giveUpOn(h.oldDevice));
-  });
+  // Chrome sometimes refuses at once while it is still letting go of the old speaker: then try
+  // again a moment later (still counts as your tap). A real "closed without choosing" takes longer.
+  const open = () => {
+    const t0 = Date.now();
+    caster.ctx.requestSession().catch((e) => {
+      if (caster.handover !== h || h.phase !== 'picking') return;
+      const code = typeof e === 'string' ? e : (e && (e.code || e.message)) || '';
+      if (Date.now() - t0 < 1500 && h.tries < 3) { h.tries++; setTimeout(open, 700); return; }
+      if (Date.now() - t0 < 1500) snack('Chrome öppnade inte högtalarlistan (' + (code || 'okänt fel') + '). Försök igen.');
+      // Closed without choosing: go back to the speaker that still plays.
+      h.phase = 'rejoinOld';
+      joinById(h.oldId);
+      handoverTimeout(h, 'rejoinOld', () => giveUpOn(h.oldDevice));
+    });
+  };
+  h.tries = 0;
+  open();
 }
 /** One step of a speaker move: true when the session event was part of it (and handled). */
 function handoverSession(session) {
