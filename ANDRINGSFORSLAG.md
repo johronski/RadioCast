@@ -35,6 +35,7 @@ Favoriter i ordning: A, B, C.
 - **E. Spara låten.** Hjärta i låtvyn → "Mina låtar", öppna alla i Spotify eller dela listan. Liten insats.
 - **F. Överraska mig.** Slumpa en okänd kanal i en genre du gillar, helst en som spelar musik just då. Liten insats.
 - **G. Snålläge på mobildata.** Välj samma kanal i lägre kvalitet där den finns. Liten insats.
+- **G2. Flytta till wifi direkt.** När telefonen byter från mobilnät till wifi (Chrome på Android säger till) flyttar appen strömmen själv, med bara ett kort hack, i stället för att vänta på att Android klipper mobildatan. Sparar surf. Liten insats.
 - **H. Dela låten.** "Just nu på FIP: …" med länk där mottagaren kan lyssna direkt. Mycket liten insats.
 
 ## Inspiration från andra kategorier (24 okt, "tänk vilt")
