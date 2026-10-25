@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 4.0';
+const VERSION = 'Webb 4.1';
 
 // ============================================================ stations
 
@@ -32,6 +32,15 @@ const DEFAULT_STATIONS = /^sv/i.test(navigator.language || '') ? [
 ];
 
 let stations = store.get('stations', null) || DEFAULT_STATIONS.slice();
+
+/** A short log of what happens with the speaker, to copy from "Om RadioCast" when something goes wrong. */
+const debugLog = store.get('log', []);
+function log(...parts) {
+  const t = new Date().toTimeString().slice(0, 8);
+  debugLog.push(t + ' ' + parts.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' '));
+  if (debugLog.length > 150) debugLog.splice(0, debugLog.length - 150);
+  store.set('log', debugLog);
+}
 
 // Shared state and what kind of device this is (defined first: used all over below).
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
@@ -154,7 +163,7 @@ function playStation(s, saved) {
   if (saved) store.set('lastPlayed', s.url);
   if (caster.connected) {
     stopLocal();
-    castLoad(s);
+    try { castLoad(s); } catch (e) { log('castLoad threw', String(e)); snack('Kunde inte byta kanal på högtalaren: ' + e); }
   } else {
     clearRetry();
     startLocal(s);
@@ -302,6 +311,7 @@ window.__onGCastApiAvailable = (ok) => {
 function onCastSession(state) {
   const S = window.cast.framework.SessionState;
   const session = caster.ctx.getCurrentSession();
+  log('session', state, session && session.getCastDevice() ? session.getCastDevice().friendlyName : '-', caster.handover ? 'move:' + caster.handover.phase : '');
   caster.connecting = state === S.SESSION_STARTING;
   if (state === S.SESSION_STARTED || state === S.SESSION_RESUMED) {
     caster.connected = true;
@@ -466,38 +476,63 @@ function castLoad(s) {
   caster.replacedUrl = before && before !== s.url ? before : null;
   caster.loadingUrl = s.url;
   const mine = s.url;
-  // Never wait for ever: after 20 s, believe what the speaker says again.
+  log('load', shortName(s.name), 'on', caster.device, 'was', before ? before.slice(-30) : '-');
+  let answered = false;
+  const send = (attempt) => {
+    let p;
+    try { p = session.loadMedia(req); } catch (e) { p = Promise.reject(e); }
+    p.then(() => {
+      if (caster.loadingUrl !== mine) return; // replaced by a newer choice
+      answered = true;
+      log('load ok', shortName(s.name), 'attempt', attempt);
+      caster.loadingUrl = null;
+      syncRemote(); // what the remote player said while we waited was ignored
+      watchMedia(session);
+      if (caster.handover && caster.handover.phase === 'loading') setTimeout(stopOldSpeaker, 2500);
+      renderAll();
+    }, (e) => {
+      if (caster.loadingUrl !== mine) return;
+      answered = true;
+      const code = (e && (e.code || e.message)) || String(e);
+      log('load failed', shortName(s.name), code);
+      caster.loadingUrl = null;
+      caster.handover = null;
+      caster.state = 'IDLE';
+      playError = 'Högtalaren kunde inte spela strömmen (' + code + ').';
+      syncRemote(); renderAll();
+    });
+  };
+  send(1);
+  // A speaker (group) that does not answer: ask once more, then show what it really does.
   clearTimeout(caster.loadTimer); // an earlier change is replaced by this one
   caster.loadTimer = setTimeout(() => {
-    if (caster.loadingUrl === mine) caster.loadingUrl = null;
-    caster.replacedUrl = null;
-    syncRemote(); renderAll();
-  }, 20000);
-  session.loadMedia(req).then(() => {
-    if (caster.loadingUrl === mine) caster.loadingUrl = null;
-    watchMedia(session);
-    if (caster.handover && caster.handover.phase === 'loading') setTimeout(stopOldSpeaker, 2500);
-    renderAll();
-  }, () => {
-    if (caster.loadingUrl === mine) caster.loadingUrl = null;
-    caster.handover = null;
-    caster.state = 'IDLE';
-    playError = 'Högtalaren kunde inte spela strömmen. Kontrollera länken.';
-    renderAll();
-  });
+    if (answered || caster.loadingUrl !== mine) return;
+    log('no answer, sending again');
+    send(2);
+    caster.loadTimer = setTimeout(() => {
+      if (answered || caster.loadingUrl !== mine) return;
+      log('still no answer: giving up');
+      caster.loadingUrl = null;
+      caster.replacedUrl = null;
+      syncRemote(); renderAll();
+      snack((caster.device || 'Högtalaren') + ' svarade inte på kanalbytet. Försök igen.');
+    }, 12000);
+  }, 8000);
 }
 /** Follows the speaker's player directly after a load: buffering → playing, or stopped. */
 function watchMedia(session) {
   const m = session.getMediaSession && session.getMediaSession();
-  if (!m || caster.media === m) return;
-  caster.media = m;
-  const update = () => {
-    if (caster.media !== m || caster.loadingUrl) return;
-    caster.state = m.playerState || 'IDLE';
-    rememberCasting(); pokeSongs(); renderAll();
-  };
-  m.addUpdateListener(update);
-  update();
+  if (!m) return;
+  if (caster.media !== m) {
+    caster.media = m;
+    m.addUpdateListener(() => mediaUpdate(m));
+  }
+  mediaUpdate(m); // also when Chrome reuses the same player object for a new channel
+}
+function mediaUpdate(m) {
+  if (caster.media !== m || caster.loadingUrl) return;
+  caster.state = m.playerState || 'IDLE';
+  rememberCasting(); pokeSongs(); renderAll();
 }
 function castStop() {
   forgetCasting();
@@ -1209,6 +1244,13 @@ function showMenu() {
     b.append(el('p', null, VERSION + '. Webbradio i telefonen, med låtinformation.'));
     b.append(el('p', 'muted', 'I Chrome (Android och dator) kan du casta till Chromecast. På iPhone: lägg till på hemskärmen via Dela-knappen i Safari, och använd AirPlay för högtalare.'));
     b.append(el('p', 'muted', 'Kanaler och logotyper från radio-browser.info. Låtinformation från kanalernas egna listor.'));
+    const lg = el('button', 'btn outline', 'Kopiera felsökningslogg');
+    lg.onclick = () => {
+      const text = VERSION + ' · ' + navigator.userAgent + '\n' + debugLog.join('\n');
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => snack('Loggen är kopierad. Klistra in den i chatten.'), () => prompt('Kopiera loggen:', text));
+      else prompt('Kopiera loggen:', text);
+    };
+    b.append(lg);
   });
 }
 /** The app's address, for friends: with my channels, or just the app (they start with the basic list). */
