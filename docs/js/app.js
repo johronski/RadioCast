@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 3.4';
+const VERSION = 'Webb 3.5';
 
 // ============================================================ stations
 
@@ -144,10 +144,13 @@ function playStation(s, saved) {
   renderAll();
 }
 /** Starts (or restarts) the stream in the phone. */
-function startLocal(s) {
+function startLocal(s, fresh) {
   localState = 'buffering';
   retry.startedAt = Date.now();
-  audio.src = s.url.startsWith('http://') && location.protocol === 'https:' ? s.url.replace('http://', 'https://') : s.url;
+  let src = s.url.startsWith('http://') && location.protocol === 'https:' ? s.url.replace('http://', 'https://') : s.url;
+  // On a retry, a new address: Chrome otherwise reuses the dead connection for the same link.
+  if (fresh) src += (src.includes('?') ? '&' : '?') + 'rc=' + Date.now();
+  audio.src = src;
   audio.volume = volume / 100;
   audio.play().catch((e) => {
     if (e && e.name === 'NotAllowedError') { clearRetry(); localState = 'stopped'; renderAll(); return; }
@@ -185,15 +188,15 @@ function lostStream() {
   const delay = RETRY_DELAYS[retry.count++];
   localState = 'buffering';
   renderAll();
-  retry.timer = setTimeout(() => { retry.timer = 0; if (localState !== 'stopped' && nowPlaying) startLocal(nowPlaying); }, delay);
+  retry.timer = setTimeout(() => { retry.timer = 0; if (localState !== 'stopped' && nowPlaying) startLocal(nowPlaying, true); }, delay);
 }
 /** Buffering for long (the network hangs): treat it as lost. */
 function watchStall() {
   clearTimeout(retry.stall);
-  retry.stall = setTimeout(() => { retry.stall = 0; if (localState === 'buffering') lostStream(); }, 12000);
+  retry.stall = setTimeout(() => { retry.stall = 0; if (localState === 'buffering') lostStream(); }, 8000);
 }
 window.addEventListener('online', () => {
-  if (retry.timer) { clearTimeout(retry.timer); retry.timer = 0; if (nowPlaying) startLocal(nowPlaying); }
+  if (retry.timer) { clearTimeout(retry.timer); retry.timer = 0; if (nowPlaying) startLocal(nowPlaying, true); }
 });
 
 audio.addEventListener('playing', () => { localState = 'playing'; clearRetry(); renderAll(); });
@@ -806,7 +809,7 @@ function statusText() {
     return 'Redo att spela på ' + caster.device;
   }
   if (localState === 'playing') return 'Spelar' + (isIOS ? '' : ' i telefonen');
-  if (localState === 'buffering') return retry.count ? 'Återansluter…' : 'Startar…';
+  if (localState === 'buffering') return retry.count || audio.currentTime > 0 ? 'Återansluter…' : 'Startar…';
   return 'Stoppad';
 }
 
