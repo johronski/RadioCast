@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 3.7';
+const VERSION = 'Webb 3.8';
 
 // ============================================================ stations
 
@@ -116,6 +116,11 @@ setInterval(() => { if (document.visibilityState === 'visible') checkSpeaker(); 
 
 const audio = $('audio');
 
+
+let localState = 'stopped';   // stopped | buffering | playing
+let playError = null;
+let volume = store.get('volume', 100);
+
 /*
  * AirPlay (Safari): the page can open Apple's list of speakers, and is told when the sound
  * goes to one, so the chip can say so.
@@ -134,10 +139,6 @@ if (airplay.supported) {
     renderAll();
   });
 }
-
-let localState = 'stopped';   // stopped | buffering | playing
-let playError = null;
-let volume = store.get('volume', 100);
 
 function contentType(url) {
   const u = url.toLowerCase();
@@ -761,6 +762,22 @@ function renderOutput() {
     : 'Ljudet går till telefonen. Tryck för att välja högtalare.');
 }
 
+const coll = new Intl.Collator('sv');
+/** Unknown country last, the phone's own country first, then by name. */
+function countryOrder(codes) {
+  const rank = (cc) => (!cc ? 2 : cc === HOME_CC ? 0 : 1);
+  return codes.sort((a, b) => rank(a) - rank(b) || coll.compare(countryName(a), countryName(b)));
+}
+const byName = (a, b) => coll.compare(shortName(a.name), shortName(b.name));
+/** The channels in the order the list shows them (by country, or my own order). */
+function listOrder() {
+  if (!grouped) return stations.slice();
+  const out = [];
+  for (const cc of countryOrder([...new Set(stations.map((s) => (s.cc || '').toUpperCase()))])) {
+    out.push(...stations.filter((s) => (s.cc || '').toUpperCase() === cc).sort(byName));
+  }
+  return out;
+}
 function renderList() {
   const box = $('stations');
   box.textContent = '';
@@ -817,12 +834,9 @@ function renderList() {
     if (!byCountry.has(cc)) byCountry.set(cc, []);
     byCountry.get(cc).push([s, i]);
   });
-  const coll = new Intl.Collator('sv');
-  // Unknown country last, the phone's own country first, then by name.
-  const rank = (cc) => (!cc ? 2 : cc === HOME_CC ? 0 : 1);
-  const keys = [...byCountry.keys()].sort((a, b) => rank(a) - rank(b) || coll.compare(countryName(a), countryName(b)));
+  const keys = countryOrder([...byCountry.keys()]);
   for (const cc of keys) {
-    const list = byCountry.get(cc).sort((a, b) => coll.compare(shortName(a[0].name), shortName(b[0].name)));
+    const list = byCountry.get(cc).sort((a, b) => byName(a[0], b[0]));
     const open = !collapsed.has(cc);
     const head = el('button', 'group-head');
     head.type = 'button';
@@ -933,6 +947,21 @@ if ('mediaSession' in navigator) {
   h('play', () => { if (!musicActive()) togglePlay(); });
   h('pause', () => { if (musicActive()) stopMusic(); });
   h('stop', () => { if (musicActive()) stopMusic(); });
+  // Live radio cannot be wound: no ±10 s buttons. Back/forward (lock screen, headphones, car) change channel.
+  h('seekbackward', null);
+  h('seekforward', null);
+  h('seekto', null);
+  h('previoustrack', () => stepChannel(-1));
+  h('nexttrack', () => stepChannel(1));
+}
+/** The next or previous channel, in the order the list shows them. */
+function stepChannel(dir) {
+  const list = listOrder();
+  if (!list.length) return;
+  const i = nowPlaying ? list.findIndex((x) => x.url === nowPlaying.url) : -1;
+  const next = list[(i + dir + list.length) % list.length];
+  if (caster.handover && caster.handover.phase !== 'picking') return;
+  playStation(next, true);
 }
 
 // ============================================================ list actions
@@ -1447,5 +1476,7 @@ window.radiocast = {
   get nowPlaying() { return nowPlaying; },
   setPlaying(i) { nowPlaying = stations[i]; localState = 'playing'; songs.watchedUrl = null; renderAll(); return songTick(); },
   recentSongs,
+  stepChannel,
+  listOrder,
   freeSearch,
 };

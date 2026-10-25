@@ -31,7 +31,7 @@ Grundlista efter språk, högtalarknapp i sidhuvudet (sortering/redigering i ⋯
 Favoriter i ordning: A, B, C.
 - **A. "Vilken låt var det?"** Sök på ungefärlig tid och kanal; hämtar låtlistan från SR och Radio France, även för kanaler du inte lyssnade på. Stor nytta, liten–medel insats.
 - **B. Vad spelas på alla kanaler just nu.** Aktuell låt under varje kanal i listan (bara när sidan syns). Stor överraskning, medel insats.
-- **C. Byt kanal med hörlurar och bilens ratt.** Nästa/föregående på låsskärm, hörlurar och i bilen bläddrar bland dina kanaler. Liten insats.
+- **C. (KLART i Webb 3.8) Byt kanal med hörlurar och bilens ratt.** Nästa/föregående på låsskärm, hörlurar och i bilen bläddrar bland dina kanaler. Liten insats.
 - **D. Prat-hoppet.** När kanalen pratar: erbjud en kanal i listan som spelar musik just då ("P3 pratar, FIP spelar … Byta?"). Frågar alltid, byter aldrig själv. Medel insats.
 - **E. Spara låten.** Hjärta i låtvyn → "Mina låtar", öppna alla i Spotify eller dela listan. Liten insats.
 - **F. Överraska mig.** Slumpa en okänd kanal i en genre du gillar, helst en som spelar musik just då. Liten insats.
@@ -48,7 +48,7 @@ Favoriter i ordning: I, J, K.
 - **M. Radioscener** (Philips Hue). "Morgon" = P1 i köket låg volym, "Middag" = FIP i vardagsrummet. Ett tryck.
 - **N. Radiopasset** (Pokémon Go). Stämpel per land du lyssnat på, världskarta som fylls i.
 - **O. Shazam utan mikrofon.** Visar vad alla kända kanaler spelar just nu, du pekar ut låten du hör på caféet.
-- **P. Pausa radion** (TV-box). Fortsätt där du var efter ett samtal; spelar in i bakgrunden.
+- **P. Pausa radion** (TV-box). Fortsätt där du var efter ett samtal; spelar in i bakgrunden. Kontrollerat 25 okt: bara bakåt till när du började lyssna (30–60 min buffert i telefonen); SR:s och Radio Frances strömmar tillåter det tekniskt (CORS). Till programmets början går inte med öppna källor (Radio France HLS sparar bara ~28 s, SR har ingen öppen spolbar ström). Medel–stor insats, säkrast på Android.
 - **Q. Programguide** (tablåer). SR:s tablå, påminnelse när ett program börjar.
 - **R. Köksläge** (fotoram). Omslag och låt i helskärm på gammal platta/TV.
 - **S. Språkbadet** (Duolingo). Daglig lyssning på ett språk du lär dig, med svit.

@@ -24,6 +24,14 @@ check(await p.locator('.grip').count() === 6, 'redigeringsläget (från menyn) v
 await p.click('#editBtn');
 check(await p.isHidden('#listhead'), 'Klar avslutar redigeringen');
 check(await p.isVisible('#installBtn'), 'knappen för hemskärmen syns');
+// Back/forward on the lock screen, headphones and in the car: the next channel in the list's order.
+const order = await p.evaluate(() => window.radiocast.listOrder().map((s) => s.name));
+const visible = await p.$$eval('.row .name', (n) => n.map((x) => x.textContent));
+check(order.join('|') === visible.join('|'), 'kanalordningen följer listan');
+await p.evaluate(() => { window.radiocast.stepChannel(1); });
+const first = await p.evaluate(() => window.radiocast.nowPlaying && window.radiocast.nowPlaying.name);
+await p.evaluate(() => { window.radiocast.stepChannel(1); window.radiocast.stepChannel(-1); });
+check(first && (await p.evaluate(() => window.radiocast.nowPlaying.name)) === first, 'nästa/föregående kanal fungerar');
 await p.click('.row >> nth=0');
 check(await p.isVisible('#np'), 'spelarkortet visas efter tryck på en kanal');
 await p.click('#npText');
