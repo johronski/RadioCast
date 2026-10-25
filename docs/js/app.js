@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 3.6';
+const VERSION = 'Webb 3.7';
 
 // ============================================================ stations
 
@@ -120,11 +120,17 @@ const audio = $('audio');
  * AirPlay (Safari): the page can open Apple's list of speakers, and is told when the sound
  * goes to one, so the chip can say so.
  */
-const airplay = { supported: !!window.WebKitPlaybackTargetAvailabilityEvent && typeof audio.webkitShowPlaybackTargetPicker === 'function', wireless: false };
+const airplay = { supported: !!window.WebKitPlaybackTargetAvailabilityEvent && typeof audio.webkitShowPlaybackTargetPicker === 'function', wireless: false, available: null, startOnPick: null };
 if (airplay.supported) {
   audio.setAttribute('x-webkit-airplay', 'allow');
+  // Safari says whether there is any AirPlay speaker or Apple TV in the network.
+  audio.addEventListener('webkitplaybacktargetavailabilitychanged', (e) => { airplay.available = e.availability === 'available'; });
   audio.addEventListener('webkitcurrentplaybacktargetiswirelesschanged', () => {
     airplay.wireless = !!audio.webkitCurrentPlaybackTargetIsWireless;
+    // Chosen before anything played: start the channel there now.
+    const s = airplay.startOnPick;
+    airplay.startOnPick = null;
+    if (airplay.wireless && s && localState === 'stopped') playStation(s, stations.some((x) => x.url === s.url));
     renderAll();
   });
 }
@@ -690,19 +696,29 @@ function openSpeakerList() {
     return;
   }
   // iPhone, iPad and Safari on a Mac: Apple's own AirPlay list, right away.
-  // (It needs something loaded to send, so only while a channel plays.)
-  if (airplay.supported && audio.getAttribute('src')) {
-    try { audio.webkitShowPlaybackTargetPicker(); return; } catch (e) { /* shown below instead */ }
+  if (airplay.supported && airplay.available !== false) {
+    try {
+      if (!audio.getAttribute('src')) {
+        // The list needs something to send: load the channel (without playing), start it once a speaker is chosen.
+        const s = nowPlaying || stations[0];
+        if (s) { airplay.startOnPick = s; audio.preload = 'none'; audio.src = s.url; }
+      }
+      audio.webkitShowPlaybackTargetPicker();
+      return;
+    } catch (e) { /* shown below instead */ }
   }
   if (isIOS || airplay.supported) {
     const body = sheet('Spela på en högtalare');
-    const first = airplay.supported && !audio.getAttribute('src');
-    if (first) body.append(el('p', null, 'Starta en kanal först och tryck sedan här igen, så öppnas listan med AirPlay-högtalare.'));
-    body.append(el('p', 'muted', first ? 'Eller använd Kontrollcenter:' : 'Använd AirPlay i Kontrollcenter:'));
-    const ol = el('ol', 'muted welcome-steps');
-    ['Svep ner från övre högra hörnet av skärmen.', 'Tryck på AirPlay-symbolen i ljudrutan.', 'Välj högtalare eller Apple TV.']
-      .forEach((t) => ol.append(el('li', null, t)));
-    body.append(ol);
+    if (airplay.available === false) {
+      body.append(el('p', null, 'Hittar ingen AirPlay-högtalare eller Apple TV i nätverket.'));
+      body.append(el('p', 'muted', 'Kontrollera att högtalaren är påslagen och i samma wifi som telefonen. Chromecast-högtalare syns inte på iPhone, de nås bara från Chrome på Android eller en dator.'));
+    } else {
+      body.append(el('p', 'muted', 'Använd AirPlay i Kontrollcenter:'));
+      const ol = el('ol', 'muted welcome-steps');
+      ['Svep ner från övre högra hörnet av skärmen.', 'Tryck på AirPlay-symbolen i ljudrutan.', 'Välj högtalare eller Apple TV.']
+        .forEach((t) => ol.append(el('li', null, t)));
+      body.append(ol);
+    }
     return;
   }
   const body = sheet('Spela på en högtalare');
