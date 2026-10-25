@@ -1,3 +1,71 @@
-Webb 3.3
-Mouv kort: MOUV LIVE Mouv' Au bout de mes rêves BOOBA Spelar 
-låtvy: Mouv' MOUV LÅT Au bout de mes rêves ARTIST BOOBA Spelar i telefonen Sök i Spotify 
+== 200 cors https://johronski.github.io https://stream.radiofrance.fr/fip/fip.m3u8?id=radiofrance
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-STREAM-INF:PROGRAM-ID=0,BANDWIDTH=107000,AVERAGE-BANDWIDTH=105500,CODECS="mp4a.40.2"
+fip_lofi.m3u8?id=radiofrance
+#EXT-X-STREAM-INF:PROGRAM-ID=0,BANDWIDTH=185000,AVERAGE-BANDWIDTH=178000,CODECS="mp4a.40.2"
+fip_midfi.m3u8?id=radiofrance
+#EXT-X-STREAM-INF:PROGRAM-ID=0,BANDWIDTH=280000,AVERAGE-BANDWIDTH=268000,CODECS="mp4a.40.2"
+fip_hifi.m3u8?id=radiofrance
+
+  variant 200 cors https://johronski.github.io segments 7 total s 28 [
+  '#EXT-X-PROGRAM-DATE-TIME:2026-10-25T08:13:40Z',
+  '#EXT-X-PROGRAM-DATE-TIME:2026-10-25T08:13:44Z'
+]
+== 200 cors https://johronski.github.io https://stream.radiofrance.fr/mouv/mouv.m3u8?id=radiofrance
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-STREAM-INF:PROGRAM-ID=0,BANDWIDTH=107000,AVERAGE-BANDWIDTH=105500,CODECS="mp4a.40.2"
+mouv_lofi.m3u8?id=radiofrance
+#EXT-X-STREAM-INF:PROGRAM-ID=0,BANDWIDTH=185000,AVERAGE-BANDWIDTH=178000,CODECS="mp4a.40.2"
+mouv_midfi.m3u8?id=radiofrance
+#EXT-X-STREAM-INF:PROGRAM-ID=0,BANDWIDTH=280000,AVERAGE-BANDWIDTH=268000,CODECS="mp4a.40.2"
+mouv_hifi.m3u8?id=radiofrance
+
+  variant 200 cors https://johronski.github.io segments 7 total s 28 [
+  '#EXT-X-PROGRAM-DATE-TIME:2026-10-25T08:13:41Z',
+  '#EXT-X-PROGRAM-DATE-TIME:2026-10-25T08:13:45Z'
+]
+== 200 cors https://johronski.github.io https://stream.radiofrance.fr/fip/fip_hifi.m3u8?id=radiofrance
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-MEDIA-SEQUENCE:2825742
+#EXT-X-TARGETDURATION:4
+#EXT-X-START:TIME-OFFSET=0
+#EXT-X-PROGRAM-DATE-TIME:2026-10-25T08:13:40Z
+#EXTINF:4.000,
+/accs3/fip/prod1transcoder1/fip_aac_hifi_4_2825742_1792916020.ts?id=radiofrance
+#EXT-X-PROGRAM-DATE-TIME:2026-10-25T08:13:44Z
+#EXTINF:4.000,
+/accs3/fip/prod1transcoder1/fip_aac_hifi_4_2825743_1792916024.ts?id=radiofrance
+#EXT-X-PROGRAM-DATE-TIME:2026-10-25T08:13:48Z
+#EXTINF:4.000,
+/accs3/fip/prod1transcoder1/fip_aac_hifi_4_2825744_
+  segments 7 total s 28
+== 200 cors https://johronski.github.io https://edge1.sr.se/p3-aac-320
+(inte en spellista: audio/aac)
+== 200 cors https://johronski.github.io https://edge2.sr.se/p3-aac-128
+(inte en spellista: audio/aac)
+== 404 cors null https://live1.sr.se/p3-aac-320/playlist.m3u8
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Error 404 - Not Found</title>
+  <link rel="stylesheet" href="http://live1.sr.se/css/error.css">
+</head>
+<body>
+<h1>Error 404 - Not Found</h1>
+<div id="content">
+/p3-aac-320/playlist.m3u8
+</div>
+<div id="footer">
+Powered by <a href="http://perldancer.org/">Dancer2</a> 1.1.0
+</div>
+</body>
+</html>
+
+  variant 404 cors null segments 0 total s 0 []
+== 404 cors * https://ljud1-cdn.sr.se/hls/p3/master.m3u8
+(inte en spellista: application/json)
