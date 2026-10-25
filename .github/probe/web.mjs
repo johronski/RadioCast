@@ -8,8 +8,10 @@ const urls = [
   'https://ljud1-cdn.sr.se/hls/p3/master.m3u8',
 ];
 const head = async (u) => {
-  const r = await fetch(u, { headers: { Origin: 'https://johronski.github.io' }, redirect: 'follow' });
-  const t = await r.text();
+  const ac = new AbortController(); const tm = setTimeout(() => ac.abort(), 6000);
+  const r = await fetch(u, { headers: { Origin: 'https://johronski.github.io' }, redirect: 'follow', signal: ac.signal });
+  if (!/mpegurl|m3u|text|octet/i.test(r.headers.get('content-type') || '')) { ac.abort(); clearTimeout(tm); return { r, t: '(inte en spellista: ' + r.headers.get('content-type') + ')' }; }
+  const t = await r.text(); clearTimeout(tm);
   return { r, t };
 };
 for (const u of urls) {
