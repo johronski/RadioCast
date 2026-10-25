@@ -26,6 +26,11 @@ Grundlista efter språk, högtalarknapp i sidhuvudet (sortering/redigering i ⋯
 ## Steg 4: Större arbete (beslut behövs först)
 13. Android-skal runt webbappen med Googles riktiga Cast-funktioner: sömlöst högtalarbyte utan avbrott, se alla högtalare. Insats: stor.
 14. "Dela kontroll"-länk i Android-appen så att webbappen kan ta över en cast som Android-appen startat. Låg prioritet så länge Android-appen är fryst; blir onödig om 13 byggs.
+15. Chromecast från iPhone (25 okt) – stort och komplicerat, tveksam nytta just nu. Webbsidor kan aldrig casta på iPhone (Safari saknar stöd, Google stöder inte cast i Chrome på iOS); egen ljuddrivrutin går inte på iPhone. Vägar som fungerar:
+    - A. Brygga hemma (AirConnect) på Raspberry Pi/NAS/Home Assistant: varje Chromecast syns som AirPlay-högtalare i appens AirPlay-knapp. Ingen kodändring. Grupper fungerar troligen inte; ca 1–2 s fördröjning. Bara hemma. Insats: liten.
+    - B. Egen iPhone-app med Googles Cast-stöd (som Spotify/YouTube), ev. gemensamt projekt med Android-skalet (13). Apples utvecklarprogram 99 $/år, bygge på Mac (GitHub kan), App Store/TestFlight, användaren måste installera. Insats: stor.
+    - C. Hemmaserver (t.ex. Home Assistant) som castar på uppdrag av webbappen; kräver https och inloggning. Bara hemma. Insats: medel.
+    - D. Google-assistenten på iPhone ("spela P3 i köket") – inget att bygga, inte kopplat till RadioCast.
 
 ## Attraktiv kvalitet: nya idéer (Kano-genomgång 24 okt)
 Favoriter i ordning: A, B, C.
