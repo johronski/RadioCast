@@ -115,3 +115,12 @@ Favoriter i ordning: Y1, Y2, Y3.
 4. Avstånd med skjutreglage först, lutning senare.
 
 Insats: medel (ungefär som sökfunktionen).
+
+**Sömlösa byten i Kompassradion (25 okt)**
+- *Varma kanaler:* medan du vrider spelar 2–3 kanaler tyst i förväg (den du pekar mot + grannarna). Vid låsning slås ljudet bara på – ingen starttid (live = redan "i nuet").
+- *Förutse riktningen:* vridriktning och hastighet styr vilka som förladdas; kanaler bakom dig stängs.
+- *Bruset som kuliss:* genereras i telefonen, fyller ut när en kanal inte hunnit bli varm.
+- *Snabba kanaler först:* appen mäter starttid per kanal, minns den och väljer snabba i varje riktning; tröga/trasiga sorteras bort.
+- *Data och batteri:* förladdning bara i kompassläget; 3 varma på wifi, 1 på mobildata (3 × 128 kbit/s ≈ 170 MB/h); övriga stängs vid låsning.
+- *Begränsningar:* mjuk övertoning kräver att stationen tillåter ljudbearbetning (CORS), annars rent klipp utan tystnad (bruset mjukar upp). iPhone: volym kan inte ändras från webbsidor, bara av/på; om flera samtidiga strömmar tillåts måste testas. Chromecast kan inte förladda → vrid och lyssna i telefonen, "Skicka till högtalaren" när du hittat rätt (2–5 s en gång).
+- *Resultat:* i telefonen i praktiken omedelbart när kanalen är varm, annars ett par sekunders brus.
