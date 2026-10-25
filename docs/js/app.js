@@ -6,7 +6,7 @@ import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
 
-const VERSION = 'Webb 3.9';
+const VERSION = 'Webb 4.0';
 
 // ============================================================ stations
 
@@ -245,7 +245,7 @@ function musicActive() {
   return caster.connected ? ['PLAYING', 'BUFFERING', 'PAUSED'].includes(caster.state) : localState !== 'stopped';
 }
 function stopMusic() {
-  if (caster.handover && caster.handover.phase !== 'picking') { snack('Byter högtalare, ett ögonblick…'); return; }
+  if (busyMoving()) return;
   if (caster.connected) castStop(); else stopLocal();
   renderAll();
 }
@@ -438,10 +438,11 @@ function rejoin() {
 function forgetCasting() { store.set('castingOn', null); caster.guess = null; }
 
 function onRemoteChange() {
-  const before = caster.state;
+  const before = caster.state, was = nowPlaying;
   syncRemote();
   rememberCasting();
-  if (caster.state !== before) { pokeSongs(); renderAll(); }
+  // A new state or a new channel (started elsewhere): the list and the card both show it.
+  if (caster.state !== before || nowPlaying !== was) { pokeSongs(); renderAll(); }
 }
 function castLoad(s) {
   const session = caster.ctx && caster.ctx.getCurrentSession();
@@ -596,6 +597,17 @@ function moveToOtherSpeaker() {
   h.tries = 0;
   open();
 }
+/**
+ * While moving between speakers: a new choice of yours wins once the new speaker is connected
+ * (the move is then simply done); only while not connected to any speaker it has to wait.
+ */
+function busyMoving() {
+  const h = caster.handover;
+  if (!h || h.phase === 'picking') return false;
+  if (caster.connected && h.phase === 'loading') { caster.handover = null; return false; }
+  snack('Byter högtalare, ett ögonblick…');
+  return true;
+}
 /** One step of a speaker move: true when the session event was part of it (and handled). */
 function handoverSession(session) {
   const h = caster.handover;
@@ -603,6 +615,8 @@ function handoverSession(session) {
   if (h.phase === 'picking' && id !== h.oldId) {
     h.phase = 'loading'; h.newId = id; h.newDevice = caster.device;
     castLoad(nowPlaying); // then stopOldSpeaker()
+    // Never stay "moving" for ever (a speaker group can be slow to answer): show what it does.
+    setTimeout(() => { if (caster.handover === h && h.phase === 'loading') { caster.handover = null; syncRemote(); renderAll(); } }, 20000);
     return true;
   }
   if ((h.phase === 'picking' || h.phase === 'rejoinOld') && id === h.oldId) {
@@ -684,7 +698,7 @@ function guessSheet() {
   body.append(el('p', 'muted', 'Välj ' + g.device + ' i Chromes lista. Radion startar om där efter några sekunder.'));
 }
 function chooseOutput() {
-  if (caster.handover && caster.handover.phase !== 'picking') { snack('Byter högtalare, ett ögonblick…'); return; }
+  if (busyMoving()) return;
   if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { speakerSheet(); return; }
   if (caster.guess) { guessSheet(); return; }
   openSpeakerList();
@@ -970,14 +984,14 @@ function stepChannel(dir) {
   if (!list.length) return;
   const i = nowPlaying ? list.findIndex((x) => x.url === nowPlaying.url) : -1;
   const next = list[(i + dir + list.length) % list.length];
-  if (caster.handover && caster.handover.phase !== 'picking') return;
+  if (busyMoving()) return;
   playStation(next, true);
 }
 
 // ============================================================ list actions
 
 function stationTapped(s) {
-  if (caster.handover && caster.handover.phase !== 'picking') { snack('Byter högtalare, ett ögonblick…'); return; }
+  if (busyMoving()) return;
   if (nowPlaying && nowPlaying.url === s.url && musicActive()) { snack(shortName(s.name) + ' spelar redan.'); return; }
   playStation(s, true);
 }
