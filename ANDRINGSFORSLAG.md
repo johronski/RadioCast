@@ -16,6 +16,7 @@ Grundlista efter språk, högtalarknapp i sidhuvudet (sortering/redigering i ⋯
 7. ⋯-menyn: egna, tydliga ikoner per rad.
 8. Tydligare hjälp när Chrome inte hittar några högtalare.
 9. Låtvyn: mindre logotyp, låt och historik först.
+9b. Högtalarvalet ner till spelaren (25 okt): volymraden blir "var och hur högt" – [högtalarikon] Kök ▾ till vänster, volymreglaget till höger (långt från stoppknappen, ingen ny rad). På iPhone bara högtalarvalet. Sidhuvudet behåller en liten ikon utan text (syns innan något spelat, ifylld vid castning). Skäl: tummen når, hör ihop med ljudet och volymen, känt mönster (Spotify Connect). Undvik: två likadana textknappar, ikon intill stopp (feltryck).
 
 ## Steg 3: Mer innehåll (medel nytta, medel insats)
 10. Sök: fler genrer synliga (två rader/rutnät), populära kanaler i tomläget.
