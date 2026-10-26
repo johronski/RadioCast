@@ -29,7 +29,8 @@ Castningen samlad i docs/js/cast.js med ett tillstånd (ditt val / högtalarens 
 12. Sovtimer som tonar ut i stället för att tystna tvärt.
 
 ## Steg 4: Större arbete (beslut behövs först)
-13. Android-skal runt webbappen med Googles riktiga Cast-funktioner: sömlöst högtalarbyte utan avbrott, se alla högtalare. Insats: stor.
+13. Android-skal runt webbappen: sömlöst högtalarbyte utan avbrott, se alla högtalare. Insats: medel (webbkoden återanvänds; bara `cast.js` får en brygga till appen).
+    - Förslag 26 okt: använd Android-appens **egna castklient** (CastClient/CastDiscovery) i stället för Googles bibliotek. Användaren upplevde inga problem med den i vardagen, den går förbi Chromes fjärrspelare (källan till dagens castningsproblem) och ger extra förmågor (se nedan). Bara provad med användarens egna högtalare. Skalet blir då ett tillägg för Android, webbappen förblir huvudappen.
     - Utrett 26 okt: inget hinder för Googles Cast-bibliotek (play-services-cast-framework) – inget Google-konto, standardmottagaren kräver ingen registrering/avgift (bara egna mottagare gör det; kontrollera villkoren), grupper stöds, ljudformatet spelas av mottagaren. Varför Android-appen har en egen castklient är inte dokumenterat; koden visar extra förmågor: status för alla högtalare före anslutning (t.ex. "Spotify", grupp), styra/stänga andra appar på högtalaren, anslutning via IP-adress, inget beroende av Play-tjänster. Kan återanvändas i skalet om de behövs.
     - Uppspelning i telefonen: ExoPlayer/Media3 (snabb start, http och HLS) – behövs troligen i skalet, eftersom en webbsida i en app spelar dåligt i bakgrunden och på låsskärmen.
 14. "Dela kontroll"-länk i Android-appen så att webbappen kan ta över en cast som Android-appen startat. Låg prioritet så länge Android-appen är fryst; blir onödig om 13 byggs.
