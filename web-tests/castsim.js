@@ -24,6 +24,7 @@
   let nextId = 1;
   let current = null;                // { id, device }
   let releasedAt = 0;                // Chrome has really let go of the last speaker at this time
+  let policy = null;                 // Chrome's auto-join: 'origin_scoped' rejoins a cast from this site by itself
   let lastTap = 0;
   addEventListener('click', () => { lastTap = Date.now(); }, true);
   const later = (f, ms) => setTimeout(f, ms);
@@ -97,7 +98,7 @@
   }
 
   const ctx = {
-    setOptions() {},
+    setOptions(o) { policy = o.autoJoinPolicy; },
     addEventListener(t, f) { on(t === 'sessionstatechanged' ? 'sessionRaw' : t, f); },
     getCastState: () => (current || Date.now() < releasedAt ? 'CONNECTED' : 'NOT_CONNECTED'), // Chrome's own view
     getCurrentSession: () => (current ? makeSession(current) : null),
@@ -120,15 +121,23 @@
       }
       // Android: while connected Chrome only shows the current speaker's controls.
       if (current) return new Promise((res, rej) => later(() => rej('cancel'), 2000));
-      return new Promise((res) => later(() => { startOn(pick, false); res(null); }, 1500)); // you look at the list for a while
+      return new Promise((res) => later(() => { if (!current) startOn(pick, false); res(null); }, sim.pickDelay || 1500)); // you look at the list for a while
     },
     endCurrentSession(stopCasting) {
       if (!current) return;
       const d = sim.devices[current.device];
       if (stopCasting) { d.playing = null; d.state = 'IDLE'; d.sessionId = null; d.media = null; }
+      const left = d.sessionId && !stopCasting ? current.device : null;
       current = null;
       releasedAt = Date.now() + 700; // the event comes at once, but Chrome needs a moment more
       later(() => { emit('session', 'SESSION_ENDED'); emit('remote'); }, 30);
+      // Auto-join (seen 26 Oct): our radio still plays there, so Chrome joins it again by itself –
+      // one failed try, then it succeeds.
+      if (left && policy === 'origin_scoped') {
+        sim.autoJoins = (sim.autoJoins || 0) + 1;
+        later(() => { if (!current) emit('session', 'SESSION_START_FAILED'); }, 2500);
+        later(() => { if (!current && sim.devices[left].sessionId) startOn(left, true); }, 5000);
+      }
     },
   };
 
@@ -154,7 +163,7 @@
       MusicTrackMediaMetadata: function () {}, LoadRequest: function (m) { this.media = m; },
     },
     Image: function (u) { this.url = u; },
-    AutoJoinPolicy: { ORIGIN_SCOPED: 'origin_scoped' },
+    AutoJoinPolicy: { ORIGIN_SCOPED: 'origin_scoped', TAB_AND_ORIGIN_SCOPED: 'tab_and_origin_scoped', PAGE_SCOPED: 'page_scoped' },
     requestSessionById(id) {
       const name = Object.keys(sim.devices).find((n) => sim.devices[n].sessionId === id);
       if (name && !current) later(() => startOn(name, true), 200);

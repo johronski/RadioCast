@@ -177,14 +177,15 @@ await scenario('spela i telefonen', null, async (t, expect) => {
 await scenario('byt högtalare: Kök → Vardagsrum/Hall', null, async (t, expect) => {
   await t.connect('Kök');
   await t.tap('Alfa'); await t.wait(1500);
-  await t.set("window.sim.pick = 'Vardagsrum/Hall'");
+  await t.set("window.sim.pick = 'Vardagsrum/Hall'; window.sim.pickDelay = 6000");
   await t.menu('Byt högtalare'); await t.wait(500);
   expect((await t.dev('Kök')).playing === alfa, 'Kök spelar medan du väljer');
-  await t.wait(4000);
+  await t.wait(9000);
   expect((await t.dev('Vardagsrum/Hall')).playing === alfa, 'Vardagsrum/Hall spelar Alfa');
   expect(!(await t.dev('Kök')).playing, 'Kök tyst');
   expect((await t.chip()) === 'Vardagsrum/Hall' && (await t.status()) === 'Spelar på Vardagsrum/Hall', 'visar: ' + (await t.chip()) + ' / ' + (await t.status()));
   expect(!(await t.set('window.sim.wrongDialogs')), 'listan kom direkt, inte den gamla högtalarens ruta (logg 26 okt)');
+  expect(!(await t.set('window.sim.autoJoins')), 'Chrome ansluter inte tillbaka av sig själv medan du väljer (logg 26 okt)');
   await t.tap('Beta'); await t.wait(1500);
   expect((await t.dev('Vardagsrum/Hall')).playing === beta, 'kanalbyte direkt efteråt fungerar');
 });

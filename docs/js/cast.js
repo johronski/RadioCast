@@ -142,7 +142,8 @@ export function createCaster(app) {
       const was = c.connected, name = c.device;
       c.connected = false; c.device = ''; media = null;
       done();
-      if (state === S.SESSION_START_FAILED) { app.snack('Kunde inte ansluta till högtalaren.'); move = null; startOnConnect = null; }
+      if (state === S.SESSION_START_FAILED && move) { /* not our choice (Chrome trying by itself): keep waiting for yours */ }
+      else if (state === S.SESSION_START_FAILED) { app.snack('Kunde inte ansluta till högtalaren.'); startOnConnect = null; }
       else if (move || Date.now() < quietUntil) { /* we let go on purpose */ }
       else if (was) lost(name);
     }
@@ -317,7 +318,10 @@ export function createCaster(app) {
     try {
       const F = window.cast.framework;
       ctx = F.CastContext.getInstance();
-      ctx.setOptions({ receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID, autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED });
+      // No automatic joining (PAGE_SCOPED): when we let go of a speaker to switch, Chrome would
+      // otherwise join it again by itself at once, in the middle of your choice (seen 26 Oct).
+      // After a restart we join our own cast ourselves, by its id (below).
+      ctx.setOptions({ receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID, autoJoinPolicy: chrome.cast.AutoJoinPolicy.PAGE_SCOPED });
       player = new F.RemotePlayer();
       controller = new F.RemotePlayerController(player);
       ctx.addEventListener(F.CastContextEventType.CAST_STATE_CHANGED, (e) => { c.available = e.castState !== F.CastState.NO_DEVICES_AVAILABLE; app.render(); });
