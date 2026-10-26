@@ -278,7 +278,17 @@ export function createCaster(app) {
         }, 8000);
       });
     };
-    open();
+    if (!android) { open(); return; }
+    // Chrome on Android shows the old speaker's controls instead of the list if asked before it has
+    // really let go of it (seen 26 Oct): wait until Chrome itself says it is no longer connected.
+    const t0 = Date.now();
+    const whenFree = () => {
+      if (move !== m) return;
+      const state = ctx.getCastState();
+      if ((state === 'CONNECTED' || state === 'CONNECTING') && Date.now() - t0 < 3000) { setTimeout(whenFree, 100); return; }
+      setTimeout(open, 300);
+    };
+    whenFree();
   }
   function join(id) {
     try { if (!session()) chrome.cast.requestSessionById(id); } catch (e) { /* not supported */ }

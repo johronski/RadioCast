@@ -10,6 +10,7 @@
  *   device.stale                Chrome's remote player never notices a change (seen with a group, 26 Oct):
  *                               it keeps reporting the channel that played when the app connected
  *   window.sim.desktop          a computer: the full list while casting ('stop' = Sluta casta)
+ *   sim.wrongDialogs            how often Chrome showed the old speaker's controls instead of the list
  *   window.sim.takeOver(name)   another app takes the speaker (our session ends)
  *
  * It behaves like Chrome on Android: while connected, the list only shows the current speaker
@@ -22,6 +23,9 @@
   const emit = (t, arg) => (L[t] || []).slice().forEach((f) => { try { f(arg); } catch (e) { console.error(e); } });
   let nextId = 1;
   let current = null;                // { id, device }
+  let releasedAt = 0;                // Chrome has really let go of the last speaker at this time
+  let lastTap = 0;
+  addEventListener('click', () => { lastTap = Date.now(); }, true);
   const later = (f, ms) => setTimeout(f, ms);
 
   const sim = window.sim = {
@@ -95,10 +99,15 @@
   const ctx = {
     setOptions() {},
     addEventListener(t, f) { on(t === 'sessionstatechanged' ? 'sessionRaw' : t, f); },
-    getCastState: () => 'NOT_CONNECTED',
+    getCastState: () => (current || Date.now() < releasedAt ? 'CONNECTED' : 'NOT_CONNECTED'), // Chrome's own view
     getCurrentSession: () => (current ? makeSession(current) : null),
     requestSession() {
       const pick = sim.pick;
+      // Chrome only opens its list right after a tap (about 5 s).
+      if (Date.now() - lastTap > 5000) return Promise.reject('activation_required');
+      // Asked before Chrome has let go of the old speaker (seen 26 Oct): it shows that speaker's
+      // controls instead of the list, and you close them.
+      if (Date.now() < releasedAt) { sim.wrongDialogs = (sim.wrongDialogs || 0) + 1; return new Promise((res, rej) => later(() => rej('cancel'), 3000)); }
       if (pick === 'refuse') { sim.pick = sim.afterRefuse || 'cancel'; return Promise.reject('session_error'); }
       if (pick === 'cancel') return new Promise((res, rej) => later(() => rej('cancel'), 2000));
       if (current && sim.desktop) {
@@ -118,6 +127,7 @@
       const d = sim.devices[current.device];
       if (stopCasting) { d.playing = null; d.state = 'IDLE'; d.sessionId = null; d.media = null; }
       current = null;
+      releasedAt = Date.now() + 700; // the event comes at once, but Chrome needs a moment more
       later(() => { emit('session', 'SESSION_ENDED'); emit('remote'); }, 30);
     },
   };

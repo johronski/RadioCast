@@ -184,6 +184,7 @@ await scenario('byt högtalare: Kök → Vardagsrum/Hall', null, async (t, expec
   expect((await t.dev('Vardagsrum/Hall')).playing === alfa, 'Vardagsrum/Hall spelar Alfa');
   expect(!(await t.dev('Kök')).playing, 'Kök tyst');
   expect((await t.chip()) === 'Vardagsrum/Hall' && (await t.status()) === 'Spelar på Vardagsrum/Hall', 'visar: ' + (await t.chip()) + ' / ' + (await t.status()));
+  expect(!(await t.set('window.sim.wrongDialogs')), 'listan kom direkt, inte den gamla högtalarens ruta (logg 26 okt)');
   await t.tap('Beta'); await t.wait(1500);
   expect((await t.dev('Vardagsrum/Hall')).playing === beta, 'kanalbyte direkt efteråt fungerar');
 });
