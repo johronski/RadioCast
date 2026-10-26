@@ -44,7 +44,7 @@ async function scenario(name, setup, run) {
     dev: (n) => p.evaluate((n) => ({ ...window.sim.devices[n], media: undefined }), n),
     set: (expr) => p.evaluate(expr),
     snack: async () => ((await p.isVisible('#snack')) ? (await p.textContent('#snackText')).trim() : ''),
-    menu: async (label) => { await p.click('#outBtn'); await p.clock.runFor(300); await p.click('text=' + label); await p.clock.runFor(100); },
+    menu: async (label) => { await p.click('#outBtn'); await p.clock.runFor(300); await p.locator('#sheetBody .menu-item', { hasText: label }).click(); await p.clock.runFor(100); },
     connect: async (dev) => { await t.set(`window.sim.pick = ${JSON.stringify(dev)}`); await p.click('#outBtn'); await p.clock.runFor(3000); },
   };
   const checks = [];
@@ -177,7 +177,7 @@ await scenario('spela i telefonen', null, async (t, expect) => {
 await scenario('byt högtalare: Kök → Vardagsrum/Hall', null, async (t, expect) => {
   await t.connect('Kök');
   await t.tap('Alfa'); await t.wait(1500);
-  await t.set("window.sim.pick = 'Vardagsrum/Hall'; window.sim.pickDelay = 6000");
+  await t.set("window.sim.pick = 'Vardagsrum/Hall'; window.sim.pickDelay = 2000");
   await t.menu('Byt högtalare'); await t.wait(500);
   expect((await t.dev('Kök')).playing === alfa, 'Kök spelar medan du väljer');
   await t.wait(9000);
@@ -185,9 +185,24 @@ await scenario('byt högtalare: Kök → Vardagsrum/Hall', null, async (t, expec
   expect(!(await t.dev('Kök')).playing, 'Kök tyst');
   expect((await t.chip()) === 'Vardagsrum/Hall' && (await t.status()) === 'Spelar på Vardagsrum/Hall', 'visar: ' + (await t.chip()) + ' / ' + (await t.status()));
   expect(!(await t.set('window.sim.wrongDialogs')), 'listan kom direkt, inte den gamla högtalarens ruta (logg 26 okt)');
-  expect(!(await t.set('window.sim.autoJoins')), 'Chrome ansluter inte tillbaka av sig själv medan du väljer (logg 26 okt)');
   await t.tap('Beta'); await t.wait(1500);
   expect((await t.dev('Vardagsrum/Hall')).playing === beta, 'kanalbyte direkt efteråt fungerar');
+});
+
+await scenario('byt högtalare: Chrome ansluter tillbaka själv och visar fel ruta (logg 26 okt)', null, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.set("window.sim.pick = 'Vardagsrum/Hall'; window.sim.releaseDelay = 700; window.sim.autoJoin = true");
+  await t.menu('Byt högtalare'); await t.wait(1000);
+  expect((await t.set('window.sim.wrongDialogs')) === 1, 'första försöket: Chrome visar fel ruta');
+  await t.wait(2500);
+  expect((await t.snack()).includes('Tryck Byt högtalare igen'), 'säger att du kan trycka igen: ' + (await t.snack()));
+  await t.wait(4000);
+  expect((await t.chip()) === 'Kök' && (await t.dev('Kök')).playing === alfa, 'Kök spelar vidare under tiden: ' + (await t.chip()));
+  expect(!(await t.snack()).includes('Kunde inte ansluta'), 'inget falskt "Kunde inte ansluta"');
+  await t.set("window.sim.releaseDelay = 0");
+  await t.menu('Byt högtalare'); await t.wait(5000);
+  expect((await t.dev('Vardagsrum/Hall')).playing === alfa && (await t.status()) === 'Spelar på Vardagsrum/Hall', 'andra försöket: flyttad: ' + (await t.status()));
 });
 
 await scenario('byt högtalare: Chrome vägrar först', null, async (t, expect) => {

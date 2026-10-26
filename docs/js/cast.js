@@ -124,6 +124,7 @@ export function createCaster(app) {
       c.connected = true;
       c.device = sessionDevice(s);
       c.guess = null; c.joinId = null; media = null; known = null; lastRemote = undefined; lastMedia = undefined;
+      if (move && id === move.oldId && move.picking) move.chromeTried = true; // Chrome joined the old one again by itself
       if (move && id === move.oldId) { move = null; startOnConnect = null; } // back where we were
       else if (move) move = null;                                            // moved to a new speaker
       follow(s);
@@ -142,7 +143,7 @@ export function createCaster(app) {
       const was = c.connected, name = c.device;
       c.connected = false; c.device = ''; media = null;
       done();
-      if (state === S.SESSION_START_FAILED && move) { /* not our choice (Chrome trying by itself): keep waiting for yours */ }
+      if (state === S.SESSION_START_FAILED && move) move.chromeTried = true; // Chrome trying to join again by itself: keep waiting for your choice
       else if (state === S.SESSION_START_FAILED) { app.snack('Kunde inte ansluta till högtalaren.'); startOnConnect = null; }
       else if (move || Date.now() < quietUntil) { /* we let go on purpose */ }
       else if (was) lost(name);
@@ -267,7 +268,10 @@ export function createCaster(app) {
         if (quick) app.snack('Chrome öppnade inte högtalarlistan (' + codeOf(e) + '). Försök igen.');
         startOnConnect = null;
         m.picking = false;
-        if (c.connected) { move = null; app.render(); return; } // (computer) still on the old speaker
+        // Chrome joined the old speaker again while its list was on its way: it then shows that
+        // speaker's controls instead of the list. It usually works the next time.
+        if (m.chromeTried || Date.now() - t0 < 6000) app.snack('Kom inte listan med högtalare? Tryck Byt högtalare igen.');
+        if (c.connected) { move = null; app.render(); return; } // still (or again) on the old speaker
         // Closed without choosing: back to the speaker that still plays.
         app.log('back to', m.from);
         join(m.oldId);
@@ -279,17 +283,7 @@ export function createCaster(app) {
         }, 8000);
       });
     };
-    if (!android) { open(); return; }
-    // Chrome on Android shows the old speaker's controls instead of the list if asked before it has
-    // really let go of it (seen 26 Oct): wait until Chrome itself says it is no longer connected.
-    const t0 = Date.now();
-    const whenFree = () => {
-      if (move !== m) return;
-      const state = ctx.getCastState();
-      if ((state === 'CONNECTED' || state === 'CONNECTING') && Date.now() - t0 < 3000) { setTimeout(whenFree, 100); return; }
-      setTimeout(open, 300);
-    };
-    whenFree();
+    open();
   }
   function join(id) {
     try { if (!session()) chrome.cast.requestSessionById(id); } catch (e) { /* not supported */ }
@@ -318,10 +312,9 @@ export function createCaster(app) {
     try {
       const F = window.cast.framework;
       ctx = F.CastContext.getInstance();
-      // No automatic joining (PAGE_SCOPED): when we let go of a speaker to switch, Chrome would
-      // otherwise join it again by itself at once, in the middle of your choice (seen 26 Oct).
-      // After a restart we join our own cast ourselves, by its id (below).
-      ctx.setOptions({ receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID, autoJoinPolicy: chrome.cast.AutoJoinPolicy.PAGE_SCOPED });
+      // Automatic joining (ORIGIN_SCOPED) is needed when the app is opened again while it casts:
+      // without it Chrome stays connected to the speaker but the page is not (tried 26 Oct, 4.7).
+      ctx.setOptions({ receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID, autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED });
       player = new F.RemotePlayer();
       controller = new F.RemotePlayerController(player);
       ctx.addEventListener(F.CastContextEventType.CAST_STATE_CHANGED, (e) => { c.available = e.castState !== F.CastState.NO_DEVICES_AVAILABLE; app.render(); });

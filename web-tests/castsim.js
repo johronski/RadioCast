@@ -10,6 +10,7 @@
  *   device.stale                Chrome's remote player never notices a change (seen with a group, 26 Oct):
  *                               it keeps reporting the channel that played when the app connected
  *   window.sim.desktop          a computer: the full list while casting ('stop' = Sluta casta)
+ *   sim.releaseDelay, sim.autoJoin  Chrome slow to let go of a speaker, and joining it again by itself
  *   sim.wrongDialogs            how often Chrome showed the old speaker's controls instead of the list
  *   window.sim.takeOver(name)   another app takes the speaker (our session ends)
  *
@@ -129,11 +130,11 @@
       if (stopCasting) { d.playing = null; d.state = 'IDLE'; d.sessionId = null; d.media = null; }
       const left = d.sessionId && !stopCasting ? current.device : null;
       current = null;
-      releasedAt = Date.now() + 700; // the event comes at once, but Chrome needs a moment more
+      releasedAt = Date.now() + (sim.releaseDelay || 0); // sometimes Chrome needs a moment more to let go
       later(() => { emit('session', 'SESSION_ENDED'); emit('remote'); }, 30);
       // Auto-join (seen 26 Oct): our radio still plays there, so Chrome joins it again by itself –
       // one failed try, then it succeeds.
-      if (left && policy === 'origin_scoped') {
+      if (left && policy === 'origin_scoped' && sim.autoJoin) {
         sim.autoJoins = (sim.autoJoins || 0) + 1;
         later(() => { if (!current) emit('session', 'SESSION_START_FAILED'); }, 2500);
         later(() => { if (!current && sim.devices[left].sessionId) startOn(left, true); }, 5000);
