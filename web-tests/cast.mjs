@@ -97,6 +97,19 @@ await scenario('Chrome rapporterar gamla kanalen en stund efter bytet', null, as
   expect((await t.card()) === 'Beta' && (await t.status()) === 'Spelar på Kök', 'till slut: ' + (await t.card()) + ' / ' + (await t.status()));
 });
 
+await scenario('grupp där Chrome aldrig märker kanalbytet (logg 26 okt)', null, async (t, expect) => {
+  await t.connect('Vardagsrum/Hall');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.set("window.sim.devices['Vardagsrum/Hall'].stale = true");
+  await t.tap('Beta'); await t.wait(1500);
+  expect((await t.dev('Vardagsrum/Hall')).playing === beta, 'gruppen spelar Beta');
+  for (const s of [2, 8, 30]) {
+    await t.wait(s === 2 ? 500 : s === 8 ? 6000 : 22000);
+    expect((await t.card()) === 'Beta' && (await t.marked()) === 'Beta', 'visar Beta efter ' + s + ' s: ' + (await t.card()) + ' / ' + (await t.marked()));
+  }
+  expect(!(await t.snack()).includes('svarade inte'), 'inget falskt "svarade inte"');
+});
+
 await scenario('delad styrlänk: ansluter till pågående cast', {
   before: () => { const d = window.sim.devices['Kök']; d.playing = 'http://radio.test/gamma.mp3'; d.state = 'PLAYING'; d.sessionId = 'S77'; d.title = 'Gamma'; },
   hash: '#styr=S77&url=' + encodeURIComponent('http://radio.test/gamma.mp3') + '&namn=Gamma&hogtalare=K%C3%B6k',

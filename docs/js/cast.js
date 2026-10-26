@@ -32,7 +32,8 @@ export function createCaster(app) {
   let startOnConnect = null; // a station to start as soon as a (new) speaker is connected
   let move = null;         // { oldId, from, tries } – switching speakers (the old one plays on meanwhile)
   let quietUntil = 0;      // a session end we caused ourselves: no "connection lost"
-  let asked = null;        // { url, until }: the speaker said yes, but Chrome may report the old channel a little longer"
+  let known = null;        // the channel the speaker plays, from the newest information we got
+  let lastRemote, lastMedia; // what the remote player and the media session said last time"
 
   const session = () => (ctx ? ctx.getCurrentSession() : null);
   const sessionDevice = (s) => (s && s.getCastDevice() ? s.getCastDevice().friendlyName : 'högtalaren');
@@ -41,8 +42,15 @@ export function createCaster(app) {
   // ------------------------------------------------------------ what the speaker reports
   /** The channel the speaker plays now, as far as Chrome knows. */
   function reportedUrl() {
-    if (player && player.mediaInfo && player.mediaInfo.contentId) return player.mediaInfo.contentId;
-    return media && media.media ? media.media.contentId || null : null;
+    // The newest information wins. Chrome's remote player can keep reporting a channel long after
+    // the speaker changed (a group did that for good, 26 Oct): so a value it has already reported
+    // is old news, and only a change it reports counts. The speaker's answer to our own load, and
+    // its media session, are news too.
+    const r = player && player.mediaInfo ? player.mediaInfo.contentId || null : null;
+    if (r !== lastRemote) { lastRemote = r; if (r) known = r; }
+    const m = media && media.media ? media.media.contentId || null : null;
+    if (m && m !== lastMedia) { lastMedia = m; known = m; }
+    return known || r;
   }
   function reportedState() {
     const url = reportedUrl();
@@ -68,8 +76,6 @@ export function createCaster(app) {
       app.log('speaker plays', pending.name);
       done();                                    // it plays what you asked for (even without an answer)
     }
-    if (asked && url !== asked.url && Date.now() < asked.until) return; // old news: keep showing your choice
-    asked = null;
     if (url) {
       const now = app.nowPlaying();
       if (!now || now.url !== url) app.adopt(url, player && player.mediaInfo && player.mediaInfo.metadata && player.mediaInfo.metadata.title);
@@ -117,7 +123,7 @@ export function createCaster(app) {
       const id = s.getSessionId();
       c.connected = true;
       c.device = sessionDevice(s);
-      c.guess = null; c.joinId = null; media = null; asked = null;
+      c.guess = null; c.joinId = null; media = null; known = null; lastRemote = undefined; lastMedia = undefined;
       if (move && id === move.oldId) { move = null; startOnConnect = null; } // back where we were
       else if (move) move = null;                                            // moved to a new speaker
       follow(s);
@@ -176,7 +182,6 @@ export function createCaster(app) {
     const req = new chrome.cast.media.LoadRequest(info);
     req.autoplay = true;
     done();
-    asked = null;
     const mine = pending = { url: station.url, name: app.shortName(station.name), timers: [] };
     c.wantPlay = true;
     app.log('load', mine.name, 'on', c.device);
@@ -187,7 +192,7 @@ export function createCaster(app) {
         if (pending !== mine) return;
         app.log('load ok', mine.name, attempt);
         done();
-        asked = { url: mine.url, until: Date.now() + 6000 };
+        known = mine.url; // the speaker said yes: newer than anything Chrome reported before
         follow(s);
         reconcile(); app.render();
       }, (e) => {

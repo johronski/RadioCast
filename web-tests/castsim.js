@@ -7,6 +7,8 @@
  *   device.mode                 how loadMedia behaves: 'ok' | 'hang' | 'fail' | 'silent-ok'
  *                               ('silent-ok': plays, but the answer to the app never comes, like a slow group)
  *   device.lag                  Chrome's remote player reports the old channel for 2.5 s after a change
+ *   device.stale                Chrome's remote player never notices a change (seen with a group, 26 Oct):
+ *                               it keeps reporting the channel that played when the app connected
  *   window.sim.desktop          a computer: the full list while casting ('stop' = Sluta casta)
  *   window.sim.takeOver(name)   another app takes the speaker (our session ends)
  *
@@ -69,6 +71,7 @@
         return new Promise((resolve) => {
           // 'lag': Chrome's remote player keeps reporting the old channel for a while
           if (dev.lag) { dev.previous = dev.playing; dev.lagUntil = Date.now() + 2500; later(() => emit('remote'), 2600); }
+          if (dev.stale && dev.frozen === undefined) dev.frozen = dev.playing;
           dev.playing = url; dev.title = req.media.metadata && req.media.metadata.title; dev.state = 'BUFFERING';
           mediaFor(dev);
           update(dev);
@@ -127,6 +130,7 @@
     get mediaInfo() {
       const d = current && sim.devices[current.device];
       if (d && d.lagUntil > Date.now() && d.previous) return { contentId: d.previous, metadata: { title: 'Gammal' } };
+      if (d && d.stale && d.frozen) return { contentId: d.frozen, metadata: { title: 'Gammal' } };
       return d && d.playing ? { contentId: d.playing, metadata: { title: d.title || 'Radio' } } : null;
     },
     volumeLevel: 0.5,
