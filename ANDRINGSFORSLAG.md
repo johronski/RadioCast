@@ -1,6 +1,7 @@
 # Ändringsförslag
 
 Byggpaus till och med lördag 31 oktober 2026. Nya önskemål samlas här i stället för att byggas direkt.
+Regel (26 okt): under pausen frågas alltid "Är du säker?" innan något ändras – även buggrättningar och små ändringar.
 
 Prioriterad lista (24 okt). Snarlika förslag är sammanslagna. Nytta = för nya användare (vänner) och dig, insats = ungefärlig storlek.
 
