@@ -30,6 +30,8 @@ Castningen samlad i docs/js/cast.js med ett tillstånd (ditt val / högtalarens 
 
 ## Steg 4: Större arbete (beslut behövs först)
 13. Android-skal runt webbappen med Googles riktiga Cast-funktioner: sömlöst högtalarbyte utan avbrott, se alla högtalare. Insats: stor.
+    - Utrett 26 okt: inget hinder för Googles Cast-bibliotek (play-services-cast-framework) – inget Google-konto, standardmottagaren kräver ingen registrering/avgift (bara egna mottagare gör det; kontrollera villkoren), grupper stöds, ljudformatet spelas av mottagaren. Varför Android-appen har en egen castklient är inte dokumenterat; koden visar extra förmågor: status för alla högtalare före anslutning (t.ex. "Spotify", grupp), styra/stänga andra appar på högtalaren, anslutning via IP-adress, inget beroende av Play-tjänster. Kan återanvändas i skalet om de behövs.
+    - Uppspelning i telefonen: ExoPlayer/Media3 (snabb start, http och HLS) – behövs troligen i skalet, eftersom en webbsida i en app spelar dåligt i bakgrunden och på låsskärmen.
 14. "Dela kontroll"-länk i Android-appen så att webbappen kan ta över en cast som Android-appen startat. Låg prioritet så länge Android-appen är fryst; blir onödig om 13 byggs.
 15. Chromecast från iPhone (25 okt) – stort och komplicerat, tveksam nytta just nu. Webbsidor kan aldrig casta på iPhone (Safari saknar stöd, Google stöder inte cast i Chrome på iOS); egen ljuddrivrutin går inte på iPhone. Vägar som fungerar:
     - A. Brygga hemma (AirConnect) på Raspberry Pi/NAS/Home Assistant: varje Chromecast syns som AirPlay-högtalare i appens AirPlay-knapp. Ingen kodändring. Grupper fungerar troligen inte; ca 1–2 s fördröjning. Bara hemma. Insats: liten.
