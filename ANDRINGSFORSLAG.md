@@ -10,6 +10,9 @@ Grundlista efter språk, högtalarknapp i sidhuvudet (sortering/redigering i ⋯
 ## Först efter pausen: baskrav (Kano)
 0. KLART i Webb 3.4: automatisk återanslutning (upp till ca 1 min, direkt när nätet är tillbaka). Ursprungligen: kontrollera och säkra automatisk återanslutning när nätet hackar (wifi ↔ mobildata, kort tapp i bilen eller på promenad). Måste fungera innan nya överraskningar.
 
+## Stabilitet — KLART i Webb 4.4 (26 okt)
+Castningen samlad i docs/js/cast.js med ett tillstånd (ditt val / högtalarens besked). 19 testfall med låtsas-Chromecast (web-tests/cast.mjs + castsim.js) körs vid varje ändring. Lägg till ett testfall för varje nytt castningsfel innan det rättas.
+
 ## Steg 2: Putsa (medel nytta, liten insats)
 5. Dölj bithastighet i listan, utom där den skiljer två strömmar av samma kanal.
 6. Volymreglaget syns bara vid castning. (Delvis klart i Webb 3.2: dolt på iPhone/iPad.)
