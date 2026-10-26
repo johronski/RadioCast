@@ -30,7 +30,7 @@ jobs:
           (cd docs && python3 -m http.server 8765 >/dev/null 2>&1 &)
           sleep 1
           node web-tests/smoke.mjs http://localhost:8765/index.html
-          for m in ok hang fail; do node web-tests/cast.mjs http://localhost:8765/index.html $m; done
+          node web-tests/cast.mjs http://localhost:8765/index.html
 
       - name: Kanalernas låtlistor (med nät)
         run: node web-tests/live.mjs http://localhost:8765/index.html

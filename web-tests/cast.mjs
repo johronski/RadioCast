@@ -1,63 +1,245 @@
-// Changing channel on a speaker, with a fake Google Cast SDK (no network): the speaker answers (ok), never answers (hang) or refuses (fail).
-// Usage: node web-tests/cast.mjs <url> <ok|hang|fail>
+// Casting, with a pretend Google Cast SDK (web-tests/castsim.js) and a fake clock: every case
+// a phone user meets with Chromecast, checked on what the screen shows and what the speakers play.
+// Usage: node web-tests/cast.mjs [url]
 import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
+
 const url = process.argv[2] || 'http://localhost:8765/index.html';
-const mode = process.argv[3] || 'ok';
+const sim = readFileSync(new URL('./castsim.js', import.meta.url), 'utf8');
+const STATIONS = [
+  { name: 'Alfa', url: 'http://radio.test/alfa.mp3', cc: 'SE', br: 128, logo: '', genre: 'Pop' },
+  { name: 'Beta', url: 'http://radio.test/beta.mp3', cc: 'SE', br: 128, logo: '', genre: 'Jazz' },
+  { name: 'Gamma', url: 'http://radio.test/gamma.mp3', cc: 'SE', br: 128, logo: '', genre: 'Rock' },
+];
+const ANDROID = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36';
+
 const b = await chromium.launch();
-const p = await b.newPage({ viewport: { width: 390, height: 844 } });
-const errors = []; p.on('pageerror', (e) => errors.push(e.message));
-await p.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
-await p.addInitScript((mode) => {
-  localStorage.setItem('rc.welcomed', 'true');
-  const listeners = {}; let remote = null;
-  const player = { isMediaLoaded: false, playerState: 'IDLE', mediaInfo: null, volumeLevel: 0.5 };
-  const media = { playerState: 'PLAYING', media: null, addUpdateListener(f) { this.f = f; }, getStatus(a, ok) { ok && ok(); } };
-  const session = {
-    getSessionId: () => 'S1', getCastDevice: () => ({ friendlyName: 'Bottenplan' }), getMediaSession: () => (player.isMediaLoaded ? media : null),
-    sendMessage: () => Promise.resolve(),
-    loadMedia(req) {
-      window.__loads = (window.__loads || 0) + 1;
-      if (mode === 'hang') return new Promise(() => {});
-      if (mode === 'fail') return Promise.reject('LOAD_FAILED');
-      return new Promise((res) => setTimeout(() => {
-        player.isMediaLoaded = true; player.playerState = 'PLAYING'; player.mediaInfo = { contentId: req.media.contentId, metadata: { title: req.media.metadata.title } };
-        media.media = { contentId: req.media.contentId }; media.playerState = 'PLAYING';
-        (listeners.any || []).forEach((f) => f()); res();
-      }, 500));
-    },
+const failures = [];
+let passed = 0;
+
+const DESKTOP = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+async function scenario(name, setup, run) {
+  const c = await b.newContext({ viewport: { width: 390, height: 844 }, userAgent: (setup && setup.desktop) ? DESKTOP : ANDROID, locale: 'sv-SE' });
+  const p = await c.newPage();
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+  await p.clock.install();
+  await p.addInitScript(({ stations, extra }) => {
+    localStorage.setItem('rc.stations', JSON.stringify(stations));
+    for (const [k, v] of Object.entries(extra || {})) localStorage.setItem('rc.' + k, JSON.stringify(v));
+  }, { stations: STATIONS, extra: setup && setup.store });
+  await p.addInitScript(sim);
+  if (setup && setup.before) await p.addInitScript(setup.before);
+  await p.goto(url + ((setup && setup.hash) || ''));
+  await p.clock.runFor(1500);
+  const t = {
+    p,
+    wait: (ms) => p.clock.runFor(ms),
+    tap: async (name) => { await p.locator('.row', { hasText: name }).first().click(); await p.clock.runFor(100); },
+    chip: () => p.textContent('#outText'),
+    status: async () => (await p.textContent('#npStatus')).trim(),
+    card: async () => (await p.textContent('#npName')).trim(),
+    marked: () => p.$$eval('.row.playing .name', (n) => n.map((x) => x.textContent).join(',')),
+    dev: (n) => p.evaluate((n) => ({ ...window.sim.devices[n], media: undefined }), n),
+    set: (expr) => p.evaluate(expr),
+    snack: async () => ((await p.isVisible('#snack')) ? (await p.textContent('#snackText')).trim() : ''),
+    menu: async (label) => { await p.click('#outBtn'); await p.clock.runFor(300); await p.click('text=' + label); await p.clock.runFor(100); },
+    connect: async (dev) => { await t.set(`window.sim.pick = ${JSON.stringify(dev)}`); await p.click('#outBtn'); await p.clock.runFor(3000); },
   };
-  window.chrome = { cast: { media: { DEFAULT_MEDIA_RECEIVER_APP_ID: 'X', StreamType: { LIVE: 'LIVE' }, MediaInfo: function (id, ct) { this.contentId = id; }, MusicTrackMediaMetadata: function () {}, LoadRequest: function (m) { this.media = m; } }, Image: function (u) { this.url = u; }, AutoJoinPolicy: { ORIGIN_SCOPED: 'o' }, requestSessionById() {} } };
-  const ctx = {
-    setOptions() {}, addEventListener(t, f) { (listeners[t] = listeners[t] || []).push(f); },
-    getCurrentSession: () => session, requestSession: () => Promise.resolve(), endCurrentSession() {},
-  };
-  window.cast = { framework: {
-    CastContext: { getInstance: () => ctx },
-    RemotePlayer: function () { return player; },
-    RemotePlayerController: function () { return { addEventListener(t, f) { (listeners.any = listeners.any || []).push(f); }, stop() {}, setVolumeLevel() {} }; },
-    CastContextEventType: { CAST_STATE_CHANGED: 'cs', SESSION_STATE_CHANGED: 'ss' }, CastState: { NO_DEVICES_AVAILABLE: 'none' },
-    SessionState: { SESSION_STARTED: 'SESSION_STARTED', SESSION_RESUMED: 'SESSION_RESUMED', SESSION_ENDED: 'SESSION_ENDED', SESSION_START_FAILED: 'F', SESSION_STARTING: 'SESSION_STARTING' },
-    RemotePlayerEventType: { ANY_CHANGE: 'any' },
-  } };
-  window.__startCast = () => { window.__onGCastApiAvailable(true); (listeners.ss || []).forEach((f) => f({ sessionState: 'SESSION_STARTED' })); };
-}, mode);
-await p.goto(url); await p.waitForTimeout(600);
-await p.evaluate(() => window.__startCast()); await p.waitForTimeout(3500);
-const show = async (label) => console.log(label.padEnd(22), '| chip', await p.textContent('#outText'), '| card', (await p.innerText('#np')).replace(/\s+/g, ' ').slice(0, 70), '| list', await p.$$eval('.row.playing .name', (n) => n.map((x) => x.textContent).join(',')), '| loads', await p.evaluate(() => window.__loads));
-await show('ansluten');
-await p.locator('.row').nth(0).click(); await p.waitForTimeout(2000); await show('kanal 1, 2 s');
-await p.locator('.row').nth(3).click(); await p.waitForTimeout(2000); await show('kanal 4, 2 s');
-if (mode !== 'ok') { await p.waitForTimeout(20000); await show('kanal 4, 22 s'); console.log('snack:', await p.textContent('#snackText')); }
-const card = (await p.innerText('#np')).replace(/\s+/g, ' ');
-const list = await p.$$eval('.row.playing .name', (n) => n.map((x) => x.textContent).join(','));
-const name = await p.locator('.row .name').nth(3).textContent();
-const fail = (m) => errors.push(mode + ': ' + m);
-if (mode === 'ok') {
-  if (!card.includes(name) || !card.includes('Spelar på Bottenplan')) fail('kortet visar inte nya kanalen som spelande: ' + card);
-  if (list !== name) fail('listan markerar inte nya kanalen: ' + list);
+  const checks = [];
+  const expect = (ok, what) => checks.push([!!ok, what]);
+  try { await run(t, expect); } catch (e) { checks.push([false, 'kastade: ' + e.message]); }
+  for (const e of errors) checks.push([false, 'sidfel: ' + e]);
+  const bad = checks.filter((x) => !x[0]);
+  if (bad.length) failures.push(name + ':\n   - ' + bad.map((x) => x[1]).join('\n   - '));
+  else passed++;
+  console.log((bad.length ? 'FEL ' : 'ok  ') + name);
+  await c.close();
 }
-if (mode === 'hang' && !(await p.textContent('#snackText')).includes('svarade inte')) fail('inget besked när högtalaren inte svarar');
-if (mode === 'fail' && !card.includes('kunde inte spela')) fail('inget felbesked när högtalaren vägrar');
+
+const alfa = STATIONS[0].url, beta = STATIONS[1].url;
+
+await scenario('ansluter till Kök när inget spelar', null, async (t, expect) => {
+  await t.connect('Kök');
+  expect((await t.chip()) === 'Kök', 'knappen visar Kök, inte ' + (await t.chip()));
+  expect(!(await t.dev('Kök')).playing, 'Kök ska inte börja spela av sig själv');
+});
+
+await scenario('det som spelar i telefonen flyttar till högtalaren', null, async (t, expect) => {
+  await t.set('window.radiocast.setPlaying(0)');
+  await t.connect('Kök');
+  await t.wait(1500);
+  expect((await t.dev('Kök')).playing === alfa, 'Kök spelar Alfa');
+  expect((await t.status()) === 'Spelar på Kök', 'status: ' + (await t.status()));
+  expect((await t.marked()) === 'Alfa', 'listan markerar Alfa: ' + (await t.marked()));
+});
+
+await scenario('byter kanal på högtalaren', null, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.tap('Beta'); await t.wait(1500);
+  expect((await t.dev('Kök')).playing === beta, 'Kök spelar Beta');
+  expect((await t.card()) === 'Beta' && (await t.status()) === 'Spelar på Kök', 'kortet: ' + (await t.card()) + ' / ' + (await t.status()));
+  expect((await t.marked()) === 'Beta', 'listan markerar Beta: ' + (await t.marked()));
+});
+
+await scenario('Chrome rapporterar gamla kanalen en stund efter bytet', null, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.set("window.sim.devices['Kök'].lag = true");
+  await t.tap('Beta');
+  for (let i = 0; i < 6; i++) {
+    await t.wait(500);
+    expect((await t.card()) === 'Beta', 'kortet hoppar inte tillbaka till Alfa (' + i * 0.5 + ' s): ' + (await t.card()));
+  }
+  await t.wait(2000);
+  expect((await t.card()) === 'Beta' && (await t.status()) === 'Spelar på Kök', 'till slut: ' + (await t.card()) + ' / ' + (await t.status()));
+});
+
+await scenario('delad styrlänk: ansluter till pågående cast', {
+  before: () => { const d = window.sim.devices['Kök']; d.playing = 'http://radio.test/gamma.mp3'; d.state = 'PLAYING'; d.sessionId = 'S77'; d.title = 'Gamma'; },
+  hash: '#styr=S77&url=' + encodeURIComponent('http://radio.test/gamma.mp3') + '&namn=Gamma&hogtalare=K%C3%B6k',
+}, async (t, expect) => {
+  await t.wait(3000);
+  expect((await t.chip()) === 'Kök' && (await t.card()) === 'Gamma' && (await t.status()) === 'Spelar på Kök', 'visar: ' + (await t.chip()) + ' / ' + (await t.card()) + ' / ' + (await t.status()));
+  expect((await t.set('window.sim.loads.length')) === 0, 'startade inte om strömmen');
+});
+
+await scenario('efter omstart: "Spelar troligen på" → Välj högtalare', {
+  store: { castingOn: { device: 'Kök', url: 'http://radio.test/beta.mp3', at: Date.now(), sessionId: null } },
+}, async (t, expect) => {
+  await t.wait(5500);
+  expect((await t.status()).includes('troligen på Kök'), 'gissar Kök: ' + (await t.status()));
+  await t.set("window.sim.pick = 'Kök'");
+  await t.menu('Välj högtalare'); await t.wait(3500);
+  expect((await t.dev('Kök')).playing === beta, 'Beta startar på Kök');
+  expect((await t.status()) === 'Spelar på Kök', 'status: ' + (await t.status()));
+});
+
+await scenario('grupp som spelar men aldrig svarar appen', null, async (t, expect) => {
+  await t.connect('Vardagsrum/Hall');
+  await t.set("window.sim.devices['Vardagsrum/Hall'].mode = 'silent-ok'");
+  await t.tap('Beta'); await t.wait(3000);
+  expect((await t.dev('Vardagsrum/Hall')).playing === beta, 'gruppen spelar Beta');
+  expect((await t.status()) === 'Spelar på Vardagsrum/Hall', 'status utan att vänta 20 s: ' + (await t.status()));
+  await t.wait(25000);
+  expect(!(await t.snack()).includes('svarade inte'), 'inget falskt "svarade inte": ' + (await t.snack()));
+});
+
+await scenario('högtalare som aldrig svarar', null, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.set("window.sim.devices['Kök'].mode = 'hang'");
+  await t.tap('Beta'); await t.wait(21000);
+  expect((await t.snack()).includes('svarade inte'), 'säger till: ' + (await t.snack()));
+  expect((await t.card()) === 'Alfa', 'visar det som verkligen spelar (Alfa): ' + (await t.card()));
+  expect((await t.marked()) === 'Alfa', 'listan: ' + (await t.marked()));
+});
+
+await scenario('högtalare som vägrar', null, async (t, expect) => {
+  await t.connect('Kök');
+  await t.set("window.sim.devices['Kök'].mode = 'fail'");
+  await t.tap('Beta'); await t.wait(1000);
+  expect((await t.status()).includes('kunde inte spela'), 'felbesked: ' + (await t.status()));
+});
+
+await scenario('stopp', null, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.p.click('#npButton'); await t.wait(500);
+  expect(!(await t.dev('Kök')).playing, 'Kök tyst');
+  expect((await t.marked()) === '', 'ingen markerad kanal');
+});
+
+await scenario('spela i telefonen', null, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.menu('Spela i telefonen'); await t.wait(800);
+  expect(!(await t.dev('Kök')).playing, 'Kök tyst');
+  expect((await t.chip()) === 'Telefon', 'knappen: ' + (await t.chip()));
+  expect((await t.card()) === 'Alfa', 'Alfa fortsätter i telefonen');
+});
+
+await scenario('byt högtalare: Kök → Vardagsrum/Hall', null, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.set("window.sim.pick = 'Vardagsrum/Hall'");
+  await t.menu('Byt högtalare'); await t.wait(500);
+  expect((await t.dev('Kök')).playing === alfa, 'Kök spelar medan du väljer');
+  await t.wait(4000);
+  expect((await t.dev('Vardagsrum/Hall')).playing === alfa, 'Vardagsrum/Hall spelar Alfa');
+  expect(!(await t.dev('Kök')).playing, 'Kök tyst');
+  expect((await t.chip()) === 'Vardagsrum/Hall' && (await t.status()) === 'Spelar på Vardagsrum/Hall', 'visar: ' + (await t.chip()) + ' / ' + (await t.status()));
+  await t.tap('Beta'); await t.wait(1500);
+  expect((await t.dev('Vardagsrum/Hall')).playing === beta, 'kanalbyte direkt efteråt fungerar');
+});
+
+await scenario('byt högtalare: Chrome vägrar först', null, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.set("window.sim.pick = 'refuse'; window.sim.afterRefuse = 'Vardagsrum/Hall'");
+  await t.menu('Byt högtalare'); await t.wait(5000);
+  expect((await t.dev('Vardagsrum/Hall')).playing === alfa, 'Vardagsrum/Hall spelar Alfa');
+});
+
+await scenario('byt högtalare: stänger listan', null, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.set("window.sim.pick = 'cancel'");
+  await t.menu('Byt högtalare'); await t.wait(6000);
+  expect((await t.dev('Kök')).playing === alfa, 'Kök spelar fortfarande Alfa');
+  expect((await t.chip()) === 'Kök', 'tillbaka på Kök: ' + (await t.chip()));
+  expect((await t.status()) === 'Spelar på Kök', 'status: ' + (await t.status()));
+});
+
+await scenario('dator: byt högtalare i Chromes fulla lista', { desktop: true, before: () => { window.sim.desktop = true; } }, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.set("window.sim.pick = 'Vardagsrum/Hall'");
+  await t.menu('Byt högtalare'); await t.wait(800);
+  expect((await t.dev('Kök')).playing === alfa, 'Kök spelar medan du väljer');
+  await t.wait(4000);
+  expect((await t.dev('Vardagsrum/Hall')).playing === alfa && (await t.status()) === 'Spelar på Vardagsrum/Hall', 'flyttad: ' + (await t.status()));
+});
+
+await scenario('dator: Sluta casta i Chromes lista', { desktop: true, before: () => { window.sim.desktop = true; } }, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.set("window.sim.pick = 'stop'");
+  await t.menu('Byt högtalare'); await t.wait(7000);
+  expect(!(await t.dev('Kök')).playing, 'Kök tyst');
+  expect((await t.chip()) === 'Telefon' && !(await t.snack()).includes('bröts'), 'telefon, utan felmeddelande: ' + (await t.chip()) + ' / ' + (await t.snack()));
+});
+
+await scenario('en annan app tar över högtalaren', null, async (t, expect) => {
+  await t.connect('Kök');
+  await t.tap('Alfa'); await t.wait(1500);
+  await t.set("window.sim.takeOver('Kök')"); await t.wait(500);
+  expect((await t.chip()) === 'Telefon', 'knappen: ' + (await t.chip()));
+  expect((await t.snack()).includes('Kontakten med Kök bröts'), 'säger till: ' + (await t.snack()));
+  expect(!(await t.set("localStorage.getItem('rc.castingOn')")) || (await t.set("localStorage.getItem('rc.castingOn')")) === 'null', 'glömmer var det spelade');
+});
+
+await scenario('omstart medan Kök spelar: ansluter igen utan avbrott', {
+  store: { castingOn: { device: 'Kök', url: 'http://radio.test/beta.mp3', at: Date.now(), sessionId: 'S9' } },
+  before: () => { const d = window.sim.devices['Kök']; d.playing = 'http://radio.test/beta.mp3'; d.state = 'PLAYING'; d.sessionId = 'S9'; d.title = 'Beta'; },
+}, async (t, expect) => {
+  await t.wait(2500);
+  expect((await t.chip()) === 'Kök', 'knappen: ' + (await t.chip()));
+  expect((await t.card()) === 'Beta' && (await t.status()) === 'Spelar på Kök', 'kortet: ' + (await t.card()) + ' / ' + (await t.status()));
+  expect((await t.set('window.sim.loads.length')) === 0, 'startade inte om strömmen');
+});
+
+await scenario('högtalaren spelar redan något annat när du ansluter', {
+  before: () => { const d = window.sim.devices['Kök']; d.playing = 'http://radio.test/gamma.mp3'; d.state = 'PLAYING'; d.title = 'Gamma'; },
+}, async (t, expect) => {
+  // Chrome restarts the player when a session starts on it: it stops; nothing new starts by itself.
+  await t.connect('Kök'); await t.wait(3000);
+  expect((await t.set('window.sim.loads.length')) === 0, 'startar inget av sig själv');
+  expect((await t.chip()) === 'Kök', 'ansluten');
+});
+
 await b.close();
-if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
-console.log('Kanalbyte på högtalare (' + mode + '): allt gick bra.');
+console.log(passed + ' fall gick bra, ' + failures.length + ' fel.');
+if (failures.length) { console.error(failures.join('\n')); process.exit(1); }

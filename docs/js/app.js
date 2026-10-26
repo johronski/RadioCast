@@ -5,8 +5,9 @@ import { stationSearch, freeSearch, mix, resultDetails, toStation } from './cata
 import { cleanSong, shortTitle, songArtist, songTitle } from './songtext.js';
 import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, coverFor } from './sources.js';
 import { addHistory, recent } from './history.js';
+import { createCaster } from './cast.js';
 
-const VERSION = 'Webb 4.3';
+const VERSION = 'Webb 4.4';
 
 // ============================================================ stations
 
@@ -47,13 +48,25 @@ const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(
 const isAndroid = /Android/i.test(navigator.userAgent);
 const installed = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const SHARE_TEXT = 'RadioCast: webbradio i telefonen, och casting till Chromecast från Chrome. Öppna länken, inget behöver installeras.';
-const caster = { available: false, connected: false, device: '', state: 'IDLE', ctx: null, player: null, controller: null, loadingUrl: null, replacedUrl: null, media: null, picking: null, handover: null };
 const dragging = { volume: false };
 const sheetState = { kind: null };
 let nowPlaying = (() => {
   const last = store.get('lastPlayed', null);
   return stations.find((s) => s.url === last) || null;
 })();
+let playError = null;
+// Chromecast: everything about the speaker lives in cast.js; this is how it reaches the app.
+const caster = createCaster({
+  log, store, shortName, snack: (t) => snack(t), render: () => renderAll(),
+  contentType: (u) => contentType(u),
+  nowPlaying: () => nowPlaying,
+  adopt: (url, title) => { // the speaker plays something else (started earlier, or elsewhere): show it
+    nowPlaying = stations.find((x) => x.url === url) || { name: title || 'Radio', url, cc: '', logo: '' };
+    pokeSongs();
+  },
+  stopLocal: () => stopLocal(),
+  fail: (msg) => { playError = msg; },
+});
 const RETRY_DELAYS = [1000, 2000, 4000, 8000, 15000, 30000];
 const retry = { count: 0, timer: 0, stall: 0, startedAt: 0 };
 
@@ -116,11 +129,11 @@ async function songTick() {
 function pokeSongs() { songs.nextFetch = 0; songTick(); }
 setInterval(songTick, 3000);
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') { checkSpeaker(); songs.backfilledAt = 0; pokeSongs(); renderAll(); }
+  if (document.visibilityState === 'visible') { caster.check(); songs.backfilledAt = 0; pokeSongs(); renderAll(); }
 });
 // While the page is shown, check the speaker now and then too (Chrome can miss events).
 // (and keep the note of what plays where fresh, for the hint after a restart).
-setInterval(() => { if (document.visibilityState === 'visible') { checkSpeaker(); rememberCasting(); } }, 15000);
+setInterval(() => { if (document.visibilityState === 'visible') caster.check(); }, 15000);
 
 // ============================================================ playback
 
@@ -128,7 +141,6 @@ const audio = $('audio');
 
 
 let localState = 'stopped';   // stopped | buffering | playing
-let playError = null;
 let volume = store.get('volume', 100);
 
 /*
@@ -164,7 +176,7 @@ function playStation(s, saved) {
   if (saved) store.set('lastPlayed', s.url);
   if (caster.connected) {
     stopLocal();
-    try { castLoad(s); } catch (e) { log('castLoad threw', String(e)); snack('Kunde inte byta kanal på högtalaren: ' + e); }
+    try { caster.load(s); } catch (e) { log('load threw', String(e)); snack('Kunde inte byta kanal på högtalaren: ' + e); }
   } else {
     clearRetry();
     startLocal(s);
@@ -251,20 +263,19 @@ audio.addEventListener('pause', () => {
 audio.addEventListener('ended', () => { if (localState !== 'stopped') lostStream(); }); // a live stream never ends on purpose
 
 function musicActive() {
-  if (caster.handover) return true; // moving between speakers: it plays on
+  if (caster.moving) return true; // moving between speakers: it plays on
   return caster.connected ? ['PLAYING', 'BUFFERING', 'PAUSED'].includes(caster.state) : localState !== 'stopped';
 }
 function stopMusic() {
   if (busyMoving()) return;
-  if (caster.connected) castStop(); else stopLocal();
+  if (caster.connected) caster.stop(); else stopLocal();
   renderAll();
 }
 function togglePlay() {
   if (musicActive()) { stopMusic(); return; }
-  if (!caster.connected && caster.guess && caster.ctx) {
-    // It probably still plays there: reconnect (and start it there if it does not).
-    caster.wantPlay = true;
-    openSpeakerList();
+  if (!caster.connected && caster.guess && caster.ready()) {
+    // It probably still plays there: choose it again (the radio starts there).
+    openSpeakerList(nowPlaying);
     return;
   }
   if (!nowPlaying) { snack('Tryck på en kanal i listan för att spela den.'); return; }
@@ -273,35 +284,12 @@ function togglePlay() {
 function setVolume(v) {
   volume = v;
   store.set('volume', v);
-  if (caster.connected) castVolume(v / 100); else audio.volume = v / 100;
+  if (caster.connected) caster.volume(v / 100); else audio.volume = v / 100;
 }
 
 // ============================================================ Chromecast (Chrome on Android and computers)
 
-
-window.__onGCastApiAvailable = (ok) => {
-  if (!ok || !window.cast || !window.chrome || !chrome.cast) return;
-  try {
-    const ctx = window.cast.framework.CastContext.getInstance();
-    ctx.setOptions({
-      receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-      autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
-    });
-    const player = new window.cast.framework.RemotePlayer();
-    const controller = new window.cast.framework.RemotePlayerController(player);
-    Object.assign(caster, { ctx, player, controller });
-    const F = window.cast.framework;
-    ctx.addEventListener(F.CastContextEventType.CAST_STATE_CHANGED, (e) => {
-      caster.available = e.castState !== F.CastState.NO_DEVICES_AVAILABLE;
-      renderOutput();
-    });
-    ctx.addEventListener(F.CastContextEventType.SESSION_STATE_CHANGED, (e) => onCastSession(e.sessionState));
-    controller.addEventListener(F.RemotePlayerEventType.ANY_CHANGE, onRemoteChange);
-    caster.available = ctx.getCastState() !== F.CastState.NO_DEVICES_AVAILABLE;
-    renderOutput();
-    rejoin();
-  } catch (e) { /* casting stays unavailable */ }
-};
+window.__onGCastApiAvailable = (ok) => { if (ok) caster.init(); };
 (() => {
   const s = document.createElement('script');
   s.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
@@ -309,402 +297,23 @@ window.__onGCastApiAvailable = (ok) => {
   document.head.appendChild(s);
 })();
 
-function onCastSession(state) {
-  const S = window.cast.framework.SessionState;
-  const session = caster.ctx.getCurrentSession();
-  log('session', state, session && session.getCastDevice() ? session.getCastDevice().friendlyName : '-', caster.handover ? 'move:' + caster.handover.phase : '');
-  caster.connecting = state === S.SESSION_STARTING;
-  if (state === S.SESSION_STARTED || state === S.SESSION_RESUMED) {
-    caster.connected = true;
-    caster.device = session && session.getCastDevice() ? session.getCastDevice().friendlyName : 'högtalaren';
-    caster.guess = null;
-    caster.joinId = null;
-    if (caster.handover && handoverSession(session)) { renderAll(); return; }
-    if (state === S.SESSION_STARTED && caster.picking && caster.picking.ended && caster.picking.playing && nowPlaying) {
-      castLoad(nowPlaying); // moved from the previous speaker
-    } else if (state === S.SESSION_STARTED && localState !== 'stopped' && nowPlaying) {
-      stopLocal();
-      castLoad(nowPlaying); // what played in the phone moves to the speaker
-    } else if (state === S.SESSION_STARTED) {
-      // The speaker may already play our radio (started earlier): join it instead of restarting.
-      askMediaStatus(session);
-      setTimeout(() => {
-        checkSpeaker();
-        setTimeout(() => {
-          if (caster.connected && caster.wantPlay && nowPlaying && !['PLAYING', 'BUFFERING'].includes(caster.state)) castLoad(nowPlaying);
-        }, 800);
-      }, 1200);
-    }
-    syncRemote();
-    if (state === S.SESSION_RESUMED) {
-      // Rejoining a speaker that already plays: ask what it plays, so the card shows it.
-      askMediaStatus(session);
-      setTimeout(checkSpeaker, 1500);
-    }
-  } else if (state === S.SESSION_ENDED || state === S.SESSION_START_FAILED) {
-    if (state === S.SESSION_START_FAILED) snack('Kunde inte ansluta till högtalaren.');
-    else if (caster.handover) { /* letting go on purpose while moving speakers */ }
-    else if (caster.picking) caster.picking.ended = true; // switching speaker in Chrome's list
-    else if (caster.connected && !caster.switching) lostSpeaker();
-    caster.connected = false;
-    caster.device = '';
-    caster.state = 'IDLE';
-    caster.media = null;
-  }
-  renderAll();
-}
-/** The speaker was let go of (paused elsewhere, another app took over, or the connection broke). */
-function lostSpeaker() {
-  const name = caster.device || 'högtalaren';
-  log('lost speaker', name);
-  // It no longer plays our radio (another app took over, or it was stopped): do not say
-  // "probably still playing" there after a restart.
-  store.set('castingOn', null);
-  if (caster.wantPlay && nowPlaying) {
-    snack('Kontakten med ' + name + ' bröts, kanske tog en annan app över. Tryck på knappen uppe till höger för att casta igen.');
-  }
-}
-
-/**
- * Asks Chrome and the speaker what is going on now. Run when the page is shown again, since
- * Chrome pauses the page in the background and it can miss what happened meanwhile.
- */
-function checkSpeaker() {
-  if (!caster.ctx) return;
-  const session = caster.ctx.getCurrentSession();
-  if (!session) {
-    if (caster.connected) {
-      lostSpeaker();
-      caster.connected = false; caster.device = ''; caster.state = 'IDLE';
-      renderAll();
-    }
-    return;
-  }
-  const media = session.getMediaSession && session.getMediaSession();
-  if (!media) {
-    // Not joined to what plays yet: use what the remote player knows, and ask the speaker.
-    syncRemote();
-    renderAll();
-    askMediaStatus(session);
-    return;
-  }
-  if (caster.loadingUrl) return; // a channel change is under way
-  media.getStatus(null, () => {
-    syncRemote();
-    if (caster.loadingUrl) { renderAll(); return; }
-    caster.state = media.playerState || 'IDLE'; // fresh from the speaker
-    watchMedia(session);
-    renderAll();
-  }, () => { caster.state = 'IDLE'; renderAll(); });
-}
-
-/** Asks the speaker's player for its status; Chrome then joins what is playing. */
-function askMediaStatus(session) {
-  try {
-    const p = session.sendMessage('urn:x-cast:com.google.cast.media', { type: 'GET_STATUS', requestId: Math.floor(Math.random() * 1e6) });
-    if (p && p.catch) p.catch(() => {});
-  } catch (e) { /* older Chrome: the remote player updates by itself */ }
-}
-
-function syncRemote() {
-  const p = caster.player;
-  if (!p) return;
-  const id = p.mediaInfo && p.mediaInfo.contentId;
-  // Right after a channel change the remote player can still report the old channel: ignore it.
-  if (caster.loadingUrl || (caster.replacedUrl && id === caster.replacedUrl)) return volumeFrom(p);
-  caster.replacedUrl = null;
-  // The speaker's own media session (watched after a load) is fresher than the remote player.
-  const m = caster.media;
-  caster.state = m && id && m.media && m.media.contentId === id ? (m.playerState || 'IDLE')
-    : p.isMediaLoaded ? (p.playerState || 'IDLE') : 'IDLE';
-  if (id && (!nowPlaying || nowPlaying.url !== id)) {
-    // Started earlier (or from another phone): show it.
-    nowPlaying = stations.find((s) => s.url === id) || { name: (p.mediaInfo.metadata && p.mediaInfo.metadata.title) || 'Radio', url: id, cc: '', logo: '' };
-    pokeSongs();
-  }
-  volumeFrom(p);
-}
-function volumeFrom(p) {
-  if (caster.connected && !dragging.volume) $('volume').value = Math.round((p.volumeLevel || 0) * 100);
-}
-/** Remembers what plays where, so a restarted app can say "probably still playing on Kök". */
-function rememberCasting() {
-  if (caster.connected && nowPlaying && ['PLAYING', 'BUFFERING'].includes(caster.state)) {
-    const session = caster.ctx && caster.ctx.getCurrentSession();
-    const sessionId = session && session.getSessionId ? session.getSessionId() : null;
-    store.set('castingOn', { device: caster.device, url: nowPlaying.url, at: Date.now(), sessionId });
-  }
-}
-/**
- * After a restart: join the speaker session this app started (by its id), so the radio keeps
- * playing. Choosing the speaker in Chrome's list instead would restart its player (the stream stops).
- */
-function rejoin() {
-  if (caster.joinId) {
-    try { if (!caster.ctx.getCurrentSession()) chrome.cast.requestSessionById(caster.joinId); } catch (e) { /* not supported */ }
-    return;
-  }
-  const last = store.get('castingOn', null);
-  if (!last || !last.sessionId || Date.now() - last.at > 3 * 3600000) return;
-  try {
-    if (!caster.ctx.getCurrentSession() && chrome.cast.requestSessionById) chrome.cast.requestSessionById(last.sessionId);
-  } catch (e) { /* not supported: the hint below is shown instead */ }
-}
-function forgetCasting() { store.set('castingOn', null); caster.guess = null; }
-
-function onRemoteChange() {
-  const before = caster.state, was = nowPlaying;
-  syncRemote();
-  rememberCasting();
-  // A new state or a new channel (started elsewhere): the list and the card both show it.
-  if (caster.state !== before || nowPlaying !== was) { pokeSongs(); renderAll(); }
-}
-function castLoad(s) {
-  const session = caster.ctx && caster.ctx.getCurrentSession();
-  if (!session) {
-    // Chrome is no longer connected (the page missed it): say so instead of doing nothing.
-    caster.connected = false; caster.device = ''; caster.state = 'IDLE'; caster.wantPlay = true;
-    renderAll();
-    snack('Inte längre ansluten till högtalaren. Tryck på knappen uppe till höger och välj den igen.');
-    return;
-  }
-  const info = new chrome.cast.media.MediaInfo(s.url, contentType(s.url));
-  info.streamType = chrome.cast.media.StreamType.LIVE;
-  info.metadata = new chrome.cast.media.MusicTrackMediaMetadata();
-  info.metadata.title = shortName(s.name);
-  if (s.logo) info.metadata.images = [new chrome.cast.Image(s.logo)];
-  const req = new chrome.cast.media.LoadRequest(info);
-  req.autoplay = true;
-  caster.state = 'BUFFERING';
-  caster.wantPlay = true;
-  const before = caster.player && caster.player.mediaInfo && caster.player.mediaInfo.contentId;
-  caster.replacedUrl = before && before !== s.url ? before : null;
-  caster.loadingUrl = s.url;
-  const mine = s.url;
-  log('load', shortName(s.name), 'on', caster.device, 'was', before ? before.slice(-30) : '-');
-  let answered = false;
-  const send = (attempt) => {
-    let p;
-    try { p = session.loadMedia(req); } catch (e) { p = Promise.reject(e); }
-    p.then(() => {
-      if (caster.loadingUrl !== mine) return; // replaced by a newer choice
-      answered = true;
-      log('load ok', shortName(s.name), 'attempt', attempt);
-      caster.loadingUrl = null;
-      syncRemote(); // what the remote player said while we waited was ignored
-      watchMedia(session);
-      if (caster.handover && caster.handover.phase === 'loading') setTimeout(stopOldSpeaker, 2500);
-      renderAll();
-    }, (e) => {
-      if (caster.loadingUrl !== mine) return;
-      answered = true;
-      const code = (e && (e.code || e.message)) || String(e);
-      log('load failed', shortName(s.name), code);
-      caster.loadingUrl = null;
-      caster.handover = null;
-      caster.state = 'IDLE';
-      playError = 'Högtalaren kunde inte spela strömmen (' + code + ').';
-      syncRemote(); renderAll();
-    });
-  };
-  send(1);
-  // A speaker (group) that does not answer: ask once more, then show what it really does.
-  clearTimeout(caster.loadTimer); // an earlier change is replaced by this one
-  caster.loadTimer = setTimeout(() => {
-    if (answered || caster.loadingUrl !== mine) return;
-    log('no answer, sending again');
-    send(2);
-    caster.loadTimer = setTimeout(() => {
-      if (answered || caster.loadingUrl !== mine) return;
-      log('still no answer: giving up');
-      caster.loadingUrl = null;
-      caster.replacedUrl = null;
-      syncRemote(); renderAll();
-      snack((caster.device || 'Högtalaren') + ' svarade inte på kanalbytet. Försök igen.');
-    }, 12000);
-  }, 8000);
-}
-/** Follows the speaker's player directly after a load: buffering → playing, or stopped. */
-function watchMedia(session) {
-  const m = session.getMediaSession && session.getMediaSession();
-  if (!m) return;
-  if (caster.media !== m) {
-    caster.media = m;
-    m.addUpdateListener(() => mediaUpdate(m));
-  }
-  mediaUpdate(m); // also when Chrome reuses the same player object for a new channel
-}
-function mediaUpdate(m) {
-  if (caster.media !== m || caster.loadingUrl) return;
-  caster.state = m.playerState || 'IDLE';
-  rememberCasting(); pokeSongs(); renderAll();
-}
-function castStop() {
-  forgetCasting();
-  caster.loadingUrl = null; caster.replacedUrl = null;
-  if (caster.controller && caster.player.isMediaLoaded) caster.controller.stop();
-  caster.state = 'IDLE';
-  caster.wantPlay = false;
-}
-function castVolume(level) {
-  if (!caster.player) return;
-  caster.player.volumeLevel = level;
-  caster.controller.setVolumeLevel();
-}
-/** Lets go of the speaker on purpose (no "connection lost" message). */
-function endCasting() {
-  caster.switching = true;
-  caster.ctx.endCurrentSession(true); // stops it on that speaker
-  caster.connected = false; caster.device = ''; caster.state = 'IDLE';
-  setTimeout(() => { caster.switching = false; }, 1500);
-}
-/** "Telefon": the radio moves to the phone. */
+/** "Spela i telefonen": the radio moves from the speaker to the phone. */
 function moveToPhone() {
   if (!caster.connected) {
-    if (caster.guess) { forgetCasting(); renderAll(); }
+    if (caster.guess) { caster.forget(); renderAll(); }
     return;
   }
   const playing = musicActive();
-  forgetCasting();
+  caster.forget();
   caster.wantPlay = false;
-  endCasting();
+  caster.leave(true);
   if (playing && nowPlaying) playStation(nowPlaying, stations.some((x) => x.url === nowPlaying.url));
   else renderAll();
 }
-/**
- * Tapping the speaker that plays: Chrome's list opens and the radio keeps playing meanwhile.
- * Choose another speaker and the radio moves there; close the list and nothing changes;
- * "Sluta casta" in Chrome's list stops it.
- */
-function pickWhileCasting() {
-  const playing = musicActive();
-  caster.picking = { playing, url: nowPlaying && nowPlaying.url };
-  const done = () => {
-    const pick = caster.picking;
-    caster.picking = null;
-    if (pick && pick.ended && !caster.connected) {
-      // Stopped from Chrome's list ("Sluta casta"), no new speaker chosen.
-      forgetCasting();
-      caster.wantPlay = false;
-      renderAll();
-    }
-  };
-  caster.ctx.requestSession().then(done, done);
-}
 function stopCasting() {
-  forgetCasting();
+  caster.forget();
   caster.wantPlay = false;
-  endCasting();
-  renderAll();
-}
-
-/**
- * Android Chrome: while casting, Chrome's dialog only controls the current speaker (no list),
- * so switching means letting go first, without stopping it: the radio plays on while you choose.
- */
-function moveToOtherSpeaker() {
-  const session = caster.ctx.getCurrentSession();
-  const playing = musicActive();
-  if (!playing || !session || !chrome.cast.requestSessionById) {
-    // Nothing to keep playing (or no way back): let go and pick.
-    caster.wantPlay = playing;
-    endCasting();
-    renderAll();
-    caster.ctx.requestSession().catch(() => {});
-    return;
-  }
-  // Let go WITHOUT stopping: the radio plays on while Chrome's list is open.
-  const h = caster.handover = { phase: 'picking', oldId: session.getSessionId(), oldDevice: caster.device, newId: null, newDevice: '' };
-  caster.wantPlay = true;
-  caster.ctx.endCurrentSession(false);
-  caster.connected = false; caster.device = ''; caster.media = null;
-  renderAll();
-  // Chrome sometimes refuses at once while it is still letting go of the old speaker: then try
-  // again a moment later (still counts as your tap). A real "closed without choosing" takes longer.
-  const open = () => {
-    const t0 = Date.now();
-    caster.ctx.requestSession().catch((e) => {
-      if (caster.handover !== h || h.phase !== 'picking') return;
-      const code = typeof e === 'string' ? e : (e && (e.code || e.message)) || '';
-      if (Date.now() - t0 < 1500 && h.tries < 3) { h.tries++; setTimeout(open, 700); return; }
-      if (Date.now() - t0 < 1500) snack('Chrome öppnade inte högtalarlistan (' + (code || 'okänt fel') + '). Försök igen.');
-      // Closed without choosing: go back to the speaker that still plays.
-      h.phase = 'rejoinOld';
-      joinById(h.oldId);
-      handoverTimeout(h, 'rejoinOld', () => giveUpOn(h.oldDevice));
-    });
-  };
-  h.tries = 0;
-  open();
-}
-/**
- * While moving between speakers: a new choice of yours wins once the new speaker is connected
- * (the move is then simply done); only while not connected to any speaker it has to wait.
- */
-function busyMoving() {
-  const h = caster.handover;
-  if (!h || h.phase === 'picking') return false;
-  if (caster.connected && h.phase === 'loading') { caster.handover = null; return false; }
-  snack('Byter högtalare, ett ögonblick…');
-  return true;
-}
-/** One step of a speaker move: true when the session event was part of it (and handled). */
-function handoverSession(session) {
-  const h = caster.handover;
-  const id = session && session.getSessionId();
-  if (h.phase === 'picking' && id !== h.oldId) {
-    h.phase = 'loading'; h.newId = id; h.newDevice = caster.device;
-    castLoad(nowPlaying); // then stopOldSpeaker()
-    // Never stay "moving" for ever (a speaker group can be slow to answer): show what it does.
-    setTimeout(() => { if (caster.handover === h && h.phase === 'loading') { caster.handover = null; syncRemote(); renderAll(); } }, 20000);
-    return true;
-  }
-  if ((h.phase === 'picking' || h.phase === 'rejoinOld') && id === h.oldId) {
-    caster.handover = null; // back where we were, still playing
-    askMediaStatus(session); setTimeout(checkSpeaker, 1200);
-    return true;
-  }
-  if (h.phase === 'stopping' && id === h.oldId) {
-    h.phase = 'back';
-    const back = () => setTimeout(() => { joinById(h.newId); handoverTimeout(h, 'back', () => giveUpOn(h.newDevice)); }, 600);
-    caster.ctx.endCurrentSession(true); // stops the old speaker
-    back();
-    return true;
-  }
-  if (h.phase === 'back' && id === h.newId) {
-    caster.handover = null;
-    askMediaStatus(session); setTimeout(checkSpeaker, 1200);
-    return true;
-  }
-  return false;
-}
-/** The new speaker plays: briefly join the old one to stop it, then come back. */
-function stopOldSpeaker() {
-  const h = caster.handover;
-  if (!h || h.phase !== 'loading') return;
-  h.phase = 'stopping';
-  caster.ctx.endCurrentSession(false); // the new one plays on
-  setTimeout(() => joinById(h.oldId), 600);
-  handoverTimeout(h, 'stopping', () => {
-    // No word from the old speaker (Chrome usually stops it by itself): just go back quietly.
-    h.phase = 'back';
-    joinById(h.newId);
-    handoverTimeout(h, 'back', () => giveUpOn(h.newDevice));
-  });
-}
-function joinById(id) {
-  try { chrome.cast.requestSessionById(id); } catch (e) { /* handled by the timeout */ }
-}
-function handoverTimeout(h, phase, fn) {
-  setTimeout(() => { if (caster.handover === h && h.phase === phase && !caster.connected) fn(); }, 8000);
-}
-/** Could not join again: it most likely plays there; say so (tapping the speaker reconnects). */
-function giveUpOn(device) {
-  caster.handover = null;
-  if (nowPlaying) {
-    caster.guess = { device, url: nowPlaying.url, at: Date.now() };
-    store.set('castingOn', { device, url: nowPlaying.url, at: Date.now(), sessionId: null });
-  }
+  caster.leave(true);
   renderAll();
 }
 /** Tapping the speaker chip while casting: move to the phone, switch speaker, or stop. */
@@ -718,11 +327,11 @@ function speakerSheet() {
     body.append(b);
   };
   item('Spela i telefonen', 'phone', moveToPhone);
-  item('Byt högtalare', 'speaker', isAndroid ? moveToOtherSpeaker : pickWhileCasting);
+  item('Byt högtalare', 'speaker', () => caster.switchSpeaker(isAndroid));
   item('Sluta casta', 'close', stopCasting);
   body.append(el('p', 'muted', caster.device + ' spelar vidare medan du väljer en annan högtalare.'));
 }
-/** Tapping the chip when it probably still plays on a speaker: reconnect, or use the phone. */
+/** Tapping the chip when it probably still plays on a speaker: choose a speaker, or use the phone. */
 function guessSheet() {
   const g = caster.guess;
   const body = sheet('Spelar troligen på ' + g.device, 'output');
@@ -733,23 +342,27 @@ function guessSheet() {
     b.onclick = () => { closeSheet(); fn(); };
     body.append(b);
   };
-  item('Välj högtalare', 'speaker', () => { caster.wantPlay = true; openSpeakerList(); });
-  item('Använd telefonen', 'phone', () => { forgetCasting(); renderAll(); });
+  item('Välj högtalare', 'speaker', () => openSpeakerList(nowPlaying));
+  item('Använd telefonen', 'phone', () => { caster.forget(); renderAll(); });
   body.append(el('p', 'muted', 'Radion startar om på högtalaren du väljer.'));
+}
+/** While switching speakers only the list may be used (a moment). */
+function busyMoving() {
+  if (!caster.busy) return false;
+  snack('Byter högtalare, ett ögonblick…');
+  return true;
 }
 function chooseOutput() {
   if (busyMoving()) return;
-  if (caster.ctx && caster.connected && caster.ctx.getCurrentSession()) { speakerSheet(); return; }
+  if (caster.connected) { speakerSheet(); return; }
   if (caster.guess) { guessSheet(); return; }
-  openSpeakerList();
+  // What plays in the phone moves to the speaker you choose.
+  openSpeakerList(localState !== 'stopped' ? nowPlaying : null);
 }
-/** Chrome's own list of speakers and groups (it searches when opened). */
-function openSpeakerList() {
-  if (caster.ctx) {
-    // Chrome's own list of speakers and groups (it searches when opened); while casting it also has "Sluta casta".
-    caster.ctx.requestSession().catch((e) => {
-      const code = typeof e === 'string' ? e : (e && (e.code || e.message)) || '';
-      if (/cancel/i.test(code)) return; // closed without choosing
+/** Chrome's own list of speakers and groups (it searches when opened); start: what to start there. */
+function openSpeakerList(start) {
+  if (caster.ready()) {
+    caster.openList(start, (code) => {
       const body = sheet('Hittar ingen Chromecast');
       body.append(el('p', 'muted', 'Chrome hittade inga högtalare. Kontrollera att:'));
       const ul = el('ul', 'muted');
@@ -806,20 +419,19 @@ function renderAll() {
 function renderSongs() { renderNowPlaying(); renderSession(); if (sheetState.kind === 'song') renderSongSheet(); }
 
 function renderOutput() {
-  const h = caster.handover;
   const guess = !caster.connected && caster.guess;
-  const onSpeaker = caster.connected || !!h;
+  const moving = !caster.connected && caster.moving;
+  const onSpeaker = caster.connected || moving;
+  const air = !onSpeaker && !guess && airplay.wireless; // AirPlay does not tell the speaker's name
   const btn = $('outBtn');
-  btn.classList.toggle('on', onSpeaker);
+  btn.classList.toggle('on', onSpeaker || air);
   btn.classList.toggle('guess', !!guess);
-  const busy = caster.connecting || (h && h.phase !== 'picking');
+  const busy = caster.connecting || caster.busy;
   $('outSpin').hidden = !busy;
   $('outIcon').hidden = !!busy;
-  $('outIcon').firstElementChild.setAttribute('href', onSpeaker || guess ? '#i-speaker' : '#i-phone');
-  const air = !onSpeaker && !guess && airplay.wireless; // AirPlay does not tell the speaker's name
-  btn.classList.toggle('on', onSpeaker || air);
-  if (air) $('outIcon').firstElementChild.setAttribute('href', '#i-speaker');
-  const name = h ? (h.newDevice || h.oldDevice) : caster.connecting ? 'Ansluter…' : onSpeaker ? caster.device : guess ? guess.device : air ? 'AirPlay' : 'Telefon';
+  $('outIcon').firstElementChild.setAttribute('href', onSpeaker || guess || air ? '#i-speaker' : '#i-phone');
+  const name = caster.connecting ? 'Ansluter…' : caster.connected ? caster.device : moving ? caster.movingFrom
+    : guess ? guess.device : air ? 'AirPlay' : 'Telefon';
   $('outText').textContent = name;
   btn.setAttribute('aria-label', onSpeaker || air ? 'Ljudet går till ' + name + '. Tryck för att byta.'
     : guess ? 'Radion spelar troligen på ' + name + '. Tryck för att ansluta igen.'
@@ -916,12 +528,7 @@ function expandCountry(cc) {
 }
 
 function statusText() {
-  const h = caster.handover;
-  if (h && h.phase === 'picking') return 'Spelar på ' + h.oldDevice + ' · välj högtalare';
-  if (h && h.phase === 'rejoinOld') return 'Spelar på ' + h.oldDevice;
-  if (h && h.phase === 'loading') return 'Startar på ' + h.newDevice + '…';
-  if (h && h.phase === 'stopping') return 'Spelar på ' + h.newDevice;
-  if (h && h.phase === 'back') return 'Spelar på ' + h.newDevice;
+  if (!caster.connected && caster.moving) return 'Spelar på ' + caster.movingFrom + (caster.busy ? '' : ' · välj högtalare');
   if (!caster.connected && caster.guess) return 'Spelar troligen på ' + caster.guess.device + ' · tryck på högtalaren uppe till höger';
   if (caster.connected) {
     const st = caster.state;
@@ -983,7 +590,7 @@ function renderNowPlaying() {
   $('npIcon').querySelector('use').setAttribute('href', active ? '#i-stop' : '#i-play');
   btn.setAttribute('aria-label', active ? 'Stoppa uppspelning' : (error ? 'Försök igen' : 'Spela'));
   $('volume').setAttribute('aria-label', caster.connected ? 'Volym på ' + caster.device : 'Volym');
-  if (!caster.connected && !dragging.volume) $('volume').value = volume;
+  if (!dragging.volume) $('volume').value = caster.connected ? Math.round(caster.reportedVolume() * 100) : volume;
 }
 
 /** Lock screen, notification and headset controls (Media Session). */
@@ -1290,8 +897,7 @@ function shareLink(title, link, done, text) {
  * it joins by the cast's id, so the radio keeps playing.
  */
 function shareControl() {
-  const session = caster.ctx && caster.ctx.getCurrentSession();
-  const id = session && session.getSessionId ? session.getSessionId() : null;
+  const id = caster.sessionId();
   if (!id || !nowPlaying) { snack('Hittar ingen pågående castning att dela.'); return; }
   const q = new URLSearchParams({ styr: id, url: nowPlaying.url, namn: nowPlaying.name, hogtalare: caster.device });
   shareLink('Styr radion på ' + caster.device, location.origin + location.pathname + '#' + q,
@@ -1532,8 +1138,8 @@ renderAll();
 // Restarted while the radio still plays on a speaker? Chrome does not always reconnect by itself:
 // after a moment, show where it probably plays, so one tap reconnects without restarting it.
 setTimeout(() => {
-  const last = store.get('castingOn', null);
-  if (caster.connected || caster.guess || !last || Date.now() - last.at > 3 * 3600000) return; // rejoined, or nothing to say
+  const last = caster.lastPlace();
+  if (caster.connected || caster.guess || caster.moving || !last) return; // rejoined, or nothing to say
   caster.guess = last;
   nowPlaying = stations.find((s) => s.url === last.url) || nowPlaying;
   renderAll();
@@ -1542,6 +1148,7 @@ setTimeout(() => {
 // For the automatic tests in GitHub (and for curious minds in the browser console).
 window.radiocast = {
   version: VERSION,
+  caster,
   get stations() { return stations; },
   get song() { return songs.current; },
   get nowPlaying() { return nowPlaying; },
