@@ -8,7 +8,9 @@ Läs detta och `ANDRINGSFORSLAG.md` innan något görs.
 - "Ändra inget" / "gör inga ändringar" = bara analysera och föreslå.
 - Var ärlig om osäkerhet; säg när något bara är testat mot låtsas-högtalare.
 - Användaren vill hålla nere användningen: små, fokuserade ändringar; läs bara de filer som behövs.
-- Ny chatt per uppgift (sparar användning, eftersom varje meddelande skickar med hela chatten). Uppdatera denna fil direkt när något nytt bestäms, inte först i slutet.
+- Fråga först vad uppgiften gäller, läs sedan. I `ANDRINGSFORSLAG.md`: läs bara den del uppgiften gäller (idélistorna är långa).
+- Ny chatt först när chatten blivit lång (ca 15–20 meddelanden) eller ämnet lämnar RadioCast – inte efter varje liten uppgift.
+- Uppdatera denna fil direkt när något nytt bestäms, inte först i slutet.
 
 ## Appen
 - **Webbappen är huvudappen**: `docs/` (GitHub Pages, https://johronski.github.io/RadioCast/). ES-moduler i `docs/js/`:
