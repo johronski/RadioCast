@@ -270,6 +270,22 @@ await scenario('högtalaren spelar redan något annat när du ansluter', {
   expect((await t.chip()) === 'Kök', 'ansluten');
 });
 
+await scenario('reglaget följer volymknapparna även efter att du dragit i det (27 okt)', null, async (t, expect) => {
+  await t.set('window.radiocast.setPlaying(0)');
+  await t.connect('Kök'); await t.wait(1500);
+  await t.set('window.sim.buttons(0.3)'); await t.wait(300);
+  expect((await t.set("+document.getElementById('volume').value")) === 30, 'före: reglaget följer knapparna');
+  // As in Chrome on the phone: the finger touches the slider, the value changes, but no pointerup comes.
+  await t.set(`(() => { const v = document.getElementById('volume');
+    v.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    v.value = 60; v.dispatchEvent(new Event('input', { bubbles: true })); v.dispatchEvent(new Event('change', { bubbles: true }));
+    v.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true })); })()`);
+  await t.wait(300);
+  await t.set('window.sim.buttons(0.8)'); await t.wait(300);
+  const v = await t.set("+document.getElementById('volume').value");
+  expect(v === 80, 'efter: reglaget följer knapparna, visar ' + v);
+});
+
 await b.close();
 console.log(passed + ' fall gick bra, ' + failures.length + ' fel.');
 if (failures.length) { console.error(failures.join('\n')); process.exit(1); }

@@ -184,6 +184,8 @@
     },
   };
   on('session', (state) => emit('sessionRaw', { sessionState: state }));
+  // The phone's volume buttons while casting: Chrome changes the speaker's volume and tells the page.
+  sim.buttons = (level) => { player.volumeLevel = level; emit('remote'); };
   // The app asks for the SDK by adding Google's script: answer at once instead.
   const add = Node.prototype.appendChild;
   Node.prototype.appendChild = function (n) {

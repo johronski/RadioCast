@@ -7,7 +7,7 @@ import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, cover
 import { addHistory, recent } from './history.js';
 import { createCaster } from './cast.js';
 
-const VERSION = 'Webb 4.12';
+const VERSION = 'Webb 4.13';
 
 // ============================================================ stations
 
@@ -1211,13 +1211,21 @@ $('npButton').onclick = togglePlay;
 $('npText').onclick = showSongSheet;
 const vol = $('volume');
 let volTimer = 0;
-vol.addEventListener('pointerdown', () => { dragging.volume = true; });
-vol.addEventListener('pointerup', () => { dragging.volume = false; setVolume(+vol.value); });
+// While the finger is on the slider, the speaker's reports must not move it. Chrome on the phone
+// does not always say the finger let go (no pointerup), so let go on every sign of it, and at the
+// latest 2 s after the last movement; otherwise the slider stops following the volume buttons.
+let dragEnd = null;
+const release = () => { dragging.volume = false; clearTimeout(dragEnd); };
+const holding = () => { dragging.volume = true; clearTimeout(dragEnd); dragEnd = setTimeout(release, 2000); };
+vol.addEventListener('pointerdown', holding);
+vol.addEventListener('pointerup', () => { release(); setVolume(+vol.value); });
+['pointercancel', 'lostpointercapture'].forEach((t) => vol.addEventListener(t, release));
 vol.addEventListener('input', () => {
+  holding();
   const now = Date.now();
   if (now - volTimer > 150) { volTimer = now; setVolume(+vol.value); }
 });
-vol.addEventListener('change', () => setVolume(+vol.value));
+vol.addEventListener('change', () => { release(); setVolume(+vol.value); });
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {}));
