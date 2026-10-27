@@ -1,6 +1,6 @@
 /* Keeps the app itself available offline; radio streams and song lookups always go to the network. */
-const CACHE = 'radiocast-web-44';
-const SHELL = ['./', 'index.html', 'style.css?v=4.13', 'js/app.js?v=4.13', 'js/util.js', 'js/names.js', 'js/query.js',
+const CACHE = 'radiocast-web-45';
+const SHELL = ['./', 'index.html', 'style.css?v=4.14', 'js/app.js?v=4.14', 'js/util.js', 'js/names.js', 'js/query.js',
   'js/catalogue.js', 'js/songtext.js', 'js/sources.js', 'js/history.js', 'js/cast.js', 'manifest.webmanifest', 'meta-sources.json',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 

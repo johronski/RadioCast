@@ -7,7 +7,7 @@ import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, cover
 import { addHistory, recent } from './history.js';
 import { createCaster } from './cast.js';
 
-const VERSION = 'Webb 4.13';
+const VERSION = 'Webb 4.14';
 
 // ============================================================ stations
 
@@ -50,6 +50,7 @@ const isAndroid = /Android/i.test(navigator.userAgent);
 const installed = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const SHARE_TEXT = 'RadioCast: webbradio i telefonen, och casting till Chromecast från Chrome. Öppna länken, inget behöver installeras.';
 const dragging = { volume: false };
+let lastVolumeShown = null; // debug log: last speaker volume the slider was told about
 const sheetState = { kind: null };
 let nowPlaying = (() => {
   const last = store.get('lastPlayed', null);
@@ -679,6 +680,10 @@ function renderNowPlaying() {
   $('npIcon').querySelector('use').setAttribute('href', active ? '#i-stop' : '#i-play');
   btn.setAttribute('aria-label', active ? 'Stoppa uppspelning' : (error ? 'Försök igen' : 'Spela'));
   $('volume').setAttribute('aria-label', caster.connected ? 'Volym på ' + caster.device : 'Volym');
+  if (caster.connected) {
+    const rv = Math.round(caster.reportedVolume() * 100);
+    if (rv !== lastVolumeShown) { lastVolumeShown = rv; log('slider', dragging.volume ? 'held, not moved to' : 'moved to', rv, 'shows', $('volume').value); }
+  }
   if (!dragging.volume) $('volume').value = caster.connected ? Math.round(caster.reportedVolume() * 100) : volume;
 }
 
@@ -1215,17 +1220,20 @@ let volTimer = 0;
 // does not always say the finger let go (no pointerup), so let go on every sign of it, and at the
 // latest 2 s after the last movement; otherwise the slider stops following the volume buttons.
 let dragEnd = null;
-const release = () => { dragging.volume = false; clearTimeout(dragEnd); };
-const holding = () => { dragging.volume = true; clearTimeout(dragEnd); dragEnd = setTimeout(release, 2000); };
-vol.addEventListener('pointerdown', holding);
-vol.addEventListener('pointerup', () => { release(); setVolume(+vol.value); });
-['pointercancel', 'lostpointercapture'].forEach((t) => vol.addEventListener(t, release));
+const release = (why) => { if (dragging.volume && caster.connected) log('slider let go:', why); dragging.volume = false; clearTimeout(dragEnd); };
+const holding = (why) => {
+  if (!dragging.volume && caster.connected) log('slider held:', why);
+  dragging.volume = true; clearTimeout(dragEnd); dragEnd = setTimeout(() => release('2 s'), 2000);
+};
+vol.addEventListener('pointerdown', () => holding('pointerdown'));
+vol.addEventListener('pointerup', () => { release('pointerup'); setVolume(+vol.value); });
+['pointercancel', 'lostpointercapture'].forEach((t) => vol.addEventListener(t, () => release(t)));
 vol.addEventListener('input', () => {
-  holding();
+  holding('input');
   const now = Date.now();
   if (now - volTimer > 150) { volTimer = now; setVolume(+vol.value); }
 });
-vol.addEventListener('change', () => { release(); setVolume(+vol.value); });
+vol.addEventListener('change', () => { release('change'); setVolume(+vol.value); });
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {}));

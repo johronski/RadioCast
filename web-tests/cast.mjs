@@ -284,6 +284,8 @@ await scenario('reglaget följer volymknapparna även efter att du dragit i det 
   await t.set('window.sim.buttons(0.8)'); await t.wait(300);
   const v = await t.set("+document.getElementById('volume').value");
   expect(v === 80, 'efter: reglaget följer knapparna, visar ' + v);
+  const log = await t.set("localStorage.getItem('rc.log') || ''");
+  expect(/slider held: pointerdown/.test(log) && /slider let go: change/.test(log) && /set volume 60/.test(log) && /slider moved to 80/.test(log), 'felsökningsloggen visar reglaget och volymen');
 });
 
 await b.close();

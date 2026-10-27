@@ -224,6 +224,7 @@ export function createCaster(app) {
   }
   function volume(level) {
     if (!player) return;
+    app.log('set volume', Math.round(level * 100), 'was', Math.round((player.volumeLevel || 0) * 100));
     player.volumeLevel = level;
     controller.setVolumeLevel();
   }
@@ -321,7 +322,13 @@ export function createCaster(app) {
       ctx.addEventListener(F.CastContextEventType.SESSION_STATE_CHANGED, (e) => onSession(e.sessionState));
       // The remote player changes often (time, volume): redraw only when what is shown changes.
       let shown = '';
-      controller.addEventListener(F.RemotePlayerEventType.ANY_CHANGE, () => {
+      controller.addEventListener(F.RemotePlayerEventType.ANY_CHANGE, (e) => {
+        // Debug log (27 okt): the slider stops following the phone's volume buttons once dragged.
+        if (e && e.field === 'volumeLevel') {
+          let sv = '-';
+          try { const s = session(); if (s && s.getVolume) sv = Math.round(s.getVolume() * 100); } catch (err) { /* older SDK */ }
+          app.log('speaker volume', Math.round((e.value || 0) * 100), 'session', sv);
+        }
         reconcile();
         const now = app.nowPlaying();
         const key = [c.connected, c.state, now && now.url, Math.round(reportedVolume() * 100)].join('|');

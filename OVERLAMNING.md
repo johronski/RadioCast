@@ -33,9 +33,10 @@ Läs detta först. Fråga sedan vad uppgiften gäller och läs bara den del av `
 - Kanalbyte: frågar igen efter 8 s, ger upp och säger till efter 20 s.
 - **Byt högtalare (Android)**: radion spelar vidare medan man väljer (användarens val 26 okt). Kostnad: Chromes automatiska återanslutning gör att listan ibland inte kommer första gången; appen säger då "Tryck Byt högtalare igen". Autojoin (ORIGIN_SCOPED) måste vara på – annars hittar appen inte högtalaren när den öppnas (prövat i 4.7, återställt i 4.8). Alternativ om det blir för jobbigt: tysta gamla högtalaren under valet (säkert byte).
 - **Arbetssätt för castningsfel:** be om felsökningsloggen (⋯ → Om RadioCast → Kopiera felsökningslogg), gör sedan ett testfall i `web-tests/castsim.js`/`cast.mjs` som beter sig som verkligheten, rätta sist. Gissa inte; ändra inte flera saker samtidigt.
-- Senaste version: **Webb 4.13** (27 okt, byggd under pausen på användarens uttryckliga begäran).
+- Senaste version: **Webb 4.14** (27 okt, byggd under pausen på användarens uttryckliga begäran).
 - Volym (4.12): i telefonen (pekskärm) inget reglage – ljudet går alltid på full nivå och telefonens knappar styr; reglaget visas bara vid castning (där följer det telefonens knappar). Datorer behåller reglaget. Den som sänkt reglaget tonas upp en gång vid nästa start, med meddelande (`rc.volumeMoved`).
 - Webb 4.13: reglaget slutade följa volymknapparna efter första dragningen (Chrome i telefonen skickar inte alltid pointerup → appen trodde fingret låg kvar). Släpper nu även vid pointercancel/lostpointercapture/change och senast 2 s efter sista rörelsen. Testfall i cast.mjs (`sim.buttons(nivå)` = volymknapparna).
+- Webb 4.14: hjälpte inte i telefonen (27 okt). Bara loggning: `slider held/let go: orsak`, `set volume X was Y`, `speaker volume X session Y` (Chromes besked), `slider moved to / held, not moved to X shows Y`. Nästa steg: läs loggen från ett försök (casta, dra reglaget, volymknapparna).
 - Tester: playwright finns förinstallerat men ESM hittar det inte – länka `ln -sfn "$(npm root -g)" node_modules` tillfälligt i repot.
 
 ## Uppspelning i telefonen – nätbyten (Webb 4.9)
