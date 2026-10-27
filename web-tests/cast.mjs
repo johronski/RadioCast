@@ -286,6 +286,7 @@ await scenario('reglaget följer volymknapparna även efter att du dragit i det 
   expect(v === 80, 'efter: reglaget följer knapparna, visar ' + v);
   const log = await t.set("localStorage.getItem('rc.log') || ''");
   expect(/slider held: pointerdown/.test(log) && /slider let go: change/.test(log) && /set volume 60/.test(log) && /slider moved to 80/.test(log), 'felsökningsloggen visar reglaget och volymen');
+  expect(/vol poll player 80 session/.test(log), 'felsökningsloggen läser volymen varje sekund');
 });
 
 await b.close();
