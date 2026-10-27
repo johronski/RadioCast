@@ -7,7 +7,7 @@ import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, cover
 import { addHistory, recent } from './history.js';
 import { createCaster } from './cast.js';
 
-const VERSION = 'Webb 4.10';
+const VERSION = 'Webb 4.11';
 
 // ============================================================ stations
 
@@ -275,6 +275,29 @@ function backAgain() {
 }
 
 audio.addEventListener('playing', backAgain);
+
+/** How far the stream has got: position and seconds buffered ahead, for the log. */
+function where() {
+  const b = audio.buffered, t = audio.currentTime;
+  const ahead = b.length ? b.end(b.length - 1) - t : 0;
+  return 't=' + t.toFixed(1) + ' ahead=' + ahead.toFixed(1) + ' rs=' + audio.readyState + ' ns=' + audio.networkState;
+}
+/*
+ * Watchdog: on weak wifi the stream can stop without the browser saying anything (no "waiting",
+ * no error), so it goes quiet while it seems to play. If the position has not moved for 4 s, start again.
+ */
+const watch = { t: -1, since: 0 };
+setInterval(() => {
+  if (localState !== 'playing' || audio.paused || !audio.getAttribute('src')) { watch.t = -1; return; }
+  const now = Date.now();
+  if (audio.currentTime !== watch.t) { watch.t = audio.currentTime; watch.since = now; return; }
+  if (now - watch.since < 4000) return;
+  log('phone frozen', where(), netType());
+  watch.t = -1;
+  if (!retry.lostAt) retry.lostAt = now - 4000;
+  localState = 'buffering';
+  lostStream('frozen');
+}, 1000);
 // Some browsers (Safari) do not always send "playing" for a live stream: time moving on means it plays.
 let lastTime = 0;
 audio.addEventListener('timeupdate', () => {
@@ -288,7 +311,7 @@ audio.addEventListener('waiting', () => {
   if (localState === 'playing') { log('phone waiting', netType()); if (!retry.lostAt) retry.lostAt = Date.now(); }
   localState = 'buffering'; watchStall(); renderAll();
 });
-audio.addEventListener('stalled', () => { if (audio.src && localState !== 'stopped') watchStall(); });
+audio.addEventListener('stalled', () => { if (audio.src && localState !== 'stopped') { log('phone stalled', where()); watchStall(); } });
 audio.addEventListener('error', () => { if (audio.getAttribute('src')) lostStream('error ' + (audio.error ? audio.error.code : '')); });
 // Paused from outside (headphones, a phone call): stop, unless it is our own restart.
 audio.addEventListener('pause', () => {
@@ -305,7 +328,7 @@ function musicActive() {
 }
 function stopMusic() {
   if (busyMoving()) return;
-  log('stop pressed', caster.connected ? 'speaker' : 'phone');
+  log('stop pressed', caster.connected ? 'speaker' : 'phone ' + where());
   if (caster.connected) caster.stop(); else stopLocal();
   renderAll();
 }
