@@ -20,6 +20,10 @@ Castningen samlad i docs/js/cast.js med ett tillstånd (ditt val / högtalarens 
    - Skäl: en webbsida kan inte läsa eller styra telefonens mediavolym. Reglaget i telefonen läggs ovanpå och kan bara sänka, volymknapparna flyttar det inte → "varför är det så tyst?". Vid castning styr det högtalarens volym och behövs.
    - I telefonen: behåll raden från 9b men bara med högtalarvalet ("Telefon ▾"), utan reglage, så spelaren ser likadan ut.
    - Sparad volym ska sättas till 100 % i telefonen, annars fastnar den som en gång sänkt med tyst ljud och inget reglage.
+   - Undvik ljudchock vid uppdateringen (den som haft 20 % får 5× högre, obehagligt i hörlurar): höj aldrig mitt i uppspelning, tona in vid nästa start och visa en gång "Volymen styrs nu med telefonens knappar".
+   - Inget tomrum: liten högtalarikon på reglagets plats; tryck visar "Använd telefonens volymknappar" (webbsidan kan inte öppna telefonens volympanel). Raden hoppar då inte när reglaget kommer vid castning.
+   - Otestat: om volymknapparna styr Chromecast vid castning från Chrome. Prova efter pausen; gör de inte det är reglaget vid castning ännu viktigare.
+   - Web Audio kan förstärka över 100 % men kräver CORS och kan spricka – inget skäl att behålla reglaget i telefonen.
    - Riktig koppling till mediavolymen går bara i Android-skalet (13); då kan reglaget komma tillbaka i telefonen.
 7. ⋯-menyn: egna, tydliga ikoner per rad.
 8. Tydligare hjälp när Chrome inte hittar några högtalare.
