@@ -16,11 +16,15 @@ Castningen samlad i docs/js/cast.js med ett tillstånd (ditt val / högtalarens 
 
 ## Steg 2: Putsa (medel nytta, liten insats)
 5. Dölj bithastighet i listan, utom där den skiljer två strömmar av samma kanal.
-6. Volymreglaget syns bara vid castning. (Delvis klart i Webb 3.2: dolt på iPhone/iPad.)
+6. Volymreglaget syns bara vid castning. (Delvis klart i Webb 3.2: dolt på iPhone/iPad.) **Bygg först efter pausen, före 9c** (27 okt).
+   - Skäl: en webbsida kan inte läsa eller styra telefonens mediavolym. Reglaget i telefonen läggs ovanpå och kan bara sänka, volymknapparna flyttar det inte → "varför är det så tyst?". Vid castning styr det högtalarens volym och behövs.
+   - I telefonen: behåll raden från 9b men bara med högtalarvalet ("Telefon ▾"), utan reglage, så spelaren ser likadan ut.
+   - Sparad volym ska sättas till 100 % i telefonen, annars fastnar den som en gång sänkt med tyst ljud och inget reglage.
+   - Riktig koppling till mediavolymen går bara i Android-skalet (13); då kan reglaget komma tillbaka i telefonen.
 7. ⋯-menyn: egna, tydliga ikoner per rad.
 8. Tydligare hjälp när Chrome inte hittar några högtalare.
 9. Låtvyn: mindre logotyp, låt och historik först.
-9c. Volymkurva (25 okt): örat hör logaritmiskt, reglaget är rakt → svårt att fininställa låga nivåer. Låt volym = läge² (Chromecast, som kanske redan har egen kurva) resp. läge³ (telefonen); 50 % på reglaget ≈ 12,5 % signal. Räkna om sparad volym så inget hoppar vid uppdateringen. Provas med örat. Liten insats.
+9c. Volymkurva (25 okt): örat hör logaritmiskt, reglaget är rakt → svårt att fininställa låga nivåer. Låt volym = läge² (Chromecast, som kanske redan har egen kurva) resp. läge³ (telefonen); 50 % på reglaget ≈ 12,5 % signal. Räkna om sparad volym så inget hoppar vid uppdateringen. Provas med örat. Liten insats. (27 okt: med punkt 6 gäller kurvan bara Chromecast; läge³ för telefonen behövs inte.)
     - Plan (27 okt, ej byggd): bara `docs/js/app.js`, `cast.js` orörd, ca 10 rader. Hjälpfunktioner `curve(pos, n) = (pos/100)^n` och omvänd `100·nivå^(1/n)`; n = 3 i telefonen, n = 2 vid castning. Rad ~197 och ~287: skicka `curve(...)` i stället för `v/100`. Rad ~593: reglaget visar högtalarens volym via omvänd kurva (stämmer även om annan app ändrat). Spara läget under ny nyckel `volumePos`; saknas den räknas gamla `volume` om med `100·(gammal/100)^(1/3)`. Höj version.
     - Test: inget befintligt test rör volym (castsim har tom `setVolumeLevel`) → inga nya testfall. Kör `node --test web-tests/*.test.mjs` och `smoke.mjs`; `cast.mjs` kan hoppas över. Avgörande är örat: låga lägen i telefon och riktig högtalare. n = 2 vid castning är en bedömning, otestad mot riktig hårdvara.
     - Iakttagelse 27 okt: i telefonen (nuvarande raka reglage) är låga volymer redan för låga. En kubisk kurva skulle göra det värre → **telefonen behåller rak kurva (n = 1)**, kurvan gäller bara castning (n = 2). Mindre ändring, ingen omräkning av sparad volym behövs. Om telefonen ska åtgärdas: pröva n = 0,5 (lyfter låga lägen) – först efter att det klarlagts vid vilka lägen det är för tyst.
