@@ -7,7 +7,7 @@ import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, cover
 import { addHistory, recent } from './history.js';
 import { createCaster } from './cast.js';
 
-const VERSION = 'Webb 4.8';
+const VERSION = 'Webb 4.9';
 
 // ============================================================ stations
 
@@ -34,7 +34,7 @@ const DEFAULT_STATIONS = /^sv/i.test(navigator.language || '') ? [
 
 let stations = store.get('stations', null) || DEFAULT_STATIONS.slice();
 
-/** A short log of what happens with the speaker, to copy from "Om RadioCast" when something goes wrong. */
+/** A short log of what happens with the speaker and the stream in the phone, to copy from "Om RadioCast" when something goes wrong. */
 const debugLog = store.get('log', []);
 function log(...parts) {
   const t = new Date().toTimeString().slice(0, 8);
@@ -68,7 +68,7 @@ const caster = createCaster({
   fail: (msg) => { playError = msg; },
 });
 const RETRY_DELAYS = [1000, 2000, 4000, 8000, 15000, 30000];
-const retry = { count: 0, timer: 0, stall: 0, startedAt: 0 };
+const retry = { count: 0, timer: 0, stall: 0, startedAt: 0, lostAt: 0 };
 
 const saveStations = () => store.set('stations', stations);
 
@@ -193,12 +193,13 @@ function startLocal(s, fresh) {
   let src = s.url.startsWith('http://') && location.protocol === 'https:' ? s.url.replace('http://', 'https://') : s.url;
   // On a retry, a new address: Chrome otherwise reuses the dead connection for the same link.
   if (fresh) src += (src.includes('?') ? '&' : '?') + 'rc=' + Date.now();
+  log('phone', fresh ? 'restart' : 'start', shortName(s.name), netType());
   audio.src = src;
   audio.volume = volume / 100;
   audio.play().catch((e) => {
     if (e && e.name === 'NotAllowedError') { clearRetry(); localState = 'stopped'; renderAll(); return; }
     if (e && e.name === 'AbortError') return; // replaced by a newer start
-    lostStream();
+    lostStream('play failed ' + (e && e.name));
   });
 }
 function stopLocal() {
@@ -210,6 +211,7 @@ function stopLocal() {
   localState = 'stopped';
 }
 function failLocal() {
+  log('phone gave up');
   stopLocal();
   playError = 'Strömmen gick inte att spela. Kontrollera länken eller nätet.';
   renderAll();
@@ -222,10 +224,12 @@ function failLocal() {
  */
 function clearRetry() {
   clearTimeout(retry.timer); clearTimeout(retry.stall);
-  retry.count = 0; retry.timer = 0; retry.stall = 0;
+  retry.count = 0; retry.timer = 0; retry.stall = 0; retry.lostAt = 0;
 }
-function lostStream() {
+function lostStream(why) {
   if (localState === 'stopped' || !nowPlaying || retry.timer) return;
+  if (!retry.lostAt) retry.lostAt = Date.now();
+  log('phone lost', why || '', 'try', retry.count + 1);
   clearTimeout(retry.stall); retry.stall = 0;
   if (retry.count >= RETRY_DELAYS.length) { failLocal(); return; }
   const delay = RETRY_DELAYS[retry.count++];
@@ -233,34 +237,66 @@ function lostStream() {
   renderAll();
   retry.timer = setTimeout(() => { retry.timer = 0; if (localState !== 'stopped' && nowPlaying) startLocal(nowPlaying, true); }, delay);
 }
-/** Buffering for long (the network hangs): treat it as lost. */
+/**
+ * Buffering for long (the network hangs): treat it as lost. A stream that already played gets
+ * 4 s (weak wifi: start again sooner), a stream that is still starting gets 8 s.
+ */
 function watchStall() {
   clearTimeout(retry.stall);
-  retry.stall = setTimeout(() => { retry.stall = 0; if (localState === 'buffering') lostStream(); }, 8000);
+  const wait = audio.currentTime > 0 ? 4000 : 8000;
+  retry.stall = setTimeout(() => { retry.stall = 0; if (localState === 'buffering') lostStream('stuck ' + wait / 1000 + ' s'); }, wait);
 }
 window.addEventListener('online', () => {
+  log('phone online', netType());
   if (retry.timer) { clearTimeout(retry.timer); retry.timer = 0; if (nowPlaying) startLocal(nowPlaying, true); }
 });
+window.addEventListener('offline', () => log('phone offline'));
+/** Wifi or mobile data (Chrome on Android tells; other browsers say nothing). */
+function netType() { const c = navigator.connection; return c && c.type ? c.type : ''; }
+// The phone moved between wifi and mobile data: the old connection is about to die, so start
+// again at once instead of waiting for the sound to stop.
+let lastNet = netType();
+if (navigator.connection && navigator.connection.addEventListener) {
+  navigator.connection.addEventListener('change', () => {
+    const now = netType();
+    if (!now || now === lastNet) return; // only speed estimates changed
+    log('phone network', lastNet, '->', now);
+    lastNet = now;
+    if (now === 'none' || localState === 'stopped' || !nowPlaying || !audio.getAttribute('src')) return;
+    clearTimeout(retry.timer); retry.timer = 0;
+    if (!retry.lostAt) retry.lostAt = Date.now();
+    startLocal(nowPlaying, true);
+  });
+}
+function backAgain() {
+  if (retry.lostAt) log('phone plays again after', ((Date.now() - retry.lostAt) / 1000).toFixed(1) + ' s');
+  localState = 'playing'; clearRetry(); renderAll();
+}
 
-audio.addEventListener('playing', () => { localState = 'playing'; clearRetry(); renderAll(); });
+audio.addEventListener('playing', backAgain);
 // Some browsers (Safari) do not always send "playing" for a live stream: time moving on means it plays.
 let lastTime = 0;
 audio.addEventListener('timeupdate', () => {
   const t = audio.currentTime;
-  if (localState === 'buffering' && !audio.paused && t > lastTime + 0.5) { localState = 'playing'; clearRetry(); renderAll(); }
+  if (localState === 'buffering' && !audio.paused && t > lastTime + 0.5) backAgain();
   lastTime = t;
 });
 audio.addEventListener('loadstart', () => { lastTime = audio.currentTime; watchStall(); });
-audio.addEventListener('waiting', () => { if (audio.src && localState !== 'stopped') { localState = 'buffering'; watchStall(); renderAll(); } });
+audio.addEventListener('waiting', () => {
+  if (!audio.src || localState === 'stopped') return;
+  if (localState === 'playing') { log('phone waiting', netType()); if (!retry.lostAt) retry.lostAt = Date.now(); }
+  localState = 'buffering'; watchStall(); renderAll();
+});
 audio.addEventListener('stalled', () => { if (audio.src && localState !== 'stopped') watchStall(); });
-audio.addEventListener('error', () => { if (audio.getAttribute('src')) lostStream(); });
+audio.addEventListener('error', () => { if (audio.getAttribute('src')) lostStream('error ' + (audio.error ? audio.error.code : '')); });
 // Paused from outside (headphones, a phone call): stop, unless it is our own restart.
 audio.addEventListener('pause', () => {
   // A new src pauses the element by itself for a moment: only a pause from outside stops.
   if (!audio.src || audio.ended || localState === 'stopped' || retry.timer || Date.now() - retry.startedAt < 1500) return;
+  log('phone paused from outside');
   localState = 'stopped'; clearRetry(); renderAll();
 });
-audio.addEventListener('ended', () => { if (localState !== 'stopped') lostStream(); }); // a live stream never ends on purpose
+audio.addEventListener('ended', () => { if (localState !== 'stopped') lostStream('ended'); }); // a live stream never ends on purpose
 
 function musicActive() {
   if (caster.moving) return true; // moving between speakers: it plays on
