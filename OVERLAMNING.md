@@ -33,7 +33,9 @@ Läs detta först. Fråga sedan vad uppgiften gäller och läs bara den del av `
 - Kanalbyte: frågar igen efter 8 s, ger upp och säger till efter 20 s.
 - **Byt högtalare (Android)**: radion spelar vidare medan man väljer (användarens val 26 okt). Kostnad: Chromes automatiska återanslutning gör att listan ibland inte kommer första gången; appen säger då "Tryck Byt högtalare igen". Autojoin (ORIGIN_SCOPED) måste vara på – annars hittar appen inte högtalaren när den öppnas (prövat i 4.7, återställt i 4.8). Alternativ om det blir för jobbigt: tysta gamla högtalaren under valet (säkert byte).
 - **Arbetssätt för castningsfel:** be om felsökningsloggen (⋯ → Om RadioCast → Kopiera felsökningslogg), gör sedan ett testfall i `web-tests/castsim.js`/`cast.mjs` som beter sig som verkligheten, rätta sist. Gissa inte; ändra inte flera saker samtidigt.
-- Senaste version: **Webb 4.11** (27 okt, byggd under pausen på användarens uttryckliga begäran).
+- Senaste version: **Webb 4.12** (27 okt, byggd under pausen på användarens uttryckliga begäran).
+- Volym (4.12): i telefonen (pekskärm) inget reglage – ljudet går alltid på full nivå och telefonens knappar styr; reglaget visas bara vid castning (där följer det telefonens knappar). Datorer behåller reglaget. Den som sänkt reglaget tonas upp en gång vid nästa start, med meddelande (`rc.volumeMoved`).
+- Tester: playwright finns förinstallerat men ESM hittar det inte – länka `ln -sfn "$(npm root -g)" node_modules` tillfälligt i repot.
 
 ## Uppspelning i telefonen – nätbyten (Webb 4.9)
 - Felsökningsloggen skriver nu rader med `phone …`: start/restart, waiting, lost (orsak), network wifi -> cellular, online/offline, plays again after X s, gave up.

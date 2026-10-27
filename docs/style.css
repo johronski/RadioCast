@@ -138,6 +138,7 @@ input { font: inherit; color: inherit; }
 .playbtn.buffering { transform: scale(.86); }
 .vol { display: flex; align-items: center; gap: 10px; color: var(--muted); padding: 6px 2px 0; }
 .vol input { flex: 1; accent-color: var(--accent); height: 32px; }
+.vol-hint { flex: 1; line-height: 32px; font-size: .85em; }
 
 /* Search */
 .search { position: fixed; inset: 0; background: var(--bg); z-index: 20; overflow-y: auto; padding: calc(env(safe-area-inset-top) + 8px) 12px 0; }

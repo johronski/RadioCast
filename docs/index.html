@@ -14,7 +14,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="style.css?v=4.11">
+<link rel="stylesheet" href="style.css?v=4.12">
 </head>
 <body>
 <div class="app">
@@ -79,6 +79,7 @@
   <div class="vol">
     <svg class="ico sm" viewBox="0 0 24 24"><use href="#i-volume"/></svg>
     <input id="volume" type="range" min="0" max="100" value="100" aria-label="Volym">
+    <span id="volHint" class="vol-hint" hidden>Volymen styrs med telefonens knappar</span>
   </div>
 </section>
 
@@ -129,6 +130,6 @@
   </defs>
 </svg>
 
-<script type="module" src="js/app.js?v=4.11"></script>
+<script type="module" src="js/app.js?v=4.12"></script>
 </body>
 </html>

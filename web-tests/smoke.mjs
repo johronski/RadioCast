@@ -62,6 +62,29 @@ await p3.goto(url + '#lyssna=' + encodeURIComponent('https://icecast.radiofrance
 await p3.waitForTimeout(500);
 check((await p3.textContent('#snackText')).includes('FIP'), 'delad kanallänk erbjuder kanalen');
 check((await p3.textContent('#outText')) === 'Telefon', 'Telefon är vald från början');
+check(await p.isVisible('#volume'), 'dator: volymreglaget finns kvar');
+// Phone: no slider (it only stacks on the media volume); a lowered one fades in to full once.
+const pc = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+const p4 = await pc.newPage();
+p4.on('pageerror', (e) => errors.push(e.message));
+await p4.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+await p4.addInitScript(() => { if (!localStorage.getItem('rc.volumeMoved')) localStorage.setItem('rc.volume', '20'); });
+await p4.goto(url);
+await p4.waitForFunction(() => window.radiocast && document.querySelectorAll('.row').length > 0, null, { timeout: 10000 });
+await p4.waitForTimeout(900);
+await p4.click('.row >> nth=0');
+await p4.waitForTimeout(300);
+check(await p4.isHidden('#volume') && await p4.isVisible('#volHint'), 'telefon: inget reglage, "telefonens knappar" i stället');
+check((await p4.textContent('#snackText')).includes('telefonens knappar'), 'telefon: säger en gång att volymen flyttat');
+const v0 = await p4.evaluate(() => window.radiocast.audioVolume);
+check(v0 < 0.5, 'telefon: börjar på gamla nivån, inte högt direkt (' + v0.toFixed(2) + ')');
+await p4.waitForTimeout(8500);
+check((await p4.evaluate(() => window.radiocast.audioVolume)) === 1, 'telefon: tonar upp till full nivå');
+await p4.reload();
+await p4.waitForFunction(() => window.radiocast && document.querySelectorAll('.row').length > 0, null, { timeout: 10000 });
+await p4.click('.row >> nth=0'); await p4.waitForTimeout(300);
+check(!(await p4.textContent('#snackText')).includes('telefonens knappar'), 'telefon: meddelandet visas bara en gång');
+check((await p4.evaluate(() => window.radiocast.audioVolume)) === 1, 'telefon: full nivå direkt nästa gång');
 await b.close();
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
 console.log('Allt gick bra.');

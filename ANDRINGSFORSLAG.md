@@ -16,7 +16,7 @@ Castningen samlad i docs/js/cast.js med ett tillstånd (ditt val / högtalarens 
 
 ## Steg 2: Putsa (medel nytta, liten insats)
 5. Dölj bithastighet i listan, utom där den skiljer två strömmar av samma kanal.
-6. Volymreglaget syns bara vid castning. (Delvis klart i Webb 3.2: dolt på iPhone/iPad.) **Bygg först efter pausen, före 9c** (27 okt).
+6. Volymreglaget syns bara vid castning. (Delvis klart i Webb 3.2: dolt på iPhone/iPad.) **KLART i Webb 4.12** (27 okt, byggt under pausen på användarens begäran). I telefonen står i stället texten "Volymen styrs med telefonens knappar" (tydligare än en ikon man måste trycka på). Datorer behåller reglaget.
    - Skäl: en webbsida kan inte läsa eller styra telefonens mediavolym. Reglaget i telefonen läggs ovanpå och kan bara sänka, volymknapparna flyttar det inte → "varför är det så tyst?". Vid castning styr det högtalarens volym och behövs.
    - I telefonen: behåll raden från 9b men bara med högtalarvalet ("Telefon ▾"), utan reglage, så spelaren ser likadan ut.
    - Sparad volym ska sättas till 100 % i telefonen, annars fastnar den som en gång sänkt med tyst ljud och inget reglage.

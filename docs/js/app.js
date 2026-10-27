@@ -7,7 +7,7 @@ import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, cover
 import { addHistory, recent } from './history.js';
 import { createCaster } from './cast.js';
 
-const VERSION = 'Webb 4.11';
+const VERSION = 'Webb 4.12';
 
 // ============================================================ stations
 
@@ -143,6 +143,26 @@ const audio = $('audio');
 
 let localState = 'stopped';   // stopped | buffering | playing
 let volume = store.get('volume', 100);
+/*
+ * Phones: a web page cannot read or set the phone's media volume, and a slider of its own only
+ * stacks on top of it (it can only lower, and the volume buttons do not move it). So in the phone
+ * the sound always plays at full level and the phone's buttons decide; the slider is only shown
+ * while casting, where it is the speaker's own volume. Computers keep the slider.
+ */
+const phoneButtons = isIOS || matchMedia('(pointer: coarse)').matches;
+const localVolume = () => (phoneButtons ? 1 : volume / 100);
+// Moving to that from a lowered slider: never louder mid-play, fade in at the next start, say it once.
+let volumeFade = phoneButtons && volume < 100 && !store.get('volumeMoved', false);
+let fadeTimer = null;
+function fadeInFrom(from) {
+  let k = 0;
+  audio.volume = from;
+  fadeTimer = setInterval(() => {
+    k += 1;
+    audio.volume = Math.min(1, from + (1 - from) * k / 40);
+    if (k >= 40) { clearInterval(fadeTimer); fadeTimer = null; }
+  }, 200);
+}
 
 /*
  * AirPlay (Safari): the page can open Apple's list of speakers, and is told when the sound
@@ -196,7 +216,13 @@ function startLocal(s, fresh) {
   if (fresh) src += (src.includes('?') ? '&' : '?') + 'rc=' + Date.now();
   log('phone', fresh ? 'restart' : 'start', shortName(s.name), netType());
   audio.src = src;
-  audio.volume = volume / 100;
+  if (volumeFade) {
+    volumeFade = false;
+    store.set('volumeMoved', true);
+    log('volume', 'moved to phone buttons from', volume);
+    fadeInFrom(volume / 100);
+    snack('Volymen styrs nu med telefonens knappar.');
+  } else if (!fadeTimer) audio.volume = localVolume();
   audio.play().catch((e) => {
     if (e && e.name === 'NotAllowedError') { clearRetry(); localState = 'stopped'; renderAll(); return; }
     if (e && e.name === 'AbortError') return; // replaced by a newer start
@@ -345,7 +371,7 @@ function togglePlay() {
 function setVolume(v) {
   volume = v;
   store.set('volume', v);
-  if (caster.connected) caster.volume(v / 100); else audio.volume = v / 100;
+  if (caster.connected) caster.volume(v / 100); else audio.volume = localVolume();
 }
 
 // ============================================================ Chromecast (Chrome on Android and computers)
@@ -637,8 +663,10 @@ function renderNowPlaying() {
     title.classList.toggle('past', !song);
     artist.classList.toggle('past', !song);
   }
-  // iPhone and iPad: web pages cannot set the volume (use the phone's buttons), so no slider there.
-  $('np').querySelector('.vol').hidden = isIOS && !caster.connected;
+  // Phones: the slider only while casting; otherwise a note that the phone's buttons decide.
+  const hint = phoneButtons && !caster.connected;
+  $('volume').hidden = hint;
+  $('volHint').hidden = !hint;
   const st = $('npStatus');
   st.textContent = status;
   st.classList.toggle('error', !!error);
@@ -1215,6 +1243,7 @@ window.radiocast = {
   get stations() { return stations; },
   get song() { return songs.current; },
   get nowPlaying() { return nowPlaying; },
+  get audioVolume() { return audio.volume; },
   setPlaying(i) { nowPlaying = stations[i]; localState = 'playing'; songs.watchedUrl = null; renderAll(); return songTick(); },
   recentSongs,
   stepChannel,
