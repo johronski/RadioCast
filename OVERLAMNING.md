@@ -33,10 +33,12 @@ Läs detta först. Fråga sedan vad uppgiften gäller och läs bara den del av `
 - Kanalbyte: frågar igen efter 8 s, ger upp och säger till efter 20 s.
 - **Byt högtalare (Android)**: radion spelar vidare medan man väljer (användarens val 26 okt). Kostnad: Chromes automatiska återanslutning gör att listan ibland inte kommer första gången; appen säger då "Tryck Byt högtalare igen". Autojoin (ORIGIN_SCOPED) måste vara på – annars hittar appen inte högtalaren när den öppnas (prövat i 4.7, återställt i 4.8). Alternativ om det blir för jobbigt: tysta gamla högtalaren under valet (säkert byte).
 - **Arbetssätt för castningsfel:** be om felsökningsloggen (⋯ → Om RadioCast → Kopiera felsökningslogg), gör sedan ett testfall i `web-tests/castsim.js`/`cast.mjs` som beter sig som verkligheten, rätta sist. Gissa inte; ändra inte flera saker samtidigt.
-- Senaste version: **Webb 4.9** (27 okt, byggd under pausen på användarens uttryckliga begäran).
+- Senaste version: **Webb 4.10** (27 okt, byggd under pausen på användarens uttryckliga begäran).
 
 ## Uppspelning i telefonen – nätbyten (Webb 4.9)
 - Felsökningsloggen skriver nu rader med `phone …`: start/restart, waiting, lost (orsak), network wifi -> cellular, online/offline, plays again after X s, gave up.
+- Webb 4.10: loggar `app opened` (med datum), `stop pressed`, tillstånd i `phone network`-raden; knappen Rensa felsökningslogg i Om RadioCast.
+- Öppen fråga 27 okt: vid wifi -> none -> wifi (samma sekund) kom ingen `restart` och inget `waiting`/`lost`, användaren tryckte inte Stopp men startade själv igen efter ~30 s. Orsak okänd – vänta på logg från 4.10.
 - Strömmen startas om direkt när Chrome (Android) säger att nättypen bytts (`navigator.connection` change, bara när `type` ändras).
 - Stopp räknas som förlorat efter 4 s om strömmen redan spelat (förut 8 s); vid start fortfarande 8 s.
 - Otestat mot riktiga nätbyten. Nästa steg: be om loggen efter ett hack. Övervägt sedan: ny ström bredvid den gamla (byte utan tystnad), fördröjningsbuffert 15–20 s (MSE, kräver CORS), sömlöst bara i Android-skalet (13).

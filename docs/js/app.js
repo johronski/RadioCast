@@ -7,7 +7,7 @@ import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, cover
 import { addHistory, recent } from './history.js';
 import { createCaster } from './cast.js';
 
-const VERSION = 'Webb 4.9';
+const VERSION = 'Webb 4.10';
 
 // ============================================================ stations
 
@@ -42,6 +42,7 @@ function log(...parts) {
   if (debugLog.length > 150) debugLog.splice(0, debugLog.length - 150);
   store.set('log', debugLog);
 }
+log('app opened', VERSION, new Date().toISOString().slice(0, 10));
 
 // Shared state and what kind of device this is (defined first: used all over below).
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
@@ -260,7 +261,7 @@ if (navigator.connection && navigator.connection.addEventListener) {
   navigator.connection.addEventListener('change', () => {
     const now = netType();
     if (!now || now === lastNet) return; // only speed estimates changed
-    log('phone network', lastNet, '->', now);
+    log('phone network', lastNet, '->', now, localState, audio.getAttribute('src') ? 'src' : 'no src');
     lastNet = now;
     if (now === 'none' || localState === 'stopped' || !nowPlaying || !audio.getAttribute('src')) return;
     clearTimeout(retry.timer); retry.timer = 0;
@@ -304,6 +305,7 @@ function musicActive() {
 }
 function stopMusic() {
   if (busyMoving()) return;
+  log('stop pressed', caster.connected ? 'speaker' : 'phone');
   if (caster.connected) caster.stop(); else stopLocal();
   renderAll();
 }
@@ -898,7 +900,9 @@ function showMenu() {
       if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => snack('Loggen är kopierad. Klistra in den i chatten.'), () => prompt('Kopiera loggen:', text));
       else prompt('Kopiera loggen:', text);
     };
-    b.append(lg);
+    const clear = el('button', 'btn outline', 'Rensa felsökningslogg');
+    clear.onclick = () => { debugLog.length = 0; store.set('log', debugLog); log('log cleared', VERSION, new Date().toISOString().slice(0, 10)); snack('Loggen är rensad.'); };
+    b.append(lg, clear);
   });
 }
 /** The app's address, for friends: with my channels, or just the app (they start with the basic list). */
