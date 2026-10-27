@@ -1,6 +1,6 @@
 # Överlämning (26 okt 2026)
 
-Läs detta och `ANDRINGSFORSLAG.md` innan något görs.
+Läs detta först. Fråga sedan vad uppgiften gäller och läs bara den del av `ANDRINGSFORSLAG.md` som berörs.
 
 ## Användaren och arbetssätt
 - Svara alltid på **svenska**, kort och tydligt. Användaren sitter oftast i mobilen (Android, Chrome).
