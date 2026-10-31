@@ -113,34 +113,6 @@ export function createCaster(app) {
     return last && Date.now() - last.at < MEMORY_HOURS * 3600000 ? last : null;
   }
 
-  // ------------------------------------------------------------ volume debug log (27 okt)
-  // After a slider change, the phone's volume buttons change the sound but the app hears nothing
-  // for a while. Listen on every layer the page can reach to see where the news stops:
-  // Chrome's raw session object (before Google's library) → the library's session → its remote player.
-  const pct = (v) => (typeof v === 'number' ? Math.round(v * 100) : '-');
-  const rawVolume = (s) => { try { const o = s.getSessionObj(); return pct(o.receiver.volume.level); } catch (e) { return '-'; } };
-  const watched = new WeakSet();
-  function watchVolume(s) {
-    if (!s || watched.has(s)) return;
-    watched.add(s);
-    try {
-      s.addEventListener(window.cast.framework.SessionEventType.VOLUME_CHANGED, (e) => app.log('vol session event', pct(e.volume)));
-    } catch (e) { app.log('vol session event: not available'); }
-    try {
-      let last = rawVolume(s);
-      s.getSessionObj().addUpdateListener(() => { const v = rawVolume(s); if (v !== last) { last = v; app.log('vol raw', v); } });
-    } catch (e) { app.log('vol raw: not available'); }
-  }
-  let polled = '';
-  setInterval(() => {
-    const s = session();
-    if (!c.connected || !s) { polled = ''; return; }
-    let sv = '-';
-    try { sv = pct(s.getVolume()); } catch (e) { /* older SDK */ }
-    const now = 'player ' + pct(player && player.volumeLevel) + ' session ' + sv + ' raw ' + rawVolume(s);
-    if (now !== polled) { polled = now; app.log('vol poll', now); }
-  }, 1000);
-
   // ------------------------------------------------------------ sessions
   function onSession(state) {
     const S = window.cast.framework.SessionState;
@@ -148,7 +120,6 @@ export function createCaster(app) {
     app.log('session', state, s ? sessionDevice(s) : '-', move ? 'move' : '');
     c.connecting = state === S.SESSION_STARTING;
     if (state === S.SESSION_STARTED || state === S.SESSION_RESUMED) {
-      watchVolume(s);
       const id = s.getSessionId();
       c.connected = true;
       c.device = sessionDevice(s);
@@ -253,7 +224,6 @@ export function createCaster(app) {
   }
   function volume(level) {
     if (!player) return;
-    app.log('set volume', Math.round(level * 100), 'was', Math.round((player.volumeLevel || 0) * 100));
     player.volumeLevel = level;
     controller.setVolumeLevel();
   }
@@ -352,12 +322,6 @@ export function createCaster(app) {
       // The remote player changes often (time, volume): redraw only when what is shown changes.
       let shown = '';
       controller.addEventListener(F.RemotePlayerEventType.ANY_CHANGE, (e) => {
-        // Debug log (27 okt): the slider stops following the phone's volume buttons once dragged.
-        if (e && e.field === 'volumeLevel') {
-          let sv = '-';
-          try { const s = session(); if (s && s.getVolume) sv = Math.round(s.getVolume() * 100); } catch (err) { /* older SDK */ }
-          app.log('speaker volume', Math.round((e.value || 0) * 100), 'session', sv);
-        }
         reconcile();
         const now = app.nowPlaying();
         const key = [c.connected, c.state, now && now.url, Math.round(reportedVolume() * 100)].join('|');

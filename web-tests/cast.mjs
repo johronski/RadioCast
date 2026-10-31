@@ -19,7 +19,8 @@ let passed = 0;
 
 const DESKTOP = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 async function scenario(name, setup, run) {
-  const c = await b.newContext({ viewport: { width: 390, height: 844 }, userAgent: (setup && setup.desktop) ? DESKTOP : ANDROID, locale: 'sv-SE' });
+  const c = await b.newContext({ viewport: { width: 390, height: 844 }, userAgent: (setup && setup.desktop) ? DESKTOP : ANDROID, locale: 'sv-SE',
+    hasTouch: !!(setup && setup.touch), isMobile: !!(setup && setup.touch) });
   const p = await c.newPage();
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));
@@ -284,9 +285,16 @@ await scenario('reglaget följer volymknapparna även efter att du dragit i det 
   await t.set('window.sim.buttons(0.8)'); await t.wait(300);
   const v = await t.set("+document.getElementById('volume').value");
   expect(v === 80, 'efter: reglaget följer knapparna, visar ' + v);
-  const log = await t.set("localStorage.getItem('rc.log') || ''");
-  expect(/slider held: pointerdown/.test(log) && /slider let go: change/.test(log) && /set volume 60/.test(log) && /slider moved to 80/.test(log), 'felsökningsloggen visar reglaget och volymen');
-  expect(/vol poll player 80 session/.test(log), 'felsökningsloggen läser volymen varje sekund');
+});
+
+await scenario('telefon: reglaget bara visar högtalarens volym, knapparna styr (4.16)', { touch: true }, async (t, expect) => {
+  await t.set('window.radiocast.setPlaying(0)');
+  await t.connect('Kök'); await t.wait(1500);
+  expect(await t.set("!document.getElementById('volume').hidden && document.getElementById('volume').disabled"), 'reglaget syns men går inte att dra');
+  await t.set('window.sim.buttons(0.3)'); await t.wait(300);
+  expect((await t.set("+document.getElementById('volume').value")) === 30, 'visar knapparnas nivå');
+  await t.set('window.sim.buttons(0.7)'); await t.wait(300);
+  expect((await t.set("+document.getElementById('volume').value")) === 70, 'följer knapparna');
 });
 
 await b.close();

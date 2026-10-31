@@ -7,7 +7,7 @@ import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, cover
 import { addHistory, recent } from './history.js';
 import { createCaster } from './cast.js';
 
-const VERSION = 'Webb 4.15';
+const VERSION = 'Webb 4.16';
 
 // ============================================================ stations
 
@@ -50,7 +50,6 @@ const isAndroid = /Android/i.test(navigator.userAgent);
 const installed = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const SHARE_TEXT = 'RadioCast: webbradio i telefonen, och casting till Chromecast från Chrome. Öppna länken, inget behöver installeras.';
 const dragging = { volume: false };
-let lastVolumeShown = null; // debug log: last speaker volume the slider was told about
 const sheetState = { kind: null };
 let nowPlaying = (() => {
   const last = store.get('lastPlayed', null);
@@ -665,8 +664,12 @@ function renderNowPlaying() {
     artist.classList.toggle('past', !song);
   }
   // Phones: the slider only while casting; otherwise a note that the phone's buttons decide.
+  // While casting it only shows the speaker's volume (4.16): Chrome on the phone keeps its own level
+  // for the volume buttons and does not notice when the page sets the volume, so after a drag the
+  // buttons counted from the old level and the sound dropped. The buttons alone decide now.
   const hint = phoneButtons && !caster.connected;
   $('volume').hidden = hint;
+  $('volume').disabled = phoneButtons;
   $('volHint').hidden = !hint;
   const st = $('npStatus');
   st.textContent = status;
@@ -679,11 +682,7 @@ function renderNowPlaying() {
   btn.querySelector('.ring').hidden = !buffering;
   $('npIcon').querySelector('use').setAttribute('href', active ? '#i-stop' : '#i-play');
   btn.setAttribute('aria-label', active ? 'Stoppa uppspelning' : (error ? 'Försök igen' : 'Spela'));
-  $('volume').setAttribute('aria-label', caster.connected ? 'Volym på ' + caster.device : 'Volym');
-  if (caster.connected) {
-    const rv = Math.round(caster.reportedVolume() * 100);
-    if (rv !== lastVolumeShown) { lastVolumeShown = rv; log('slider', dragging.volume ? 'held, not moved to' : 'moved to', rv, 'shows', $('volume').value); }
-  }
+  $('volume').setAttribute('aria-label', caster.connected ? 'Volym på ' + caster.device + (phoneButtons ? ' (ändras med telefonens knappar)' : '') : 'Volym');
   if (!dragging.volume) $('volume').value = caster.connected ? Math.round(caster.reportedVolume() * 100) : volume;
 }
 
@@ -1220,9 +1219,8 @@ let volTimer = 0;
 // does not always say the finger let go (no pointerup), so let go on every sign of it, and at the
 // latest 2 s after the last movement; otherwise the slider stops following the volume buttons.
 let dragEnd = null;
-const release = (why) => { if (dragging.volume && caster.connected) log('slider let go:', why); dragging.volume = false; clearTimeout(dragEnd); };
-const holding = (why) => {
-  if (!dragging.volume && caster.connected) log('slider held:', why);
+const release = () => { dragging.volume = false; clearTimeout(dragEnd); };
+const holding = () => {
   dragging.volume = true; clearTimeout(dragEnd); dragEnd = setTimeout(() => release('2 s'), 2000);
 };
 vol.addEventListener('pointerdown', () => holding('pointerdown'));
