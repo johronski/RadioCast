@@ -1,0 +1,37 @@
+name: Uppdatera SR-kanaler
+
+# Bygger om Sveriges Radios karta i meta-sources.json (tools/build-sources.mjs).
+# Ändras något öppnas en PR som du godkänner; inget går direkt till main.
+on:
+  schedule:
+    - cron: '41 4 * * 1'   # måndagar
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Bygg kartan
+        run: node tools/build-sources.mjs | tee /tmp/sr.txt
+      - name: Testa
+        run: node --test web-tests/*.test.mjs
+      - name: Öppna PR om något ändrats
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then echo "Inga ändringar."; exit 0; fi
+          git config user.name RadioCast; git config user.email radiocast@users.noreply.github.com
+          git checkout -B sr-sources
+          git commit -am "SR-kanaler: uppdaterad karta"
+          git push -f origin sr-sources
+          { echo 'Automatisk uppdatering från SR:s kanallista. Kontrollera och slå ihop.'; echo; echo '```'; cat /tmp/sr.txt; echo '```'; } > /tmp/body.md
+          gh pr view sr-sources >/dev/null 2>&1 || gh pr create --head sr-sources --base main --title "SR-kanaler: uppdaterad karta" --body-file /tmp/body.md \
+            || { echo "::error::Kunde inte öppna PR. Slå på 'Allow GitHub Actions to create and approve pull requests' under Settings → Actions, eller öppna PR för grenen sr-sources själv."; exit 1; }

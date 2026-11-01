@@ -29,7 +29,10 @@ Läs detta först. Fråga sedan vad uppgiften gäller och läs bara den del av `
 - Nätåtkomst från molnmiljön är begränsad: riktiga strömmar/API:er provas via grenen `probe` (workflow som skriver `probe-result.txt`). Senast (1 nov): `.github/probe/sources.py` – byt skript i `probe.yml` för nya prov.
 
 ## Låtkällor för nya kanaler (1 nov)
-- Förslag och probe-resultat i `ANDRINGSFORSLAG.md`, avsnittet "Låtkällor för nya kanaler". Inget byggt än. Känt fel: `p2` → 163 borde vara 2562.
+- Förslag och probe-resultat i `ANDRINGSFORSLAG.md`, avsnittet "Låtkällor för nya kanaler".
+- **Byggt 1 nov: SR-generatorn** `tools/build-sources.mjs`. Hämtar SR:s kanallista, följer varje kanals mp3-länk och AAC-spellista till kortkoden (`live1.sr.se/p4sth-…` → 701) och skriver om SR-posten i alla tre `meta-sources.json`. Alla 52 SR-kanaler täcks. P2 rättad: `p2` → 2562 (Klassiskt), `p2sm` → 163 (Språk och musik). En kod som flera kanaler leder till går till kanalen utan annan kod. Skydd: under 20 koder eller fel P1/P3 → inget skrivs.
+- `.github/workflows/sr-sources.yml` kör generatorn måndagar (och manuellt) och öppnar PR från grenen `sr-sources` vid ändring. Kräver att "Allow GitHub Actions to create and approve pull requests" är på, annars blir jobbet rött med besked.
+- Ingen versionshöjning: `meta-sources.json` hämtas nätet först vid varje start (webb) resp. från GitHub (Android).
 - Prov i Chromium 1 nov: webbappen får låt för bara 3 av 30 slumpade kanaler (CORS, http, HLS). Bred täckning kräver Android-skalet eller en mellanserver; inget beslut än.
 
 ## Låtlista utan att spela (Webb 4.17, 1 nov)

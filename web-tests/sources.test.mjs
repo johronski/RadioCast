@@ -16,6 +16,25 @@ test('kanalernas listor hittas för rätt strömmar', () => {
   assert.equal(patternFor('https://novazz.ice.infomaniak.ch/novazz-128.mp3').p.id, 'nova');
   assert.equal(patternFor('https://streams.scenesat.com/main/hq.mp3'), null);
 });
+test('Sveriges Radio: alla kanaler via kortkoden (karta från tools/build-sources.mjs)', () => {
+  assert.equal(patternFor('https://live1.sr.se/p2-aac-320').key, '2562'); // P2 Klassiskt
+  assert.equal(patternFor('https://edge1.sr.se/p2-flac').key, '2562');
+  assert.equal(patternFor('https://live1.sr.se/p2sm-aac-320').key, '163'); // P2 Språk och musik
+  assert.equal(patternFor('https://edge1.sr.se/p4sth-aac-320').key, '701');
+  assert.equal(patternFor('https://live1.sr.se/p4uppl-mp3-96').key, '218');
+  assert.equal(patternFor('https://ljud1-cdn.sr.se/lc/p4malm.m3u8').key, '207');
+  assert.equal(patternFor('https://live1.sr.se/dingata-aac-320').key, '2576');
+  assert.equal(patternFor('https://live1.sr.se/okand-aac-320'), null);
+  assert.equal(patternFor('https://www.sverigesradio.se/topsy/direkt/srapi/212.mp3').key, '212');
+});
+test('SR-generatorn: delad kortkod går till kanalen utan annan kod', async () => {
+  const { decide, codeOf, rewrite } = await import('../tools/build-sources.mjs');
+  assert.deepEqual(decide(new Map([[163, ['p2', 'p2sm']], [2562, ['p2']], [132, ['p1']]])), { p2: 2562, p2sm: 163, p1: 132 });
+  assert.equal(codeOf('https://live1.sr.se/p4sth-aac-320'), 'p4sth');
+  assert.equal(codeOf('https://sverigesradio.se/topsy/direkt/srapi/132.mp3'), null);
+  const text = readFileSync(new URL('docs/meta-sources.json', root), 'utf8');
+  assert.equal(rewrite(text, meta.sources.find((s) => s.id === 'sverigesradio-kanal').map), text); // samma karta = samma fil
+});
 test('sökvägar och mallar', () => {
   const j = { playlist: { song: { artist: 'Titiyo', title: 'Come Along' } }, list: [{ n: 'a' }, { n: 'b' }] };
   assert.equal(at(j, 'list[1].n'), 'b');

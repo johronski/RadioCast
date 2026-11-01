@@ -3,7 +3,7 @@ name: Testa webbappen
 on:
   push:
     branches: [main]
-    paths: ['docs/**', 'web-tests/**', 'meta-sources.json', 'app/src/main/assets/meta-sources.json', '.github/workflows/web.yml']
+    paths: ['docs/**', 'web-tests/**', 'tools/**', 'meta-sources.json', 'app/src/main/assets/meta-sources.json', '.github/workflows/web.yml']
   schedule:
     - cron: '17 5 * * 1'   # måndagar: kolla att kanalernas låtlistor fortfarande fungerar
   workflow_dispatch:
