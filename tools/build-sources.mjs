@@ -1,5 +1,5 @@
 // Bygger Sveriges Radios karta i meta-sources.json: kortkod i strömlänken (live1.sr.se/p4sth-aac-320) -> kanal-id (701).
-// Hämtar SR:s kanallista och följer varje kanals strömlänk (…/srapi/<id>.mp3) till länken med kortkod.
+// Hämtar SR:s kanallista och följer varje kanals strömlänkar (mp3-omdirigering och AAC-spellista) till länken med kortkod.
 // Skriver alla tre kopiorna. Kör: node tools/build-sources.mjs   (behöver nät; körs varje vecka av sr-sources.yml)
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -15,20 +15,50 @@ export function codeOf(url) {
   return m ? m[1] : null;
 }
 
-/** Följer omdirigeringar och returnerar alla länkar på vägen. */
+async function get(url, opts = {}) {
+  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 10000);
+  try { return await fetch(url, { ...opts, signal: ac.signal, headers: { 'User-Agent': 'RadioCast-sources' } }); }
+  finally { clearTimeout(t); }
+}
+
+/** Följer omdirigeringar och returnerar alla länkar på vägen (läser aldrig själva ljudet). */
 async function chain(url) {
   const seen = [url];
   for (let i = 0; i < 6; i++) {
-    const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 10000);
     try {
-      const r = await fetch(url, { redirect: 'manual', signal: ac.signal, headers: { 'User-Agent': 'RadioCast-sources' } });
+      const r = await get(url, { redirect: 'manual' });
       const loc = r.headers.get('location');
-      ac.abort();
+      r.body?.cancel().catch(() => {});
       if (!loc || r.status < 300 || r.status >= 400) break;
       url = new URL(loc, url).href; seen.push(url);
-    } catch (e) { break; } finally { clearTimeout(t); }
+    } catch (e) { break; }
   }
   return seen;
+}
+
+/** Kortkoder för en kanal: via mp3-länken och AAC-spellistan (.pls). */
+async function codesFor(c) {
+  const urls = [];
+  if (c.liveaudio && c.liveaudio.url) urls.push(...await chain(c.liveaudio.url));
+  try {
+    const pls = await (await get(`https://sverigesradio.se/topsy/direkt/${c.id}-hi-aac.pls`)).text();
+    for (const m of pls.matchAll(/^File\d+=(\S+)/gm)) urls.push(...await chain(m[1]));
+  } catch (e) { /* bara mp3-vägen */ }
+  return [...new Set(urls.map(codeOf).filter(Boolean))];
+}
+
+/** Kod -> id. En kod som flera kanaler leder till går till den enda av dem som inte har någon annan kod. */
+export function decide(found) {
+  const claims = {};
+  for (const [id, codes] of found) for (const k of codes) (claims[k] = claims[k] || []).push(id);
+  const map = {};
+  for (const [k, ids] of Object.entries(claims)) {
+    if (ids.length === 1) { map[k] = ids[0]; continue; }
+    const only = ids.filter((id) => found.get(id).length === 1);
+    if (only.length === 1) map[k] = only[0];
+    else console.warn(`krock utan lösning: ${k} = ${ids.join(', ')}; hoppar över`);
+  }
+  return map;
 }
 
 /** Ersätter match och map för SR-posten i filens text; resten av filen lämnas orörd. */
@@ -42,20 +72,21 @@ export function rewrite(text, map) {
 }
 
 async function main() {
-  const res = await fetch('https://api.sr.se/api/v2/channels?format=json&pagination=false');
-  const channels = (await res.json()).channels || [];
-  const map = {};
-  const missing = [];
-  await Promise.all(channels.map(async (c) => {
-    const live = c.liveaudio && c.liveaudio.url;
-    const code = live && (await chain(live)).map(codeOf).find(Boolean);
-    if (!code) { missing.push(c.name); return; }
-    if (map[code] && map[code] !== c.id) console.warn(`krock: ${code} = ${map[code]} och ${c.id} (${c.name}); behåller lägsta`);
-    map[code] = Math.min(map[code] || Infinity, c.id);
-    console.log(`${code} -> ${c.id} ${c.name}`);
-  }));
+  const channels = (await (await get('https://api.sr.se/api/v2/channels?format=json&pagination=false')).json()).channels || [];
+  const found = new Map();
+  await Promise.all(channels.map(async (c) => found.set(c.id, await codesFor(c))));
+  const map = decide(found);
+  const name = Object.fromEntries(channels.map((c) => [c.id, c.name]));
+  // Behåll tidigare koder för kanaler som finns kvar men inte gav någon kod nu (tillfälligt fel).
+  const old = JSON.parse(readFileSync(new URL(FILES[0], root), 'utf8')).sources.find((s) => s.id === ID).map || {};
+  const taken = new Set(Object.values(map));
+  for (const [k, id] of Object.entries(old)) {
+    if (!(k in map) && name[id] && !taken.has(id)) { map[k] = id; console.log(`behåller ${k} -> ${id}`); }
+  }
+  for (const k of Object.keys(map).sort()) console.log(`${k} -> ${map[k]} ${name[map[k]] || ''}`);
+  const missing = channels.filter((c) => !Object.values(map).includes(c.id)).map((c) => c.name);
   if (missing.length) console.log('ingen kortkod:', missing.join(', '));
-  // Skydd: blir kartan misstänkt liten har SR ändrat något – skriv inget.
+  // Skydd: ser kartan fel ut har SR ändrat något – skriv inget.
   if (Object.keys(map).length < 20 || map.p1 !== 132 || map.p3 !== 164) {
     console.error('Kartan ser fel ut (' + Object.keys(map).length + ' koder). Ingen fil ändrad.');
     process.exit(1);
