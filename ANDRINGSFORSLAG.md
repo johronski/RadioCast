@@ -48,6 +48,12 @@ Mål: kanaler som läggs till ska få låtlista utan att någon handskriver mön
 - Globalt har bara 3 av radio-browsers 300 mest klickade kanaler en låtkälla. Den stora vinsten ligger i plattformskällorna (punkt 3), inte i fler enskilda kanaler.
 - Radio France: ingen öppen kanalförteckning hittad (två gissade adresser gav 404). Deras `map` får förbli handskriven tills vidare.
 
+**Probe 1 nov, ICY i webbläsaren** (`.github/probe/icy.mjs`, Chromium, 30 slumpade kanaler från radio-browser): låt hittad i 3 av 30 (2 via ICY med `fetch`, 1 via Icecast-statussidan).
+- 13 nekades av `fetch`. Troligen beror det på att rubriken `Icy-MetaData` utlöser en CORS-förfrågan som servern inte svarar på. 11 var bara http och blockeras på https-sidan. 2 var HLS.
+- Ett tidigare prov med 5 kanaler såg lovande ut, men det höll inte. **ICY från webbappen är inte en bred lösning.**
+- Det som når nästan alla kanaler är att läsa ICY utan webbläsarens CORS-regler. Det kan ske i Android-skalet (13), där `SongWatcher.java` redan gör det i den frysta appen. Det kan också ske i en liten mellanserver, till exempel en Cloudflare Worker, som läser strömmen och svarar med låten. Den klarar även http-kanaler men kostar drift och är en ny beroendepunkt.
+- Historik bakåt för okända kanaler finns ändå inte: appen kan bara samla den medan kanalen är öppen eller bevakas.
+
 ## Steg 3: Mer innehåll (medel nytta, medel insats)
 10. Sök: fler genrer synliga (två rader/rutnät), populära kanaler i tomläget.
 11. Riktiga kanallogotyper där radio-browser har dem.

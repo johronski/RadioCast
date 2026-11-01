@@ -30,6 +30,7 @@ Läs detta först. Fråga sedan vad uppgiften gäller och läs bara den del av `
 
 ## Låtkällor för nya kanaler (1 nov)
 - Förslag och probe-resultat i `ANDRINGSFORSLAG.md`, avsnittet "Låtkällor för nya kanaler". Inget byggt än. Känt fel: `p2` → 163 borde vara 2562.
+- Prov i Chromium 1 nov: webbappen får låt för bara 3 av 30 slumpade kanaler (CORS, http, HLS). Bred täckning kräver Android-skalet eller en mellanserver; inget beslut än.
 
 ## Låtlista utan att spela (Webb 4.17, 1 nov)
 - Notikon till höger på raden för kanaler med låtkälla (`patternFor`). Öppnar låtvyn för den kanalen utan att spela: hämtar aktuell låt (`fromPattern`) och historik (`fetchHistory`), knappen "Spela X" startar kanalen. Kod: `peek`/`showSongSheet(station)`/`peekSongs` i `app.js`, `.row .songs` i `style.css`. Testfall i `smoke.mjs`.
