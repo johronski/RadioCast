@@ -1,127 +1,29 @@
-== SR kanaler (api.sr.se/api/v2/channels)
-antal 52
-132 P1 | Rikskanal | https://www.sverigesradio.se/topsy/direkt/srapi/132.mp3 | siteurl https://www.sverigesradio.se/kanaler/p1
-163 P2 | Rikskanal | https://www.sverigesradio.se/topsy/direkt/srapi/163.mp3 | siteurl https://www.sverigesradio.se/kanaler/p2
-164 P3 | Rikskanal | https://www.sverigesradio.se/topsy/direkt/srapi/164.mp3 | siteurl https://www.sverigesradio.se/kanaler/p3
-213 P4 Blekinge | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/213.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-blekinge
-223 P4 Dalarna | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/223.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-dalarna
-205 P4 Gotland | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/205.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-gotland
-210 P4 Gävleborg | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/210.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-gavleborg
-212 P4 Göteborg | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/212.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-goteborg
-220 P4 Halland | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/220.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-halland
-200 P4 Jämtland | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/200.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-jamtland
-203 P4 Jönköping | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/203.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-jonkoping
-201 P4 Kalmar | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/201.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-kalmar
-211 P4 Kristianstad | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/211.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-kristianstad
-214 P4 Kronoberg | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/214.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-kronoberg
-207 P4 Malmöhus | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/207.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-malmo
-209 P4 Norrbotten | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/209.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-norrbotten
-206 P4 Sjuhärad | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/206.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-sjuharad
-208 P4 Skaraborg | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/208.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-skaraborg
-701 P4 Stockholm | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/701.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-stockholm
-202 P4 Sörmland | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/202.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-sormland
-218 P4 Uppland | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/218.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-uppland
-204 P4 Värmland | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/204.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-varmland
-219 P4 Väst | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/219.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-vast
-215 P4 Västerbotten | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/215.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-vasterbotten
-216 P4 Västernorrland | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/216.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-vasternorrland
-217 P4 Västmanland | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/217.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-vastmanland
-221 P4 Örebro | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/221.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-orebro
-222 P4 Östergötland | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/222.mp3 | siteurl https://www.sverigesradio.se/nyheter/p4-ostergotland
-224 SR Sápmi | Minoritet och språk | https://www.sverigesradio.se/topsy/direkt/srapi/224.mp3 | siteurl https://www.sverigesradio.se/sameradion
-226 Sveriges Radio Finska | Minoritet och språk | https://www.sverigesradio.se/topsy/direkt/srapi/226.mp3 | siteurl https://www.sverigesradio.se/finska
-166 P6 | Minoritet och språk | https://www.sverigesradio.se/topsy/direkt/srapi/166.mp3 | siteurl https://www.sverigesradio.se/kanaler/p6
-2576 P3 Din gata | Fler kanaler | https://www.sverigesradio.se/topsy/direkt/srapi/2576.mp3 | siteurl https://www.sverigesradio.se/kanaler/p3-din-gata
-2562 P2 Musik | Fler kanaler | https://www.sverigesradio.se/topsy/direkt/srapi/2562.mp3 | siteurl https://www.sverigesradio.se/kanaler/p2
-2755 Radioapans knattekanal | Fler kanaler | https://www.sverigesradio.se/topsy/direkt/srapi/2755.mp3 | siteurl https://www.sverigesradio.se/kanaler/radioapans-knattekanal
-2383 SR Extra01 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/2383.mp3 | siteurl https://www.sverigesradio.se/
-2384 SR Extra02 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/2384.mp3 | siteurl https://www.sverigesradio.se/
-2385 SR Extra03 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/2385.mp3 | siteurl https://www.sverigesradio.se/
-2386 SR Extra04 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/2386.mp3 | siteurl https://www.sverigesradio.se/
-2387 SR Extra05 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/2387.mp3 | siteurl https://www.sverigesradio.se/
-2388 SR Extra06 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/2388.mp3 | siteurl https://www.sverigesradio.se/
-2389 SR Extra07 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/2389.mp3 | siteurl https://www.sverigesradio.se/
-2390 SR Extra08 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/2390.mp3 | siteurl https://www.sverigesradio.se/
-3268 SR Extra09 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/3268.mp3 | siteurl https://www.sverigesradio.se/
-3269 SR Extra10 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/3269.mp3 | siteurl https://www.sverigesradio.se/
-3703 SR Extra11 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/3703.mp3 | siteurl https://www.sverigesradio.se/
-3704 SR Extra12 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/3704.mp3 | siteurl https://www.sverigesradio.se/
-4842 SR Extra13 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/4842.mp3 | siteurl https://www.sverigesradio.se/
-4866 SR Extra14 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/4866.mp3 | siteurl https://www.sverigesradio.se/
-4868 SR Extra15 | Extrakanaler | https://www.sverigesradio.se/topsy/direkt/srapi/4868.mp3 | siteurl https://www.sverigesradio.se/
-4540 Ekot sänder direkt | Fler kanaler | https://www.sverigesradio.se/topsy/direkt/srapi/4540.mp3 | siteurl https://www.sverigesradio.se/
-4951 P4 Plus | Fler kanaler | https://www.sverigesradio.se/topsy/direkt/srapi/4951.mp3 | siteurl https://www.sverigesradio.se/kanaler/p4-plus
-5283 P4 Södertälje | Lokal kanal | https://www.sverigesradio.se/topsy/direkt/srapi/5283.mp3 | siteurl https://www.sverigesradio.se/sodertalje/
 
-== radio-browser: SR-kanaler (countrycode SE)
-SE-kanaler totalt 262
-ser ut som SR: 60
-OK Sveriges Radio - P3 | https://sverigesradio.se/topsy/direkt/164-hi-mp3.m3u | https://live1.sr.se/p3-mp3-96 | https://sverigesradio.se/p3 | id i SR-lista: [164]
-OK Sveriges Radio - P1 | http://sverigesradio.se/topsy/direkt/132-hi-aac.pls | https://live1.sr.se/p1-aac-320 | https://sverigesradio.se/ | id i SR-lista: [132]
--- Sveriges Radio P4 Stockholm  | https://edge1.sr.se/p4sth-aac-320 | https://edge1.sr.se/p4sth-aac-320 | https://www.sverigesradio.se/stockholm | id i SR-lista: []
-OK Sveriges Radio - P2 Klassiskt | http://sverigesradio.se/topsy/direkt/2562-hi-aac.pls | https://live1.sr.se/p2-aac-320 | https://sverigesradio.se/p2 | id i SR-lista: [2562]
-OK Sveriges Radio P3 | https://edge1.sr.se/p3-aac-320 | https://edge1.sr.se/p3-aac-320 | https://www.sverigesradio.se/p3 | id i SR-lista: []
-OK Sveriges Radio P1 | https://sverigesradio.se/topsy/direkt/132-lo-aac.pls | https://live1.sr.se/p1-aac-32 | https://sverigesradio.se/p1 | id i SR-lista: [132]
-OK Sveriges Radio - P3 | http://sverigesradio.se/topsy/direkt/164-hi-aac.pls | https://live1.sr.se/p3-aac-320 | https://sverigesradio.se/ | id i SR-lista: [164]
-OK Sveriges Radio - P2 | http://sverigesradio.se/topsy/direkt/2562-hi-aac.pls | https://live1.sr.se/p2-aac-320 | https://sverigesradio.se/ | id i SR-lista: [2562]
-OK Sveriges Radio P4 Göteborg | https://www.sverigesradio.se/topsy/direkt/212-hi-aac.m3u | https://live1.sr.se/p4gbg-aac-320 | https://www.sverigesradio/p4goteborg | id i SR-lista: [212]
-OK P4 Västerbotten | https://sverigesradio.se/topsy/direkt/215-hi-mp3.m3u | https://live1.sr.se/p4vbtn-mp3-96 | https://sverigesradio.se/vasterbotten | id i SR-lista: [215]
-OK Sveriges Radio - P4 Plus | http://sverigesradio.se/topsy/direkt/4951-hi-aac.pls | https://live1.sr.se/p4plus-aac-320 | https://sverigesradio.se/ | id i SR-lista: [4951]
-OK Sveriges Radio P2 | https://live1.sr.se/p2-aac-128 | https://live1.sr.se/p2-aac-128 | https://sverigesradio.se/p2 | id i SR-lista: []
-OK Sveriges Radio P1 | https://edge1.sr.se/p1-aac-320 | https://edge1.sr.se/p1-aac-320 | https://www.sverigesradio/p1 | id i SR-lista: []
-OK Sveriges Radion P4 Östergötland | https://sverigesradio.se/topsy/direkt/222-hi-mp3.m3u | https://live1.sr.se/p4ostg-mp3-96 | https://sverigesradio.se/ostergotland | id i SR-lista: [222]
-OK Sveriges Radio - Ekot sänder direkt | http://sverigesradio.se/topsy/direkt/4540-hi-aac.pls | https://live1.sr.se/ekotdirekt-aac-320 | https://sverigesradio.se/ | id i SR-lista: [4540]
-OK Sveriges Radio P2 flac | https://edge1.sr.se/p2-flac | https://edge1.sr.se/p2-flac | https://www.sverigesradio/p2 | id i SR-lista: []
-OK Sveriges Radio P2 flac | https://live1.sr.se/p2-flac | https://live1.sr.se/p2-flac | https://www.sverigesradio.se/p2 | id i SR-lista: []
--- SR P2 (128k HLS) | https://ljud2-cdn.sr.se/lc/p2/p2_128.pls | https://ljud2-cdn.sr.se/lc/p2/p2_128.pls | https://www.sverigesradio.se/kanaler/p2 | id i SR-lista: []
-OK SR P4 Malmöhus | https://sverigesradio.se/topsy/direkt/207-hi-mp3.m3u | https://live1.sr.se/p4malm-mp3-96 | https://sverigesradio.se/tabla.aspx?programid=207 | id i SR-lista: [207]
-OK Sveriges Radio P1 | https://sverigesradio.se/topsy/direkt/132-hi-mp3.m3u | https://live1.sr.se/p1-mp3-96 | https://sverigesradio.se/p1 | id i SR-lista: [132]
--- Sveriges Radio P4 Uppland | https://live1.sr.se/p4uppl-aac-320 | https://live1.sr.se/p4uppl-aac-320 | https://www.sr.se/ | id i SR-lista: []
-OK SR P2  | https://live1.sr.se/p2-flac | https://live1.sr.se/p2-flac | https://sverigesradio.se/p2 | id i SR-lista: []
--- Sveriges Radio P4 Gävleborg | https://live1.sr.se/p4gavl-mp3-96 | https://live1.sr.se/p4gavl-mp3-96 | https://www.sverigesradio.se/nyheter/p4-gavleborg | id i SR-lista: []
-OK Sveriges Radio P1 | https://sverigesradio.se/topsy/direkt/132-hi-mp3.m3u | https://live1.sr.se/p1-mp3-96 | https://sverigesradio.se/p1 | id i SR-lista: [132]
-OK Sveriges Radio - P4 Blekinge | https://sverigesradio.se/topsy/direkt/213-lo-mp3.m3u | https://live1.sr.se/p4blek-mp3-96 | https://sverigesradio.se/blekinge | id i SR-lista: [213]
--- P4 Värmland | https://live1.sr.se/p4vrml-aac-320 | https://live1.sr.se/p4vrml-aac-320 | https://www.sverigesradio.se/ | id i SR-lista: []
-OK P4 Västmanland | https://sverigesradio.se/topsy/direkt/217-hi-mp3.m3u | https://live1.sr.se/p4vstm-mp3-96 | https://sverigesradio.se/ | id i SR-lista: [217]
--- P4 Plus | https://live1.sr.se/p4plus-mp3-96 | https://live1.sr.se/p4plus-mp3-96 | https://www.sverigesradio.se/kanaler/p4-plus | id i SR-lista: []
-OK Sveriges Radio - P2 Språk och musik | http://sverigesradio.se/topsy/direkt/163-hi-aac.pls | https://live1.sr.se/p2sm-aac-320 | https://sverigesradio.se/ | id i SR-lista: [163]
--- SR4- Sthlm | https://live1.sr.se/p4sth-aac-32 | https://live1.sr.se/p4sth-aac-32 | https://www.sverigesradio.se/ | id i SR-lista: []
-OK Sveriges radio P2 flac | https://edge1.sr.se/p2-flac | https://edge1.sr.se/p2-flac | https://www.sverigesradio/p2 | id i SR-lista: []
-OK Sveriges Radio P4 Malmöhus | https://sverigesradio.se/topsy/direkt/207-hi-mp3.m3u | https://live1.sr.se/p4malm-mp3-96 | https://sverigesradio.se/tabla.aspx?programid=207 | id i SR-lista: [207]
--- SR P4 Jönköping | https://live1.sr.se/p4jkpg-aac-320 | https://live1.sr.se/p4jkpg-aac-320 | https://www.sverigesradio.se/nyheter/p4-jonkoping | id i SR-lista: []
-OK Sveriges Radio - P4 Sjuhärad | https://www.sverigesradio.se/topsy/direkt/srapi/206.mp3 | https://www.sverigesradio.se/topsy/direkt/srapi/206.mp3 | https://www.sverigesradio.se/nyheter/p4-sjuharad | id i SR-lista: [206]
-OK Sveriges Radio - P1 | http://sverigesradio.se/topsy/direkt/srapi/132-hi-aac-http | http://sverigesradio.se/topsy/direkt/srapi/132-hi-aac-http | https://sverigesradio.se/ | id i SR-lista: [132]
-OK Sveriges radio P3 (mp3) | https://sverigesradio.se/topsy/direkt/164-hi-mp3.m3u | https://live1.sr.se/p3-mp3-96 | https://sverigesradio.se/P3 | id i SR-lista: [164]
-OK P4 Västernorrland | https://sverigesradio.se/topsy/direkt/216-hi-mp3.m3u | https://live1.sr.se/p4vnrl-mp3-96 | https://sverigesradio.se/ | id i SR-lista: [216]
--- Sveriges Radio P4 Dalarna | https://live1.sr.se/p4dala-aac-320 | https://live1.sr.se/p4dala-aac-320 | https://www.sverigesradio.se/nyheter/p4-dalarna | id i SR-lista: []
-OK Sveriges Radio P1 | https://live1.sr.se/p1-mp3-96 | https://live1.sr.se/p1-mp3-96 | https://www.sverigesradio.se/ | id i SR-lista: []
-OK SR P1 | https://live1.sr.se/p1-aac-32 | https://live1.sr.se/p1-aac-32 | https://www.sverigesradio.se/kanaler | id i SR-lista: []
--- Sveriges Radio P4 Malmöhus | https://live1.sr.se/p4malm-aac-32 | https://live1.sr.se/p4malm-aac-32 | https://www.sverigesradio.se/kanaler | id i SR-lista: []
-OK P4 Jämtland | https://sverigesradio.se/topsy/direkt/200-hi-aac.m3u | https://live1.sr.se/p4jmtl-aac-320 | https://sr.se/ | id i SR-lista: [200]
-OK P4 Kalmar | https://sverigesradio.se/topsy/direkt/201-hi-mp3.m3u | https://live1.sr.se/p4kalm-mp3-96 | https://sverigesradio.se/kalmar | id i SR-lista: [201]
-OK SVT P1 192kps | http://sverigesradio.se/topsy/direkt/132-hi-mp3.m3u | https://live1.sr.se/p1-mp3-96 | https://sverigesradio.se/p1# | id i SR-lista: [132]
--- Sveriges Radio - P4 Väst | https://live1.sr.se/p4vast-mp3-96 | https://live1.sr.se/p4vast-mp3-96 | https://www.sverigesradio.se/vast | id i SR-lista: []
--- Sveriges Radio P4 Halland | https://live1.sr.se/p4hall-aac-128 | https://live1.sr.se/p4hall-aac-128 | https://www.sverigesradio.se/nyheter/p4-halland | id i SR-lista: []
-OK Sveriges Radio P2 flac | https://edge1.sr.se/p2-flac | https://edge1.sr.se/p2-flac | https://www.sverigesradio.se/p2 | id i SR-lista: []
-OK Sveiges Radio - P4 Malmöhus | https://sverigesradio.se/topsy/direkt/207-hi.mp3 | https://sverigesradio.se/topsy/direkt/207-hi.mp3 | https://sverigesradio.se/malmohus | id i SR-lista: [207]
--- Sveriges Radio -P4 Stockholm | https://live1.sr.se/p4sth-aac-32 | https://live1.sr.se/p4sth-aac-32 | https://www.sverigesradio.se/ | id i SR-lista: []
--- P4 VÄRMLAND | https://live1.sr.se/p4vrml-aac-320 | https://live1.sr.se/p4vrml-aac-320 | https://www.sverigesradio.se/ | id i SR-lista: []
--- Sveriges Radio - P4 Halland | https://sverigesradio.se/topsy/ljudfil/srse/8266576.mp3 | https://sverigesradio.se/topsy/ljudfil/srse/8266576.mp3 | https://sverigesradio.se/halland | id i SR-lista: []
-OK Sveriges Radio - P3 Din gata | http://sverigesradio.se/topsy/direkt/2576-hi-aac.pls | https://live1.sr.se/dingata-aac-320 | https://sverigesradio.se/ | id i SR-lista: [2576]
-OK Sveiges Radio - P4 Kristianstad | https://sverigesradio.se/topsy/direkt/211-hi-mp3.m3u | https://live1.sr.se/p4krist-mp3-96 | https://sverigesradio.se/kristianstad | id i SR-lista: [211]
--- Sveriges Radio P4 Värmland | https://live1.sr.se/p4vrml-mp3-96 | https://live1.sr.se/p4vrml-mp3-96 | https://www.sverigesradio.se/ | id i SR-lista: []
-OK P4 Västernorrland | https://sverigesradio.se/topsy/direkt/216-hi-mp3.pls | https://live1.sr.se/p4vnrl-mp3-96 | https://sverigesradio.se/ | id i SR-lista: [216]
-OK Sveriges Radio - P6 | http://sverigesradio.se/topsy/direkt/166-hi-aac.pls | https://live1.sr.se/p6-aac-320 | https://sverigesradio.se/ | id i SR-lista: [166]
-OK P4 Västernorrland | https://sverigesradio.se/topsy/direkt/216-hi-aac.pls | https://live1.sr.se/p4vnrl-aac-320 | https://sverigesradio.se/ | id i SR-lista: [216]
-OK Sveriges Radio - P2 | https://edge1.sr.se/p2-flac | https://edge1.sr.se/p2-flac | https://sverigesradio.se/ | id i SR-lista: []
--- SR P4 Radio Malmöhus | https://live1.sr.se/p4malm-mp3-96 | https://live1.sr.se/p4malm-mp3-96 | https://www.sverigesradio.se/nyheter/p4-malmohus | id i SR-lista: []
--- SR P4 Radio Malmöhus | https://ljud1-cdn.sr.se/lc/p4malm.m3u8 | https://ljud1-cdn.sr.se/lc/p4malm.m3u8 | https://www.sverigesradio.se/nyheter/p4-malmohus | id i SR-lista: []
-träffas av dagens mönster: 42 av 60
+== Radio Canada Ici Musique (Manitoba) Winnipeg, MB | CA | AAC 48 | https://rcavliveaudio.akamaized.net/hls/live/2006998/M-7MWIN0_WIN/master.m3u8
+  mönster: ingen
+  icecast-status: nej ( HTTP Error 400: Bad Request )
+  server: AkamaiNetStorage | CORS ström: https://johronski.github.io | icy-metaint: None
 
-== radio-browser: topp 300 globalt, andel med låtkälla
-3 av 300
-vanligaste värdar: [('zeno.fm', 19), ('streamtheworld.com', 16), ('akamaized.net', 11), ('musicradio.com', 9), ('infomaniak.ch', 9), ('walmradio.com', 8), ('rndfnk.com', 6), ('revma.com', 6), ('com.tr', 5), ('wdr.de', 5), ('qtfm.cn', 5), ('co.kr', 5), ('cdnstream1.com', 4), ('nrjaudio.fm', 4), ('radyositesihazir.com', 4), ('dlf.de', 4), ('radiofrance.fr', 4), ('radiojar.com', 4), ('flumotion.com', 4), ('hostingradio.ru', 4), ('radioho.st', 4), ('co.uk', 3), ('laut.fm', 3), ('qingting.fm', 3), ('somafm.com', 3)]
+== Exclusively Lady Gaga | AE | MP3 128 | https://nl4.mystreaming.net/er-app/ladygaga/icecast.audio
+  mönster: ingen
+  icecast-status: nej ( HTTP Error 404: Not Found )
+  server: Kestrel | CORS ström: * | icy-metaint: 16000
+  ICY: Lady Gaga - Blade Of Grass
 
-== Radio France: finns kanalförteckning?
-https://api.radiofrance.fr/livemeta/pull ERR HTTP Error 404: Not Found
-https://www.radiofrance.fr/api/v2.1/stations ERR HTTP Error 404: Not Found
+== Studio 2000 Mousiko Leoforeio | GR | MP3 256 | https://webinternetradio.eu:48723/
+  mönster: ingen
+  icecast-status: CORS * | titel:  – (ingen matchande ström)
+  server: Icecast 2.4.4 | CORS ström: * | icy-metaint: 16000
+  ICY: Βασίλης Τερλέγκας - ‎– Τι Ψάχνεις Από Μένα [8Qr]
+
+== Rádio 7 | SK | MP3 128 | https://play.radio7.sk/128
+  mönster: ingen
+  icecast-status: CORS * | titel:  – MaranaTha - V Tvojej lÃ¡ske strachu niet
+  server: Icecast 2.4.4 | CORS ström: * | icy-metaint: 16000
+  ICY: MaranaTha - V Tvojej láske strachu niet
+
+== Vibe FM | RO | AAC 64 | https://astreaming.vibefm.ro:8443/vibe_ro64
+  mönster: ingen
+  icecast-status: CORS * | titel:  – None
+  server: nginx | CORS ström: * | icy-metaint: 16000
+  ICY: 
