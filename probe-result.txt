@@ -1,67 +1,67 @@
-srextra13 -> 4842 SR Extra13
-srextra14 -> 4866 SR Extra14
-srextra11 -> 3703 SR Extra11
+dingata -> 2576 P3 Din gata
+ekotdirekt -> 4540 Ekot sänder direkt
+finska -> 226 Sveriges Radio Finska
+knattekanalen -> 2755 Radioapans knattekanal
+p1 -> 132 P1
+p2 -> 2562 P2 Musik
+p2sm -> 163 P2
+p3 -> 164 P3
+p4blek -> 213 P4 Blekinge
+p4dala -> 223 P4 Dalarna
+p4digi -> 5283 P4 Södertälje
+p4gavl -> 210 P4 Gävleborg
+p4gbg -> 212 P4 Göteborg
+p4gotl -> 205 P4 Gotland
+p4hall -> 220 P4 Halland
 p4helsingborg -> 4868 SR Extra15
-srextra07 -> 2389 SR Extra07
-srextra02 -> 2384 SR Extra02
-srextra06 -> 2388 SR Extra06
-srextra12 -> 3704 SR Extra12
-srextra10 -> 3269 SR Extra10
+p4jkpg -> 203 P4 Jönköping
+p4jmtl -> 200 P4 Jämtland
+p4kalm -> 201 P4 Kalmar
+p4krist -> 211 P4 Kristianstad
+p4kron -> 214 P4 Kronoberg
+p4malm -> 207 P4 Malmöhus
+p4nbtn -> 209 P4 Norrbotten
+p4oreb -> 221 P4 Örebro
+p4ostg -> 222 P4 Östergötland
+p4plus -> 4951 P4 Plus
+p4sju -> 206 P4 Sjuhärad
+p4skbg -> 208 P4 Skaraborg
+p4sorm -> 202 P4 Sörmland
+p4sth -> 701 P4 Stockholm
+p4uppl -> 218 P4 Uppland
+p4vast -> 219 P4 Väst
+p4vbtn -> 215 P4 Västerbotten
+p4vnrl -> 216 P4 Västernorrland
+p4vrml -> 204 P4 Värmland
+p4vstm -> 217 P4 Västmanland
+p6 -> 166 P6
+sameradion -> 224 SR Sápmi
 srextra01 -> 2383 SR Extra01
+srextra02 -> 2384 SR Extra02
 srextra03 -> 2385 SR Extra03
 srextra04 -> 2386 SR Extra04
 srextra05 -> 2387 SR Extra05
+srextra06 -> 2388 SR Extra06
+srextra07 -> 2389 SR Extra07
 srextra08 -> 2390 SR Extra08
-p4sju -> 206 P4 Sjuhärad
-p1 -> 132 P1
-p4digi -> 5283 P4 Södertälje
-p4plus -> 4951 P4 Plus
-p4jkpg -> 203 P4 Jönköping
-p4sorm -> 202 P4 Sörmland
-dingata -> 2576 P3 Din gata
-ekotdirekt -> 4540 Ekot sänder direkt
-p4oreb -> 221 P4 Örebro
-p4gavl -> 210 P4 Gävleborg
-p4vstm -> 217 P4 Västmanland
-p4vast -> 219 P4 Väst
-p6 -> 166 P6
-p4kron -> 214 P4 Kronoberg
-p4vrml -> 204 P4 Värmland
-p2 -> 163 P2
-p4vnrl -> 216 P4 Västernorrland
-knattekanalen -> 2755 Radioapans knattekanal
-p4vbtn -> 215 P4 Västerbotten
-p4hall -> 220 P4 Halland
-p4malm -> 207 P4 Malmöhus
-p4gotl -> 205 P4 Gotland
-p3 -> 164 P3
-p4sth -> 701 P4 Stockholm
-p4blek -> 213 P4 Blekinge
-p4jmtl -> 200 P4 Jämtland
-sameradion -> 224 SR Sápmi
-p4kalm -> 201 P4 Kalmar
-p4ostg -> 222 P4 Östergötland
-krock: p2 = 163 och 2562 (P2 Musik); behåller lägsta
-p2 -> 2562 P2 Musik
-p4uppl -> 218 P4 Uppland
-finska -> 226 Sveriges Radio Finska
-p4nbtn -> 209 P4 Norrbotten
 srextra09 -> 3268 SR Extra09
-p4krist -> 211 P4 Kristianstad
-p4dala -> 223 P4 Dalarna
-ingen kortkod: P4 Göteborg, P4 Skaraborg
-49 koder skrivna till 3 filer.
+srextra10 -> 3269 SR Extra10
+srextra11 -> 3703 SR Extra11
+srextra12 -> 3704 SR Extra12
+srextra13 -> 4842 SR Extra13
+srextra14 -> 4866 SR Extra14
+52 koder skrivna till 3 filer.
 EXIT 0
- app/src/main/assets/meta-sources.json |  50 +++++++++-
- docs/meta-sources.json                |  50 +++++++++-
- meta-sources.json                     |  50 +++++++++-
- probe-result.txt                      | 183 ++++++++++------------------------
- 4 files changed, 198 insertions(+), 135 deletions(-)
+ app/src/main/assets/meta-sources.json |  55 +++++++++++-
+ docs/meta-sources.json                |  55 +++++++++++-
+ meta-sources.json                     |  55 +++++++++++-
+ probe-result.txt                      | 155 ++++++++++------------------------
+ 4 files changed, 199 insertions(+), 121 deletions(-)
 diff --git a/meta-sources.json b/meta-sources.json
-index 324adcb..2f06e1a 100644
+index 324adcb..6ef6167 100644
 --- a/meta-sources.json
 +++ b/meta-sources.json
-@@ -35,11 +35,57 @@
+@@ -35,11 +35,60 @@
      },
      {
        "id": "sverigesradio-kanal",
@@ -73,13 +73,16 @@ index 324adcb..2f06e1a 100644
 +        "finska": 226,
 +        "knattekanalen": 2755,
          "p1": 132,
-         "p2": 163,
+-        "p2": 163,
 -        "p3": 164
++        "p2": 2562,
++        "p2sm": 163,
 +        "p3": 164,
 +        "p4blek": 213,
 +        "p4dala": 223,
 +        "p4digi": 5283,
 +        "p4gavl": 210,
++        "p4gbg": 212,
 +        "p4gotl": 205,
 +        "p4hall": 220,
 +        "p4helsingborg": 4868,
@@ -94,6 +97,7 @@ index 324adcb..2f06e1a 100644
 +        "p4ostg": 222,
 +        "p4plus": 4951,
 +        "p4sju": 206,
++        "p4skbg": 208,
 +        "p4sorm": 202,
 +        "p4sth": 701,
 +        "p4uppl": 218,
