@@ -1,29 +1,129 @@
+Hawaiian Rainbow Radio | US | MP3
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://fwd.autopo.st/hawaiianrainbow/;stream.mp3
+Núcleo FM | MX | MP3
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://listen.openstream.co/7485/audio
+RTL 93.3 - 97.0 | DE | MP3
+  ICY: http – blockeras på https-sidan
+  status: -
+  http://stream.rtlradio.de/rtl-de-ukw/mp3-128/konsole/
+Nova 100 Dansk | DK | AAC+
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://live-bauerdk.sharp-stream.com/DK_HQ_RP11.aac
+Marso Radijas | LT | MP3
+  ICY: fetch nekad (CORS/nät)
+  status: titel: Anthony Pappa, Fauxplay - Voltaire (Original Mix)
+  https://radijas.marsas.me/live
+RadCap - Symphogoth | RU | AAC+
+  ICY: http – blockeras på https-sidan
+  status: -
+  http://213.141.131.10:8002/symphogoth
+Radiónica (HJYM 99.1 Bogotá) RTVC | CO | AAC+
+  ICY: http – blockeras på https-sidan
+  status: -
+  http://shoutcast.rtvc.gov.co:8010/;
+Octaaf Radio | NL | MP3
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://86.105.224.34:8000/radio.mp3
+RMC FR | FR | MP3
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://audio.bfmtv.com/rmcradio_128.mp3
+Greatest Hits 1920's | AE | MP3
+  ICY: titel "Fred  and  Adele Astaire - I" (metaint läsbar: true)
+  status: nej
+  https://drive.uber.radio/uber/boomerang1920s/icecast.audio
+MusicStarZucchero | IT | MP3
+  ICY: http – blockeras på https-sidan
+  status: -
+  http://icy.unitedradio.it/Zucchero.mp3
+MIX 80s (iHeart Radio) - Online - ACIR O | MX | AAC+
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://playerservices.streamtheworld.com/api/livestream-redirect/ACIR13_s01AAC.aac
+Majestic Juikebox Radio | US | AAC+
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://uk3.internet-radio.com/proxy/majesticjukebox/stream?t=1790775177953
+88.9 Super Estación | CO | MP3
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://servidor40-5.brlogic.com:7006/live
+BDJ Eurodance 90s | DE | MP3
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://stream-90s.bdjradio.com/
+RADJU MARIJA MALTA | MT | MP3
+  ICY: http – blockeras på https-sidan
+  status: -
+  http://dreamsiteradiocp.com:8102/stream
+WQXR 105.9 FM | US | AAC+
+  ICY: http – blockeras på https-sidan
+  status: -
+  http://stream.wqxr.org/wqxr.aac?nyprBrowserId=14c375bfe5dc0500
+Carbon Radio | US | MP3
+  ICY: titel "love is all we are" (metaint läsbar: true)
+  status: nej
+  https://radio.carbonradio.live/listen/carbonradio/radio.mp3
+Mega St☆r Colombia | CO | AAC
+  ICY: http – blockeras på https-sidan
+  status: -
+  http://stream.zeno.fm/h9x7hs6aqs8uv
+NRJ Hamburg | DE | MP3
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://frontend.streamonkey.net/energy-hamburg/stream/mp3
+=KECO=70s ROCK | AU | MP3
+  ICY: http – blockeras på https-sidan
+  status: -
+  http://jfm1.hostingradio.ru:14536/rock70.mp3
+Радио Дарик Русе 91.6 FM | BG | MP3
+  ICY: titel "" (metaint läsbar: true)
+  status: nej
+  https://a12.asurahosting.com/listen/darik_radio/radio.mp3
+CCTV-12社会与法伴音 | CN | UNKNOWN
+  ICY: HLS – ingen ICY
+  status: -
+  https://piccpndali.v.myalicdn.com/audio/cctv12_2.m3u8
+No Agenda Stream | US | MP3
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://listen.noagendastream.com/noagenda
+QUEER RADIO | CH | MP3
+  ICY: fetch nekad (CORS/nät)
+  status: nej
+  https://solid67.streamupsolutions.com/proxy/eyprxrqz?mp=/stream
+BBC Radio 3 (128k) | GB | UNKNOWN
+  ICY: http – blockeras på https-sidan
+  status: -
+  http://as-hls-ww-live.akamaized.net/pool_23461179/live/ww/bbc_radio_three/bbc_radio_three.isml/bbc_radio_three-audio%3d128000.norewind.m3u8
+SWR3 | DE | AAC
+  ICY: HLS – ingen ICY
+  status: -
+  https://liveradio.swr.de/sw73hl2/swr3/play.m3u8
+90.1 Happy FM | AU | MP3
+  ICY: fetch nekad (CORS/nät)
+  status: titel: 
+  https://stream.sigile.net/happyfm-128-mp3?1692452622660
+TT-Node DAB+ | FR | MP3
+  ICY: http – blockeras på https-sidan
+  status: -
+  http://stream.p-node.org/dab.mp3
+Noise FM - EDM Radio | RU | MP3
+  ICY: http – blockeras på https-sidan
+  status: -
+  http://play.sas-media.ru/play_256
 
-== Radio Canada Ici Musique (Manitoba) Winnipeg, MB | CA | AAC 48 | https://rcavliveaudio.akamaized.net/hls/live/2006998/M-7MWIN0_WIN/master.m3u8
-  mönster: ingen
-  icecast-status: nej ( HTTP Error 400: Bad Request )
-  server: AkamaiNetStorage | CORS ström: https://johronski.github.io | icy-metaint: None
-
-== Exclusively Lady Gaga | AE | MP3 128 | https://nl4.mystreaming.net/er-app/ladygaga/icecast.audio
-  mönster: ingen
-  icecast-status: nej ( HTTP Error 404: Not Found )
-  server: Kestrel | CORS ström: * | icy-metaint: 16000
-  ICY: Lady Gaga - Blade Of Grass
-
-== Studio 2000 Mousiko Leoforeio | GR | MP3 256 | https://webinternetradio.eu:48723/
-  mönster: ingen
-  icecast-status: CORS * | titel:  – (ingen matchande ström)
-  server: Icecast 2.4.4 | CORS ström: * | icy-metaint: 16000
-  ICY: Βασίλης Τερλέγκας - ‎– Τι Ψάχνεις Από Μένα [8Qr]
-
-== Rádio 7 | SK | MP3 128 | https://play.radio7.sk/128
-  mönster: ingen
-  icecast-status: CORS * | titel:  – MaranaTha - V Tvojej lÃ¡ske strachu niet
-  server: Icecast 2.4.4 | CORS ström: * | icy-metaint: 16000
-  ICY: MaranaTha - V Tvojej láske strachu niet
-
-== Vibe FM | RO | AAC 64 | https://astreaming.vibefm.ro:8443/vibe_ro64
-  mönster: ingen
-  icecast-status: CORS * | titel:  – None
-  server: nginx | CORS ström: * | icy-metaint: 16000
-  ICY: 
+SAMMANFATTNING (30 kanaler): {
+ "fetch nekad": 13,
+ "http – blockeras på https-sidan": 11,
+ "låt bara via statussida": 1,
+ "låt via ICY": 2,
+ "titel": 1,
+ "HLS – ingen ICY": 2
+}
