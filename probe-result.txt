@@ -1,129 +1,123 @@
-Hawaiian Rainbow Radio | US | MP3
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://fwd.autopo.st/hawaiianrainbow/;stream.mp3
-Núcleo FM | MX | MP3
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://listen.openstream.co/7485/audio
-RTL 93.3 - 97.0 | DE | MP3
-  ICY: http – blockeras på https-sidan
-  status: -
-  http://stream.rtlradio.de/rtl-de-ukw/mp3-128/konsole/
-Nova 100 Dansk | DK | AAC+
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://live-bauerdk.sharp-stream.com/DK_HQ_RP11.aac
-Marso Radijas | LT | MP3
-  ICY: fetch nekad (CORS/nät)
-  status: titel: Anthony Pappa, Fauxplay - Voltaire (Original Mix)
-  https://radijas.marsas.me/live
-RadCap - Symphogoth | RU | AAC+
-  ICY: http – blockeras på https-sidan
-  status: -
-  http://213.141.131.10:8002/symphogoth
-Radiónica (HJYM 99.1 Bogotá) RTVC | CO | AAC+
-  ICY: http – blockeras på https-sidan
-  status: -
-  http://shoutcast.rtvc.gov.co:8010/;
-Octaaf Radio | NL | MP3
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://86.105.224.34:8000/radio.mp3
-RMC FR | FR | MP3
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://audio.bfmtv.com/rmcradio_128.mp3
-Greatest Hits 1920's | AE | MP3
-  ICY: titel "Fred  and  Adele Astaire - I" (metaint läsbar: true)
-  status: nej
-  https://drive.uber.radio/uber/boomerang1920s/icecast.audio
-MusicStarZucchero | IT | MP3
-  ICY: http – blockeras på https-sidan
-  status: -
-  http://icy.unitedradio.it/Zucchero.mp3
-MIX 80s (iHeart Radio) - Online - ACIR O | MX | AAC+
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://playerservices.streamtheworld.com/api/livestream-redirect/ACIR13_s01AAC.aac
-Majestic Juikebox Radio | US | AAC+
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://uk3.internet-radio.com/proxy/majesticjukebox/stream?t=1790775177953
-88.9 Super Estación | CO | MP3
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://servidor40-5.brlogic.com:7006/live
-BDJ Eurodance 90s | DE | MP3
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://stream-90s.bdjradio.com/
-RADJU MARIJA MALTA | MT | MP3
-  ICY: http – blockeras på https-sidan
-  status: -
-  http://dreamsiteradiocp.com:8102/stream
-WQXR 105.9 FM | US | AAC+
-  ICY: http – blockeras på https-sidan
-  status: -
-  http://stream.wqxr.org/wqxr.aac?nyprBrowserId=14c375bfe5dc0500
-Carbon Radio | US | MP3
-  ICY: titel "love is all we are" (metaint läsbar: true)
-  status: nej
-  https://radio.carbonradio.live/listen/carbonradio/radio.mp3
-Mega St☆r Colombia | CO | AAC
-  ICY: http – blockeras på https-sidan
-  status: -
-  http://stream.zeno.fm/h9x7hs6aqs8uv
-NRJ Hamburg | DE | MP3
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://frontend.streamonkey.net/energy-hamburg/stream/mp3
-=KECO=70s ROCK | AU | MP3
-  ICY: http – blockeras på https-sidan
-  status: -
-  http://jfm1.hostingradio.ru:14536/rock70.mp3
-Радио Дарик Русе 91.6 FM | BG | MP3
-  ICY: titel "" (metaint läsbar: true)
-  status: nej
-  https://a12.asurahosting.com/listen/darik_radio/radio.mp3
-CCTV-12社会与法伴音 | CN | UNKNOWN
-  ICY: HLS – ingen ICY
-  status: -
-  https://piccpndali.v.myalicdn.com/audio/cctv12_2.m3u8
-No Agenda Stream | US | MP3
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://listen.noagendastream.com/noagenda
-QUEER RADIO | CH | MP3
-  ICY: fetch nekad (CORS/nät)
-  status: nej
-  https://solid67.streamupsolutions.com/proxy/eyprxrqz?mp=/stream
-BBC Radio 3 (128k) | GB | UNKNOWN
-  ICY: http – blockeras på https-sidan
-  status: -
-  http://as-hls-ww-live.akamaized.net/pool_23461179/live/ww/bbc_radio_three/bbc_radio_three.isml/bbc_radio_three-audio%3d128000.norewind.m3u8
-SWR3 | DE | AAC
-  ICY: HLS – ingen ICY
-  status: -
-  https://liveradio.swr.de/sw73hl2/swr3/play.m3u8
-90.1 Happy FM | AU | MP3
-  ICY: fetch nekad (CORS/nät)
-  status: titel: 
-  https://stream.sigile.net/happyfm-128-mp3?1692452622660
-TT-Node DAB+ | FR | MP3
-  ICY: http – blockeras på https-sidan
-  status: -
-  http://stream.p-node.org/dab.mp3
-Noise FM - EDM Radio | RU | MP3
-  ICY: http – blockeras på https-sidan
-  status: -
-  http://play.sas-media.ru/play_256
-
-SAMMANFATTNING (30 kanaler): {
- "fetch nekad": 13,
- "http – blockeras på https-sidan": 11,
- "låt bara via statussida": 1,
- "låt via ICY": 2,
- "titel": 1,
- "HLS – ingen ICY": 2
-}
+srextra13 -> 4842 SR Extra13
+srextra14 -> 4866 SR Extra14
+srextra11 -> 3703 SR Extra11
+p4helsingborg -> 4868 SR Extra15
+srextra07 -> 2389 SR Extra07
+srextra02 -> 2384 SR Extra02
+srextra06 -> 2388 SR Extra06
+srextra12 -> 3704 SR Extra12
+srextra10 -> 3269 SR Extra10
+srextra01 -> 2383 SR Extra01
+srextra03 -> 2385 SR Extra03
+srextra04 -> 2386 SR Extra04
+srextra05 -> 2387 SR Extra05
+srextra08 -> 2390 SR Extra08
+p4sju -> 206 P4 Sjuhärad
+p1 -> 132 P1
+p4digi -> 5283 P4 Södertälje
+p4plus -> 4951 P4 Plus
+p4jkpg -> 203 P4 Jönköping
+p4sorm -> 202 P4 Sörmland
+dingata -> 2576 P3 Din gata
+ekotdirekt -> 4540 Ekot sänder direkt
+p4oreb -> 221 P4 Örebro
+p4gavl -> 210 P4 Gävleborg
+p4vstm -> 217 P4 Västmanland
+p4vast -> 219 P4 Väst
+p6 -> 166 P6
+p4kron -> 214 P4 Kronoberg
+p4vrml -> 204 P4 Värmland
+p2 -> 163 P2
+p4vnrl -> 216 P4 Västernorrland
+knattekanalen -> 2755 Radioapans knattekanal
+p4vbtn -> 215 P4 Västerbotten
+p4hall -> 220 P4 Halland
+p4malm -> 207 P4 Malmöhus
+p4gotl -> 205 P4 Gotland
+p3 -> 164 P3
+p4sth -> 701 P4 Stockholm
+p4blek -> 213 P4 Blekinge
+p4jmtl -> 200 P4 Jämtland
+sameradion -> 224 SR Sápmi
+p4kalm -> 201 P4 Kalmar
+p4ostg -> 222 P4 Östergötland
+krock: p2 = 163 och 2562 (P2 Musik); behåller lägsta
+p2 -> 2562 P2 Musik
+p4uppl -> 218 P4 Uppland
+finska -> 226 Sveriges Radio Finska
+p4nbtn -> 209 P4 Norrbotten
+srextra09 -> 3268 SR Extra09
+p4krist -> 211 P4 Kristianstad
+p4dala -> 223 P4 Dalarna
+ingen kortkod: P4 Göteborg, P4 Skaraborg
+49 koder skrivna till 3 filer.
+EXIT 0
+ app/src/main/assets/meta-sources.json |  50 +++++++++-
+ docs/meta-sources.json                |  50 +++++++++-
+ meta-sources.json                     |  50 +++++++++-
+ probe-result.txt                      | 183 ++++++++++------------------------
+ 4 files changed, 198 insertions(+), 135 deletions(-)
+diff --git a/meta-sources.json b/meta-sources.json
+index 324adcb..2f06e1a 100644
+--- a/meta-sources.json
++++ b/meta-sources.json
+@@ -35,11 +35,57 @@
+     },
+     {
+       "id": "sverigesradio-kanal",
+-      "match": "sr\\.se/(p1|p2|p3)-",
++      "match": "sr\\.se/(?:lc/(?:[a-z0-9]+/)?)?([a-z0-9]+)[-_.]",
+       "map": {
++        "dingata": 2576,
++        "ekotdirekt": 4540,
++        "finska": 226,
++        "knattekanalen": 2755,
+         "p1": 132,
+         "p2": 163,
+-        "p3": 164
++        "p3": 164,
++        "p4blek": 213,
++        "p4dala": 223,
++        "p4digi": 5283,
++        "p4gavl": 210,
++        "p4gotl": 205,
++        "p4hall": 220,
++        "p4helsingborg": 4868,
++        "p4jkpg": 203,
++        "p4jmtl": 200,
++        "p4kalm": 201,
++        "p4krist": 211,
++        "p4kron": 214,
++        "p4malm": 207,
++        "p4nbtn": 209,
++        "p4oreb": 221,
++        "p4ostg": 222,
++        "p4plus": 4951,
++        "p4sju": 206,
++        "p4sorm": 202,
++        "p4sth": 701,
++        "p4uppl": 218,
++        "p4vast": 219,
++        "p4vbtn": 215,
++        "p4vnrl": 216,
++        "p4vrml": 204,
++        "p4vstm": 217,
++        "p6": 166,
++        "sameradion": 224,
++        "srextra01": 2383,
++        "srextra02": 2384,
++        "srextra03": 2385,
++        "srextra04": 2386,
++        "srextra05": 2387,
++        "srextra06": 2388,
++        "srextra07": 2389,
++        "srextra08": 2390,
++        "srextra09": 3268,
++        "srextra10": 3269,
++        "srextra11": 3703,
++        "srextra12": 3704,
++        "srextra13": 4842,
++        "srextra14": 4866
+       },
+       "url": "https://api.sr.se/api/v2/playlists/rightnow?channelid=$1&format=json",
+       "song": "{playlist.song.artist} – {playlist.song.title}",
