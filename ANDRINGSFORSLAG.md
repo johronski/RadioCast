@@ -34,6 +34,20 @@ Castningen samlad i docs/js/cast.js med ett tillstånd (ditt val / högtalarens 
     - Iakttagelse 27 okt: i telefonen (nuvarande raka reglage) är låga volymer redan för låga. En kubisk kurva skulle göra det värre → **telefonen behåller rak kurva (n = 1)**, kurvan gäller bara castning (n = 2). Mindre ändring, ingen omräkning av sparad volym behövs. Om telefonen ska åtgärdas: pröva n = 0,5 (lyfter låga lägen) – först efter att det klarlagts vid vilka lägen det är för tyst.
 9b. Högtalarvalet ner till spelaren (25 okt): volymraden blir "var och hur högt" – [högtalarikon] Kök ▾ till vänster, volymreglaget till höger (långt från stoppknappen, ingen ny rad). På iPhone bara högtalarvalet. Sidhuvudet behåller en liten ikon utan text (syns innan något spelat, ifylld vid castning). Skäl: tummen når, hör ihop med ljudet och volymen, känt mönster (Spotify Connect). Undvik: två likadana textknappar, ikon intill stopp (feltryck).
 
+## Låtkällor för nya kanaler (1 nov, ej byggt)
+Mål: kanaler som läggs till ska få låtlista utan att någon handskriver mönster i `meta-sources.json`.
+1. **Generera kartan** (störst nytta): skript `tools/build-sources.mjs` som GitHub Actions kör en gång i veckan. Det hämtar kanalförteckningar, skriver de tre kopiorna av `meta-sources.json` och öppnar en PR vid ändring.
+2. **Matcha på fler fält** än strömlänken: radio-browsers `stationuuid` och `homepage`, så att det tål länkbyten.
+3. **Källor per plattform** i stället för per kanal (Icecast finns redan). Kandidater från probe:n: StreamTheWorld, Zeno, Infomaniak, laut.fm, SomaFM, Radiojar. Kräver CORS. ICY i strömmen går inte från webben.
+4. **Synliga luckor:** logga `ingen låtkälla: <kanal>` när en kanal läggs till. `live.mjs` ska prova en kanal per källa, inte bara de 6 första.
+
+**Probe 1 nov** (`.github/probe/sources.py` på grenen `probe`):
+- SR:s `api.sr.se/api/v2/channels?pagination=false` ger alla 52 kanaler med id, namn och `liveaudio.url` (`…/srapi/<id>.mp3`). Den räcker för att täcka alla SR-kanaler.
+- radio-browser har 60 SR-poster. Dagens mönster träffar 42. De som missas är P4-kanaler med kortkod i länken (`live1.sr.se/p4sth-…`, `p4uppl`, `p4gavl`, `p4vrml`, `p4dala`, `p4vast`, `p4hall`, `p4jkpg`, `p4malm`, `p4plus`). Lösning: generatorn följer `srapi/<id>.mp3`-omdirigeringen till `live1.sr.se/<kod>-…` och bygger `map` kod → id. Att omdirigeringen ser ut så är en gissning utifrån radio-browsers `url_resolved` och är inte provat.
+- Fel i dag: `p2` mappas till 163 (P2 Språk och musik), men `live1.sr.se/p2-…` är P2 Klassiskt (2562). P2 Språk och musik heter `p2sm`.
+- Globalt har bara 3 av radio-browsers 300 mest klickade kanaler en låtkälla. Den stora vinsten ligger i plattformskällorna (punkt 3), inte i fler enskilda kanaler.
+- Radio France: ingen öppen kanalförteckning hittad (två gissade adresser gav 404). Deras `map` får förbli handskriven tills vidare.
+
 ## Steg 3: Mer innehåll (medel nytta, medel insats)
 10. Sök: fler genrer synliga (två rader/rutnät), populära kanaler i tomläget.
 11. Riktiga kanallogotyper där radio-browser har dem.

@@ -26,7 +26,10 @@ Läs detta först. Fråga sedan vad uppgiften gäller och läs bara den del av `
    Lokal server: `cd docs && python3 -m http.server 8765`.
 3. Commit (`git -c user.name="RadioCast" -c user.email="radiocast@users.noreply.github.com" commit`) och push till `main`.
    GitHub Actions (`web.yml`) kör samma tester; Pages publicerar parallellt.
-- Nätåtkomst från molnmiljön är begränsad: riktiga strömmar/API:er provas via grenen `probe` (workflow som skriver `probe-result.txt`).
+- Nätåtkomst från molnmiljön är begränsad: riktiga strömmar/API:er provas via grenen `probe` (workflow som skriver `probe-result.txt`). Senast (1 nov): `.github/probe/sources.py` – byt skript i `probe.yml` för nya prov.
+
+## Låtkällor för nya kanaler (1 nov)
+- Förslag och probe-resultat i `ANDRINGSFORSLAG.md`, avsnittet "Låtkällor för nya kanaler". Inget byggt än. Känt fel: `p2` → 163 borde vara 2562.
 
 ## Låtlista utan att spela (Webb 4.17, 1 nov)
 - Notikon till höger på raden för kanaler med låtkälla (`patternFor`). Öppnar låtvyn för den kanalen utan att spela: hämtar aktuell låt (`fromPattern`) och historik (`fetchHistory`), knappen "Spela X" startar kanalen. Kod: `peek`/`showSongSheet(station)`/`peekSongs` i `app.js`, `.row .songs` i `style.css`. Testfall i `smoke.mjs`.
