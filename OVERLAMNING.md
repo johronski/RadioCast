@@ -1,10 +1,10 @@
-# Överlämning (26 okt 2026)
+# Överlämning (uppdaterad 1 nov 2026)
 
 Läs detta först. Fråga sedan vad uppgiften gäller och läs bara den del av `ANDRINGSFORSLAG.md` som berörs.
 
 ## Användaren och arbetssätt
 - Svara alltid på **svenska**, kort och tydligt. Användaren sitter oftast i mobilen (Android, Chrome).
-- **Byggpaus till och med lör 31 okt.** Fråga alltid "Är du säker?" innan något ändras – även buggar och små ändringar. Önskemål läggs i `ANDRINGSFORSLAG.md`.
+- Byggpausen slutade 31 okt, men **fråga fortfarande alltid "Är du säker?" innan något ändras** – även buggar och små ändringar (beslut 1 nov). Önskemål läggs i `ANDRINGSFORSLAG.md`.
 - "Ändra inget" / "gör inga ändringar" = bara analysera och föreslå.
 - Var ärlig om osäkerhet; säg när något bara är testat mot låtsas-högtalare.
 - Användaren vill hålla nere användningen: små, fokuserade ändringar; läs bara de filer som behövs.
@@ -28,12 +28,16 @@ Läs detta först. Fråga sedan vad uppgiften gäller och läs bara den del av `
    GitHub Actions (`web.yml`) kör samma tester; Pages publicerar parallellt.
 - Nätåtkomst från molnmiljön är begränsad: riktiga strömmar/API:er provas via grenen `probe` (workflow som skriver `probe-result.txt`).
 
+## Låtlista utan att spela (Webb 4.17, 1 nov)
+- Notikon till höger på raden för kanaler med låtkälla (`patternFor`). Öppnar låtvyn för den kanalen utan att spela: hämtar aktuell låt (`fromPattern`) och historik (`fetchHistory`), knappen "Spela X" startar kanalen. Kod: `peek`/`showSongSheet(station)`/`peekSongs` i `app.js`, `.row .songs` i `style.css`. Testfall i `smoke.mjs`.
+- Bara provat offline här; riktiga källor ej provade i telefon än. Hämtade låtar hamnar i historiken (som backfill redan gör).
+
 ## Castning – läget och lärdomar
 - `cast.js` skiljer på **ditt val** (pending) och **högtalarens besked**. Det **nyaste beskedet vinner**: Chromes fjärrspelare kan rapportera gammalt för gott (grupper!).
 - Kanalbyte: frågar igen efter 8 s, ger upp och säger till efter 20 s.
 - **Byt högtalare (Android)**: radion spelar vidare medan man väljer (användarens val 26 okt). Kostnad: Chromes automatiska återanslutning gör att listan ibland inte kommer första gången; appen säger då "Tryck Byt högtalare igen". Autojoin (ORIGIN_SCOPED) måste vara på – annars hittar appen inte högtalaren när den öppnas (prövat i 4.7, återställt i 4.8). Alternativ om det blir för jobbigt: tysta gamla högtalaren under valet (säkert byte).
 - **Arbetssätt för castningsfel:** be om felsökningsloggen (⋯ → Om RadioCast → Kopiera felsökningslogg), gör sedan ett testfall i `web-tests/castsim.js`/`cast.mjs` som beter sig som verkligheten, rätta sist. Gissa inte; ändra inte flera saker samtidigt.
-- Senaste version: **Webb 4.16** (31 okt, på användarens begäran).
+- Senaste version: **Webb 4.17** (1 nov).
 - Volym (4.12): i telefonen (pekskärm) inget reglage – ljudet går alltid på full nivå och telefonens knappar styr; reglaget visas bara vid castning (där följer det telefonens knappar). Datorer behåller reglaget. Den som sänkt reglaget tonas upp en gång vid nästa start, med meddelande (`rc.volumeMoved`).
 - Webb 4.13: reglaget slutade följa volymknapparna efter första dragningen (Chrome i telefonen skickar inte alltid pointerup → appen trodde fingret låg kvar). Släpper nu även vid pointercancel/lostpointercapture/change och senast 2 s efter sista rörelsen. Testfall i cast.mjs (`sim.buttons(nivå)` = volymknapparna).
 - Webb 4.13–4.15: felsökning av att reglaget och volymknapparna kom ur takt efter en dragning vid castning. Orsak (bekräftad 27 okt): Chrome i telefonen har en egen volymnivå för knapparna som inte märker när webbsidan sätter volymen, så knapparna räknade från den gamla nivån och ljudet föll tvärt. Går inte att rätta från webben.

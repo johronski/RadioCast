@@ -42,6 +42,18 @@ await p.click('#menuBtn');
 check((await p.textContent('#sheetBody')).includes('Dela appen med en vän'), 'menyn öppnas');
 await p.click('text=Dela appen med en vän'); await p.waitForTimeout(500);
 check((await p.textContent('#sheetBody')).includes('Med mina kanaler'), 'dela appen erbjuder med eller utan kanaler');
+// The note on a row shows the channel's songs without playing it.
+const p5 = await b.newPage({ viewport: { width: 390, height: 844 } });
+p5.on('pageerror', (e) => errors.push(e.message));
+await p5.route(/^https?:\/\/(?!localhost)/, (r) => r.abort());
+await p5.goto(url);
+await p5.waitForFunction(() => document.querySelectorAll('.row .songs').length > 0, null, { timeout: 10000 });
+const peekName = await p5.locator('.row:has(.songs) .name').first().textContent();
+await p5.click('.row .songs >> nth=0'); await p5.waitForTimeout(400);
+check(await p5.isVisible('#sheet') && (await p5.textContent('#sheetBody')).includes('Spela ' + peekName), 'noten öppnar låtlistan med Spela-knapp');
+check(!(await p5.evaluate(() => window.radiocast.nowPlaying)) && await p5.isHidden('#np'), 'låtlistan startar inte kanalen');
+await p5.click('#sheetBody button.btn.accent'); await p5.waitForTimeout(400);
+check((await p5.evaluate(() => window.radiocast.nowPlaying && window.radiocast.nowPlaying.name)) && await p5.isHidden('#sheet'), 'Spela i låtlistan startar kanalen');
 // Restarted while the radio played on a speaker: the app says where it probably plays.
 const p2 = await b.newPage();
 p2.on('pageerror', (e) => errors.push(e.message));

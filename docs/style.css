@@ -84,6 +84,8 @@ input { font: inherit; color: inherit; }
 .row.playing .name { color: var(--accent-text); }
 .row .del, .row .grip { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); border-radius: 22px; }
 .row .del { color: var(--danger); }
+.row .songs { width: 44px; height: 44px; flex: none; display: inline-flex; align-items: center; justify-content: center; color: var(--muted); border-radius: 22px; }
+.row .songs:active { background: var(--card); }
 .row .grip { cursor: grab; touch-action: none; }
 .row.dragging { box-shadow: var(--shadow); background: var(--card); z-index: 2; }
 .bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 18px; width: 22px; }

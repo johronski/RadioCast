@@ -7,7 +7,7 @@ import { loadPatterns, patternFor, fromPattern, fromIcecast, fetchHistory, cover
 import { addHistory, recent } from './history.js';
 import { createCaster } from './cast.js';
 
-const VERSION = 'Webb 4.16';
+const VERSION = 'Webb 4.17';
 
 // ============================================================ stations
 
@@ -563,6 +563,15 @@ function renderList() {
       bars.innerHTML = '<i></i><i></i><i></i><i></i>';
       row.append(bars);
     }
+    if (!editing && patternFor(s.url)) {
+      const sb = el('button', 'songs');
+      sb.type = 'button';
+      sb.setAttribute('aria-label', 'Låtlista för ' + s.name);
+      sb.append(icon('note'));
+      sb.onclick = (e) => { e.stopPropagation(); showSongSheet(s); };
+      sb.onkeydown = (e) => e.stopPropagation();
+      row.append(sb);
+    }
     if (editing) {
       const del = el('button', 'del');
       del.type = 'button';
@@ -871,17 +880,41 @@ document.addEventListener('keydown', (e) => {
   });
 })();
 
-function showSongSheet() {
-  if (!nowPlaying) return;
+// The song sheet shows the playing channel, or (from the note on a row) another channel without playing it.
+const peek = { station: null, song: null, loading: false };
+const isPlaying = (s) => !!(s && nowPlaying && nowPlaying.url === s.url && musicActive());
+function showSongSheet(station) {
+  const s = station && !isPlaying(station) ? station : nowPlaying;
+  if (!s) return;
+  peek.station = s === nowPlaying && isPlaying(s) ? null : s;
+  peek.song = null;
+  peek.loading = !!peek.station;
   sheet(null, 'song');
   renderSongSheet();
+  if (peek.station) peekSongs(s);
+}
+async function peekSongs(s) {
+  const url = s.url;
+  log('peek', shortName(s.name));
+  try { addAll(await fetchHistory(url, s.name)); } catch (e) { /* no history this time */ }
+  let found = null;
+  try { found = await fromPattern(url, s.name); } catch (e) { /* no answer */ }
+  if (found && found.past) addAll(found.past);
+  const text = found && found.text != null ? cleanSong(found.text, s.name) : null;
+  let song = null;
+  if (text) song = { text, cover: await coverFor(text, found.cover), url, at: Date.now() };
+  if (peek.station !== s) return;
+  peek.song = song;
+  peek.loading = false;
+  if (sheetState.kind === 'song') renderSongSheet();
 }
 function renderSongSheet() {
-  const s = nowPlaying;
+  if (peek.station && isPlaying(peek.station)) peek.station = null; // started from the sheet
+  const s = peek.station || nowPlaying;
   const body = $('sheetBody');
   if (!s) return;
   body.textContent = '';
-  const song = musicActive() ? songs.current : null;
+  const song = peek.station ? peek.song : (musicActive() ? songs.current : null);
   const box = el('div', 'center');
   box.append(el('div', 'big-artist', shortName(s.name)));
   const cover = el('div', 'logo-wrap cover-big');
@@ -891,22 +924,30 @@ function renderSongSheet() {
     box.append(el('div', 'label', 'LÅT'), el('div', 'big-title', songTitle(song)));
     if (songArtist(song)) box.append(el('div', 'label', 'ARTIST'), el('div', 'big-artist', songArtist(song)));
   }
-  const where = caster.connected ? 'Spelar på ' + caster.device : (musicActive() ? 'Spelar i telefonen' : 'Stoppad');
-  box.append(el('p', 'muted', song || !musicActive() ? where : 'Kanalen berättar inte vilken låt som spelas just nu. ' + where));
+  if (peek.station) {
+    box.append(el('p', 'muted', song ? 'Spelas just nu på kanalen.' : peek.loading ? 'Hämtar låtar …' : 'Kanalen berättar inte vilken låt som spelas just nu.'));
+    const play = el('button', 'btn accent', 'Spela ' + shortName(s.name));
+    play.type = 'button';
+    play.onclick = () => { closeSheet(); playStation(s, true); };
+    box.append(play);
+  } else {
+    const where = caster.connected ? 'Spelar på ' + caster.device : (musicActive() ? 'Spelar i telefonen' : 'Stoppad');
+    box.append(el('p', 'muted', song || !musicActive() ? where : 'Kanalen berättar inte vilken låt som spelas just nu. ' + where));
+  }
   if (song) {
-    const sp = el('a', 'btn accent', 'Sök i Spotify');
+    const sp = el('a', 'btn ' + (peek.station ? 'outline' : 'accent'), 'Sök i Spotify');
     sp.href = 'https://open.spotify.com/search/' + enc(song.text.replace(' – ', ' '));
     sp.target = '_blank';
     sp.rel = 'noopener';
     box.append(sp);
   }
   body.append(box);
-  const recent = recentSongs(s.url);
-  if (recent.length) {
+  const past = peek.station ? recent(s.url, song && song.text) : recentSongs(s.url);
+  if (past.length) {
     body.append(el('div', 'label', 'TIDIGARE'));
     const ul = el('ul', 'hist');
     const fmt = new Intl.DateTimeFormat('sv', { hour: '2-digit', minute: '2-digit' });
-    for (const r of recent) {
+    for (const r of past) {
       const li = el('li');
       const b = el('a');
       b.href = 'https://open.spotify.com/search/' + enc(r.text.replace(' – ', ' '));
@@ -1212,7 +1253,7 @@ $('editBtn').onclick = () => { editing = false; renderList(); };
 $('installBtn').onclick = addToHomeScreen;
 window.addEventListener('appinstalled', () => { installPrompt = null; renderList(); });
 $('npButton').onclick = togglePlay;
-$('npText').onclick = showSongSheet;
+$('npText').onclick = () => showSongSheet();
 const vol = $('volume');
 let volTimer = 0;
 // While the finger is on the slider, the speaker's reports must not move it. Chrome on the phone
@@ -1237,7 +1278,7 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {}));
 }
 
-loadPatterns().then(() => pokeSongs());
+loadPatterns().then(() => { renderList(); pokeSongs(); });
 importFromLink();
 renderAll();
 // Restarted while the radio still plays on a speaker? Chrome does not always reconnect by itself:
