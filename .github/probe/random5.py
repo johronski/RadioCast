@@ -1,5 +1,7 @@
 # Probe 1 nov: får 5 slumpade kanaler låtinfo? Dagens mönster, Icecast-statussida (som webbappen), ICY i strömmen.
-import urllib.request, json, re
+import urllib.request, urllib.parse, json, re, signal
+def boom(*a): raise TimeoutError("hård gräns 20 s")
+signal.signal(signal.SIGALRM, boom)
 UA = {"User-Agent": "RadioCast-probe", "Origin": "https://johronski.github.io"}
 def req(u, h=None, t=10):
     return urllib.request.urlopen(urllib.request.Request(u, headers={**UA, **(h or {})}), timeout=t)
@@ -13,6 +15,7 @@ def known(url):
         return p["id"]
 st = json.loads(req("https://de1.api.radio-browser.info/json/stations/search?order=random&limit=5&hidebroken=true&is_https=true").read())
 for s in st:
+    signal.alarm(20)
     u = s["url_resolved"] or s["url"]
     print("\n==", s["name"].strip(), "|", s["countrycode"], "|", s["codec"], s["bitrate"], "|", u)
     print("  mönster:", known(s["url"]) or known(u) or "ingen")
