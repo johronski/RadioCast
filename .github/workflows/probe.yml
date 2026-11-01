@@ -14,7 +14,7 @@ jobs:
         with: { node-version: '22' }
       - run: |
           (node tools/build-sources.mjs; echo EXIT $?; git diff --stat; git diff meta-sources.json) > probe-result.txt 2>&1
-          git checkout -- meta-sources.json docs app/src/main/assets
+          cat probe-result.txt; git checkout -- meta-sources.json docs/meta-sources.json app/src/main/assets/meta-sources.json || true
       - run: |
           git config user.name RadioCast; git config user.email radiocast@users.noreply.github.com
           git add probe-result.txt; git commit -m "probe result [skip ci]"; git push
