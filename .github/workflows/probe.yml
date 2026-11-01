@@ -2,7 +2,7 @@ name: Probe
 on:
   push:
     branches: [probe]
-    paths: ['.github/**', 'app/src/main/**']
+    paths: ['.github/**', 'app/src/main/**', 'tools/**']
 permissions:
   contents: write
 jobs:
@@ -13,12 +13,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '22' }
       - run: |
-          npm i playwright@1.56.0 >/dev/null 2>&1 && npx playwright install --with-deps chromium >/dev/null 2>&1
-          git fetch -q --depth 1 origin main && git checkout FETCH_HEAD -- docs
-          (cd docs && python3 -m http.server 8765 >/dev/null 2>&1 &)
-          sleep 1
-          timeout 240 node .github/probe/icy.mjs > probe-result.txt 2>&1 || true
+          (node tools/build-sources.mjs; echo EXIT $?; git diff --stat; git diff meta-sources.json) > probe-result.txt 2>&1
+          git checkout -- meta-sources.json docs app/src/main/assets
       - run: |
           git config user.name RadioCast; git config user.email radiocast@users.noreply.github.com
-          git reset -q docs; git checkout -q -- docs 2>/dev/null || true
           git add probe-result.txt; git commit -m "probe result [skip ci]"; git push
