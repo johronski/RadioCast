@@ -34,7 +34,7 @@ Castningen samlad i docs/js/cast.js med ett tillstånd (ditt val / högtalarens 
     - Iakttagelse 27 okt: i telefonen (nuvarande raka reglage) är låga volymer redan för låga. En kubisk kurva skulle göra det värre → **telefonen behåller rak kurva (n = 1)**, kurvan gäller bara castning (n = 2). Mindre ändring, ingen omräkning av sparad volym behövs. Om telefonen ska åtgärdas: pröva n = 0,5 (lyfter låga lägen) – först efter att det klarlagts vid vilka lägen det är för tyst.
 9b. Högtalarvalet ner till spelaren (25 okt): volymraden blir "var och hur högt" – [högtalarikon] Kök ▾ till vänster, volymreglaget till höger (långt från stoppknappen, ingen ny rad). På iPhone bara högtalarvalet. Sidhuvudet behåller en liten ikon utan text (syns innan något spelat, ifylld vid castning). Skäl: tummen når, hör ihop med ljudet och volymen, känt mönster (Spotify Connect). Undvik: två likadana textknappar, ikon intill stopp (feltryck).
 
-## Låtkällor för nya kanaler (1 nov, ej byggt)
+## Låtkällor för nya kanaler (1 nov: SR-generatorn och P2 klara; plattformskällor och Android-skal återstår)
 Mål: kanaler som läggs till ska få låtlista utan att någon handskriver mönster i `meta-sources.json`.
 1. **Generera kartan** (störst nytta): skript `tools/build-sources.mjs` som GitHub Actions kör en gång i veckan. Det hämtar kanalförteckningar, skriver de tre kopiorna av `meta-sources.json` och öppnar en PR vid ändring.
 2. **Matcha på fler fält** än strömlänken: radio-browsers `stationuuid` och `homepage`, så att det tål länkbyten.

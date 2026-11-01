@@ -26,12 +26,15 @@ Läs detta först. Fråga sedan vad uppgiften gäller och läs bara den del av `
    Lokal server: `cd docs && python3 -m http.server 8765`.
 3. Commit (`git -c user.name="RadioCast" -c user.email="radiocast@users.noreply.github.com" commit`) och push till `main`.
    GitHub Actions (`web.yml`) kör samma tester; Pages publicerar parallellt.
-- Nätåtkomst från molnmiljön är begränsad: riktiga strömmar/API:er provas via grenen `probe` (workflow som skriver `probe-result.txt`). Senast (1 nov): `.github/probe/sources.py` – byt skript i `probe.yml` för nya prov.
+- Nätåtkomst från molnmiljön är begränsad: riktiga strömmar/API:er provas via grenen `probe` (workflow som skriver `probe-result.txt`).
+- Grenen `probe`: `probe.yml` kör just nu SR-generatorn (visar diff). Provskript där: `.github/probe/sources.py`, `random5.py`, `icy.mjs` – byt körsteget i `probe.yml` för nya prov.
+- Ändringar utanför `paths-ignore` i `build.yml` (t.ex. `build.yml` själv eller Java-kod) bygger en ny Android-release (`v1.0.N`). Undvik i onödan; hände 1 nov.
 
 ## Låtkällor för nya kanaler (1 nov)
 - Förslag och probe-resultat i `ANDRINGSFORSLAG.md`, avsnittet "Låtkällor för nya kanaler".
 - **Byggt 1 nov: SR-generatorn** `tools/build-sources.mjs`. Hämtar SR:s kanallista, följer varje kanals mp3-länk och AAC-spellista till kortkoden (`live1.sr.se/p4sth-…` → 701) och skriver om SR-posten i alla tre `meta-sources.json`. Alla 52 SR-kanaler täcks. P2 rättad: `p2` → 2562 (Klassiskt), `p2sm` → 163 (Språk och musik). En kod som flera kanaler leder till går till kanalen utan annan kod. Skydd: under 20 koder eller fel P1/P3 → inget skrivs.
 - `.github/workflows/sr-sources.yml` kör generatorn måndagar (och manuellt) och öppnar PR från grenen `sr-sources` vid ändring. Kräver att "Allow GitHub Actions to create and approve pull requests" är på, annars blir jobbet rött med besked.
+- Nästa steg: prova en P4-kanal i telefonen. Blir PR-steget i `sr-sources.yml` rött: slå på inställningen ovan (kunde inte kontrolleras härifrån).
 - Ingen versionshöjning: `meta-sources.json` hämtas nätet först vid varje start (webb) resp. från GitHub (Android).
 - Prov i Chromium 1 nov: webbappen får låt för bara 3 av 30 slumpade kanaler (CORS, http, HLS). Bred täckning kräver Android-skalet eller en mellanserver; inget beslut än.
 
